@@ -15,6 +15,7 @@ export default function DashboardPage() {
     trustRevenue: 0,
     organizerRevenue: 0,
     totalTickets: 0,
+    scannableTickets: 0,
     checkedIn: 0,
     activeOrganisers: 0,
     hasTickets: false,
@@ -92,6 +93,7 @@ export default function DashboardPage() {
     let trustRev = 0;
     let organizerRev = 0;
     let checkInCount = 0;
+    let scannableCount = 0;
     
     const typeCount = { 'Platinum': 0, 'Donor': 0, 'Bulk': 0, 'Student': 0 };
     const revCount = { 'Platinum': 0, 'Donor': 0, 'Bulk': 0, 'Student': 0 };
@@ -107,10 +109,15 @@ export default function DashboardPage() {
          organizerRev += lineTotal;
       }
       
-      if (t.status === 'checked_in') checkInCount += q;
-      if (statusCount[t.status as keyof typeof statusCount] !== undefined) {
-         statusCount[t.status as keyof typeof statusCount] += q;
+      const isDonor = t.type === 'Donor Pass' || t.type === 'Donor';
+      if (!isDonor) {
+         scannableCount += q;
+         if (t.status === 'checked_in') checkInCount += q;
+         if (statusCount[t.status as keyof typeof statusCount] !== undefined) {
+            statusCount[t.status as keyof typeof statusCount] += q;
+         }
       }
+      
       if (typeCount[t.type as keyof typeof typeCount] !== undefined) {
          typeCount[t.type as keyof typeof typeCount] += q;
          revCount[t.type as keyof typeof revCount] += lineTotal;
@@ -143,6 +150,7 @@ export default function DashboardPage() {
       trustRevenue: trustRev,
       organizerRevenue: organizerRev,
       totalTickets: passesSold,
+      scannableTickets: scannableCount,
       checkedIn: checkInCount,
       activeOrganisers: allOrganisers.length,
       hasTickets: allTickets.length > 0,
@@ -191,7 +199,7 @@ export default function DashboardPage() {
 
   }, [allTickets, allOrganisers, filterDate, filterType, filterOrganiser, filterPayment]);
 
-  const checkInRate = metrics.totalTickets > 0 ? ((metrics.checkedIn / metrics.totalTickets) * 100).toFixed(1) : "0.0";
+  const checkInRate = metrics.scannableTickets > 0 ? ((metrics.checkedIn / metrics.scannableTickets) * 100).toFixed(1) : "0.0";
   const formattedRevenue = new Intl.NumberFormat('en-IN').format(metrics.totalRevenue);
 
   return (
@@ -346,7 +354,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums">{checkInRate}%</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 line-clamp-2">{metrics.checkedIn}/{metrics.totalTickets} in</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 line-clamp-2">{metrics.checkedIn}/{metrics.scannableTickets} in</p>
               </div>
             </div>
           </div>
@@ -595,7 +603,7 @@ export default function DashboardPage() {
                             <Pie 
                               data={[
                                  {name: 'Checked In', value: metrics.checkedIn}, 
-                                 {name: 'Not Checked In', value: Math.max(0, metrics.totalTickets - metrics.checkedIn)}
+                                 {name: 'Not Checked In', value: Math.max(0, metrics.scannableTickets - metrics.checkedIn)}
                               ]} 
                               cx="50%" cy="50%" innerRadius={58} outerRadius={92} dataKey="value" stroke="none"
                             >
@@ -614,7 +622,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
                            <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Awaiting</span>
-                           <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{Math.max(0, metrics.totalTickets - metrics.checkedIn)}</span>
+                           <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{Math.max(0, metrics.scannableTickets - metrics.checkedIn)}</span>
                         </div>
                         <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
                            <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Rate</span>

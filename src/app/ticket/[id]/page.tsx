@@ -113,12 +113,21 @@ export default function PublicTicketPage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-6 inline-block rounded-2xl bg-white p-4 ring-1 ring-gray-100">
-            <QRCode value={qrPayload} size={216} level="M" className="h-auto max-w-full" />
-          </div>
-          <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-500">
-            Show this screen at the entrance. Brightness up helps scanners read the code.
-          </p>
+          {passLabel !== "Donor Pass" && passLabel !== "Donor" ? (
+             <>
+                <div className="mx-auto mt-6 inline-block rounded-2xl bg-white p-4 ring-1 ring-gray-100">
+                  <QRCode value={qrPayload} size={216} level="M" className="h-auto max-w-full" />
+                </div>
+                <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-500">
+                  Show this screen at the entrance. Brightness up helps scanners read the code.
+                </p>
+             </>
+          ) : (
+             <div className="mt-8 text-center bg-pink-50 p-4 rounded-xl border border-pink-100">
+                <p className="text-sm font-bold text-pink-800 mb-1">Thank you for your donation!</p>
+                <p className="text-xs text-pink-600">Donor passes do not require a validation QR. See you at the event.</p>
+             </div>
+          )}
         </div>
 
         <p className="mt-6 text-center text-[10px] text-gray-400">

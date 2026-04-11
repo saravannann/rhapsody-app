@@ -230,63 +230,78 @@ export default function SellTicketsPage() {
                  <p className="mt-1 text-sm text-gray-600 dark:text-violet-300/80">
                     {saleReceipt.passLabel} × {saleReceipt.quantity} · ₹{saleReceipt.totalInr.toLocaleString("en-IN")}
                  </p>
-                 <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-violet-400/70">
-                    Check-in QR
-                 </p>
-                 <p className="mx-auto mt-2 max-w-sm text-[11px] leading-snug text-gray-500 dark:text-violet-400/65">
-                    The guest can show this code at the entrance. One scan covers this transaction ({saleReceipt.quantity}{" "}
-                    {saleReceipt.quantity === 1 ? "pass" : "passes"}).
-                 </p>
-                 <div className="mx-auto mt-4 inline-block rounded-2xl bg-white p-4 shadow-inner ring-1 ring-gray-100 dark:bg-white dark:ring-gray-200">
-                    <QRCode
-                       value={saleReceipt.qrPayload}
-                       size={220}
-                       level="M"
-                       className="h-auto max-w-full"
-                    />
-                 </div>
-                 <p className="mt-3 font-mono text-xs font-bold text-gray-700 dark:text-violet-200">
-                    Ref {shortTicketRef(saleReceipt.ticketId)}
-                 </p>
 
-                 <p className="mx-auto mt-5 max-w-md text-[11px] leading-snug text-gray-600 dark:text-violet-400/75">
-                    Purchases can be days before the event. Send the ticket link on WhatsApp so the guest can open their QR anytime.
-                 </p>
-
-                 <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
-                    {whatsappSendUrl ? (
-                       <a
-                          href={whatsappSendUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
-                       >
-                          <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
-                          WhatsApp to purchaser
-                       </a>
-                    ) : null}
-                    {ticketPageUrl ? (
-                       <button
-                          type="button"
-                          onClick={async () => {
-                             try {
-                                await navigator.clipboard.writeText(ticketPageUrl);
-                                setLinkCopied(true);
-                                setTimeout(() => setLinkCopied(false), 2000);
-                             } catch {
-                                alert("Could not copy. Copy manually: " + ticketPageUrl);
-                             }
-                          }}
-                          className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
-                       >
-                          <Link2 className="h-4 w-4 shrink-0" aria-hidden />
-                          {linkCopied ? "Link copied" : "Copy ticket link"}
-                       </button>
-                    ) : null}
-                 </div>
-                 <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60">
-                    WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
-                 </p>
+                 {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
+                    <>
+                       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-violet-400/70">
+                          Check-in QR
+                       </p>
+                       <p className="mx-auto mt-2 max-w-sm text-[11px] leading-snug text-gray-500 dark:text-violet-400/65">
+                          The guest can show this code at the entrance. One scan covers this transaction ({saleReceipt.quantity}{" "}
+                          {saleReceipt.quantity === 1 ? "pass" : "passes"}).
+                       </p>
+                       <div className="mx-auto mt-4 inline-block rounded-2xl bg-white p-4 shadow-inner ring-1 ring-gray-100 dark:bg-white dark:ring-gray-200">
+                          <QRCode
+                             value={saleReceipt.qrPayload}
+                             size={220}
+                             level="M"
+                             className="h-auto max-w-full"
+                          />
+                       </div>
+                       <p className="mt-3 font-mono text-xs font-bold text-gray-700 dark:text-violet-200">
+                          Ref {shortTicketRef(saleReceipt.ticketId)}
+                       </p>
+      
+                       <p className="mx-auto mt-5 max-w-md text-[11px] leading-snug text-gray-600 dark:text-violet-400/75">
+                          Purchases can be days before the event. Send the ticket link on WhatsApp so the guest can open their QR anytime.
+                       </p>
+      
+                       <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
+                          {whatsappSendUrl ? (
+                             <a
+                                href={whatsappSendUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
+                             >
+                                <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
+                                WhatsApp to purchaser
+                             </a>
+                          ) : null}
+                          {ticketPageUrl ? (
+                             <button
+                                type="button"
+                                onClick={async () => {
+                                   try {
+                                      await navigator.clipboard.writeText(ticketPageUrl);
+                                      setLinkCopied(true);
+                                      setTimeout(() => setLinkCopied(false), 2000);
+                                   } catch {
+                                      alert("Could not copy. Copy manually: " + ticketPageUrl);
+                                   }
+                                }}
+                                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                             >
+                                <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                                {linkCopied ? "Link copied" : "Copy ticket link"}
+                             </button>
+                          ) : null}
+                       </div>
+                       <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60">
+                          WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
+                       </p>
+                    </>
+                 ) : (
+                    <div className="mt-8 mb-6">
+                       <div className="inline-flex items-center justify-center p-3 bg-pink-50 rounded-full mb-3 shadow-inner ring-1 ring-pink-100">
+                          <Gift className="w-8 h-8 text-primary" />
+                       </div>
+                       <p className="mx-auto mt-2 max-w-md text-xs sm:text-sm font-medium leading-snug text-gray-700 dark:text-violet-300">
+                          Donation purchase directly goes to the general fund. 
+                          <span className="block mt-1 font-bold text-primary">No check-in QR code is necessary for this transaction.</span>
+                       </p>
+                    </div>
+                 )}
 
                  <button
                     type="button"

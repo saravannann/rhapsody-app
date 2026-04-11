@@ -117,10 +117,7 @@ export default function LoginPage() {
 
         {/* Login Card */}
         <div className="w-full max-w-[440px] bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
-          <h2 className="text-xl font-bold text-slate-900">Welcome Back</h2>
-          <p className="text-slate-500 text-sm mt-1 mb-6">
-            Enter your credentials to access your account
-          </p>
+          <h2 className="text-xl font-bold text-slate-900 mb-6 text-center">Join to make a difference</h2>
 
           <form className="space-y-4">
             <div>
