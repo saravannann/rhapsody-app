@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import QRCode from "react-qr-code";
+import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
+import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
+import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl } from "@/utils/whatsapp-ticket";
+
+type SaleReceipt = {
+  ticketId: string;
+  passLabel: string;
+  quantity: number;
+  totalInr: number;
+  qrPayload: string;
+  purchaserName: string;
+  purchaserPhoneE164: string;
+};
 
 const CATEGORIES = [
   { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
@@ -26,9 +39,14 @@ export default function SellTicketsPage() {
     fundsDestination: 'organizer' as 'trust' | 'organizer',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [saleReceipt, setSaleReceipt] = useState<SaleReceipt | null>(null);
   const [organisers, setOrganisers] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState({ name: '', role: '' });
+  const [appOrigin, setAppOrigin] = useState("");
+
+  useEffect(() => {
+     setAppOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
 
   useEffect(() => {
      const savedName = localStorage.getItem('rhapsody_user') || 'User';
@@ -51,7 +69,7 @@ export default function SellTicketsPage() {
         return;
      }
      setIsSubmitting(true);
-     setSuccess(false);
+     setSaleReceipt(null);
 
      try {
        let purchaserPhone: string;
@@ -62,30 +80,55 @@ export default function SellTicketsPage() {
           setIsSubmitting(false);
           return;
        }
-       const mappedPayload = Array.from({ length: formData.qty }).map(() => ({
-             type: selectedCategory.id,
+       const qty = formData.qty;
+       const passLabel = selectedCategory.name as string;
+       const typeId = selectedCategory.id as string;
+       const lineTotal = selectedCategory.price * qty;
+
+       const { data: row, error } = await supabase
+         .from("tickets")
+         .insert({
+             type: typeId,
              price: selectedCategory.price,
-             status: 'pending',
+             quantity: qty,
+             status: "pending",
              purchaser_name: formData.name,
              purchaser_phone: purchaserPhone,
              sold_by: formData.poc,
              funds_destination: formData.fundsDestination,
-       }));
-       
-       const { error } = await supabase.from('tickets').insert(mappedPayload);
+         })
+         .select("id")
+         .single();
+
        if (error) throw error;
-       
-       setSuccess(true);
-       setFormData({ name: '', phone: '', email: '', poc: formData.poc, qty: 1, fundsDestination: 'organizer' });
-       setTimeout(() => {
-          setSuccess(false);
-          setSelectedCategory(null);
-       }, 2000);
+       if (!row?.id) throw new Error("No ticket id returned");
+
+       const qrPayload = buildTicketQrPayload({
+         ticketId: row.id,
+         quantity: qty,
+         typeId,
+       });
+
+       setSaleReceipt({
+         ticketId: row.id,
+         passLabel,
+         quantity: qty,
+         totalInr: lineTotal,
+         qrPayload,
+         purchaserName: formData.name.trim(),
+         purchaserPhoneE164: purchaserPhone,
+       });
+
+       setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer" });
        
      } catch (err: unknown) {
        console.error("Error selling ticket:", err);
        const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: string }).message) : '';
-       if (msg.includes('funds_destination') || msg.includes('column')) {
+       if (msg.toLowerCase().includes("quantity")) {
+          alert(
+            "Database may need the quantity column. Run supabase/migrations/add_quantity_to_tickets.sql in the Supabase SQL editor."
+          );
+       } else if (msg.includes("funds_destination")) {
           alert("Database needs column funds_destination on tickets. Run the SQL in supabase/migrations/add_funds_destination_to_tickets.sql");
        } else {
           alert("Failed to confirm ticket sale.");
@@ -96,6 +139,28 @@ export default function SellTicketsPage() {
   };
 
   const totalAmount = selectedCategory?.price * formData.qty;
+
+  const ticketPageUrl = useMemo(() => {
+    if (!saleReceipt || !appOrigin) return "";
+    return `${appOrigin}/ticket/${saleReceipt.ticketId}`;
+  }, [saleReceipt, appOrigin]);
+
+  const whatsappSendUrl = useMemo(() => {
+    if (!saleReceipt || !appOrigin) return null;
+    return buildWhatsAppSendUrl(
+      saleReceipt.purchaserPhoneE164,
+      buildTicketWhatsAppMessage({
+        purchaserName: saleReceipt.purchaserName,
+        passLabel: saleReceipt.passLabel,
+        quantity: saleReceipt.quantity,
+        totalInr: saleReceipt.totalInr,
+        ref: shortTicketRef(saleReceipt.ticketId),
+        ticketPageUrl: `${appOrigin}/ticket/${saleReceipt.ticketId}`,
+      })
+    );
+  }, [saleReceipt, appOrigin]);
+
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const clampQty = (n: number) => Math.min(50, Math.max(1, Math.floor(Number.isFinite(n) ? n : 1)));
 
@@ -145,10 +210,96 @@ export default function SellTicketsPage() {
         </div>
       ) : (
         <div className="animate-in slide-in-from-right-8 duration-500 max-w-4xl mx-auto">
-           <button type="button" onClick={() => setSelectedCategory(null)} className="flex items-center min-h-[44px] text-xs font-bold text-gray-400 hover:text-primary mb-2 sm:mb-4 transition-colors">
+           <button
+              type="button"
+              onClick={() => {
+                 setSaleReceipt(null);
+                 setSelectedCategory(null);
+              }}
+              className="flex items-center min-h-[44px] text-xs font-bold text-gray-400 hover:text-primary mb-2 sm:mb-4 transition-colors"
+           >
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
            </button>
 
+           {saleReceipt ? (
+              <div className="rounded-xl sm:rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-white p-5 sm:p-8 text-center shadow-sm dark:border-emerald-500/25 dark:from-emerald-950/40 dark:to-[var(--card-bg)]">
+                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
+                    <CheckCircle2 className="h-7 w-7" aria-hidden />
+                 </div>
+                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100">Sale recorded</h2>
+                 <p className="mt-1 text-sm text-gray-600 dark:text-violet-300/80">
+                    {saleReceipt.passLabel} × {saleReceipt.quantity} · ₹{saleReceipt.totalInr.toLocaleString("en-IN")}
+                 </p>
+                 <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-violet-400/70">
+                    Check-in QR
+                 </p>
+                 <p className="mx-auto mt-2 max-w-sm text-[11px] leading-snug text-gray-500 dark:text-violet-400/65">
+                    The guest can show this code at the entrance. One scan covers this transaction ({saleReceipt.quantity}{" "}
+                    {saleReceipt.quantity === 1 ? "pass" : "passes"}).
+                 </p>
+                 <div className="mx-auto mt-4 inline-block rounded-2xl bg-white p-4 shadow-inner ring-1 ring-gray-100 dark:bg-white dark:ring-gray-200">
+                    <QRCode
+                       value={saleReceipt.qrPayload}
+                       size={220}
+                       level="M"
+                       className="h-auto max-w-full"
+                    />
+                 </div>
+                 <p className="mt-3 font-mono text-xs font-bold text-gray-700 dark:text-violet-200">
+                    Ref {shortTicketRef(saleReceipt.ticketId)}
+                 </p>
+
+                 <p className="mx-auto mt-5 max-w-md text-[11px] leading-snug text-gray-600 dark:text-violet-400/75">
+                    Purchases can be days before the event. Send the ticket link on WhatsApp so the guest can open their QR anytime.
+                 </p>
+
+                 <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
+                    {whatsappSendUrl ? (
+                       <a
+                          href={whatsappSendUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
+                       >
+                          <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
+                          WhatsApp to purchaser
+                       </a>
+                    ) : null}
+                    {ticketPageUrl ? (
+                       <button
+                          type="button"
+                          onClick={async () => {
+                             try {
+                                await navigator.clipboard.writeText(ticketPageUrl);
+                                setLinkCopied(true);
+                                setTimeout(() => setLinkCopied(false), 2000);
+                             } catch {
+                                alert("Could not copy. Copy manually: " + ticketPageUrl);
+                             }
+                          }}
+                          className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                       >
+                          <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                          {linkCopied ? "Link copied" : "Copy ticket link"}
+                       </button>
+                    ) : null}
+                 </div>
+                 <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60">
+                    WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
+                 </p>
+
+                 <button
+                    type="button"
+                    onClick={() => {
+                       setSaleReceipt(null);
+                       setSelectedCategory(null);
+                    }}
+                    className="mt-6 w-full max-w-xs rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                 >
+                    Done — new sale
+                 </button>
+              </div>
+           ) : (
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
               
               {/* Form + summary: on mobile, summary stacks after form with less padding */}
@@ -280,11 +431,6 @@ export default function SellTicketsPage() {
                        </div>
                     </form>
                  </div>
-                 {success && (
-                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl p-4 flex items-center justify-center gap-3 text-sm font-bold animate-in zoom-in-95">
-                       <CheckCircle2 className="w-5 h-5 text-emerald-500" /> Sale confirmed — tickets recorded.
-                    </div>
-                 )}
               </div>
 
               {/* Summary — sticky on large screens */}
@@ -331,6 +477,7 @@ export default function SellTicketsPage() {
               </div>
 
            </div>
+           )}
         </div>
       )}
     </div>

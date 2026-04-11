@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
+import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -91,20 +92,23 @@ export default function DashboardPage() {
     const statusCount = { 'pending': 0, 'checked_in': 0, 'cancelled': 0 };
 
     filteredTickets.forEach(t => {
-      totalRev += Number(t.price || 0);
-      if (t.status === 'checked_in') checkInCount++;
+      const q = ticketQuantity(t);
+      totalRev += ticketLineTotal(t);
+      if (t.status === 'checked_in') checkInCount += q;
       if (statusCount[t.status as keyof typeof statusCount] !== undefined) {
-         statusCount[t.status as keyof typeof statusCount]++;
+         statusCount[t.status as keyof typeof statusCount] += q;
       }
       if (typeCount[t.type as keyof typeof typeCount] !== undefined) {
-         typeCount[t.type as keyof typeof typeCount]++;
-         revCount[t.type as keyof typeof revCount] += Number(t.price || 0);
+         typeCount[t.type as keyof typeof typeCount] += q;
+         revCount[t.type as keyof typeof revCount] += ticketLineTotal(t);
       }
     });
 
+    const passesSold = filteredTickets.reduce((sum, t) => sum + ticketQuantity(t), 0);
+
     setMetrics({
       totalRevenue: totalRev,
-      totalTickets: filteredTickets.length,
+      totalTickets: passesSold,
       checkedIn: checkInCount,
       activeOrganisers: allOrganisers.length,
       hasTickets: allTickets.length > 0
@@ -123,7 +127,7 @@ export default function DashboardPage() {
       { name: 'Cancelled', value: statusCount['cancelled'] },
     ]);
 
-    // Top Organisers ranking (always based on ALL tickets filtered by type/payment, but aggregated by person)
+    // LeaderBoard ranking (always based on ALL tickets filtered by type/payment, but aggregated by person)
     const orgSales: Record<string, { count: number, categories: Record<string, number> }> = {};
     
     allOrganisers.forEach(org => {
@@ -131,9 +135,10 @@ export default function DashboardPage() {
     });
 
     filteredTickets.forEach(t => {
+       const q = ticketQuantity(t);
        if (t.sold_by && orgSales[t.sold_by]) {
-          orgSales[t.sold_by].count++;
-          orgSales[t.sold_by].categories[t.type] = (orgSales[t.sold_by].categories[t.type] || 0) + 1;
+          orgSales[t.sold_by].count += q;
+          orgSales[t.sold_by].categories[t.type] = (orgSales[t.sold_by].categories[t.type] || 0) + q;
        }
     });
 
@@ -149,7 +154,7 @@ export default function DashboardPage() {
        };
     }).sort((a,b) => b.total - a.total));
 
-  }, [allTickets, allOrganisers, filterType, filterOrganiser, filterPayment]);
+  }, [allTickets, allOrganisers, filterDate, filterType, filterOrganiser, filterPayment]);
 
   const checkInRate = metrics.totalTickets > 0 ? ((metrics.checkedIn / metrics.totalTickets) * 100).toFixed(1) : "0.0";
   const formattedRevenue = new Intl.NumberFormat('en-IN').format(metrics.totalRevenue);
@@ -307,7 +312,7 @@ export default function DashboardPage() {
           {/* Chart Nav Tabs — scroll on narrow screens */}
           <div className="-mx-1 px-1 sm:mx-0">
             <div className="flex gap-1 sm:gap-2 bg-[#fdfaff] dark:bg-violet-950/25 p-1.5 sm:p-2 rounded-xl border border-pink-50 dark:border-violet-500/18 overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full max-w-full">
-            {['Sales Overview', 'Top Organisers', 'Ticket Status', 'Check-in Stats'].map((tab) => (
+            {['Sales Overview', 'LeaderBoard', 'Ticket Status', 'Check-in Stats'].map((tab) => (
                <button 
                  type="button"
                  key={tab}
@@ -388,11 +393,11 @@ export default function DashboardPage() {
                </div>
              )}
 
-             {/* 2. Top Organisers - Ranked Table */}
-             {activeTab === 'Top Organisers' && (
+             {/* 2. LeaderBoard - Ranked Table */}
+             {activeTab === 'LeaderBoard' && (
                 <div className="animate-in fade-in duration-500">
                    <div className="mb-3 sm:mb-4">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-violet-100 border-b border-gray-100 dark:border-violet-500/15 pb-1.5">Top organisers</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-violet-100 border-b border-gray-100 dark:border-violet-500/15 pb-1.5">LeaderBoard</h3>
                       <p className="text-xs sm:text-sm text-gray-400 dark:text-violet-400/60 font-medium">Sales by category</p>
                    </div>
 
@@ -413,11 +418,23 @@ export default function DashboardPage() {
                                </div>
                                <span className="shrink-0 text-xs font-bold bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 px-2 py-1 rounded-md text-gray-700 dark:text-violet-300">{org.total} total</span>
                              </div>
-                             <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
-                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Plat</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.platinum}</span></div>
-                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Donor</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.donor}</span></div>
-                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Bulk</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.bulk}</span></div>
-                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Stud</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.student}</span></div>
+                             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] sm:text-xs">
+                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
+                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Platinum</span>
+                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.platinum}</span>
+                               </div>
+                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
+                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Donor</span>
+                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.donor}</span>
+                               </div>
+                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
+                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Bulk</span>
+                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.bulk}</span>
+                               </div>
+                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
+                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Student</span>
+                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.student}</span>
+                               </div>
                              </div>
                            </li>
                          );

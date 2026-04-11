@@ -8,6 +8,7 @@ import {
   soldCountsFromTickets,
   totalPassTarget,
 } from "@/utils/pass-targets";
+import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
 
 export default function OrganiserDashboard() {
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ export default function OrganiserDashboard() {
 
         let personalRev = 0;
         t.forEach((ticket) => {
-          personalRev += Number(ticket.price || 0);
+          personalRev += ticketLineTotal(ticket);
         });
 
         const soldByName = soldCountsFromTickets(t);
@@ -66,9 +67,10 @@ export default function OrganiserDashboard() {
           }))
         );
 
+        const passesSold = t.reduce((sum, x) => sum + ticketQuantity(x), 0);
         setOverall((prev) => ({
           ...prev,
-          sold: t.length,
+          sold: passesSold,
           revenue: personalRev,
           target: totalPassTarget(profileRow?.pass_targets),
         }));

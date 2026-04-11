@@ -11,6 +11,7 @@ import {
   buildTargetRowsFromProfile,
   soldCountsFromTickets,
 } from "@/utils/pass-targets";
+import { ticketQuantity } from "@/utils/ticket-counts";
 
 export default function OrganisersPage() {
   const pathname = usePathname();
@@ -83,7 +84,7 @@ export default function OrganisersPage() {
               phone: org.phone,
               status: "active",
               lastLogin: "Just now",
-              totalSales: orgTickets.length,
+              totalSales: orgTickets.reduce((sum, t) => sum + ticketQuantity(t), 0),
               pass_targets: org.pass_targets,
               targets: buildTargetRowsFromProfile(org.pass_targets, soldByName),
            };

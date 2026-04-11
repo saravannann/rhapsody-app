@@ -1,3 +1,5 @@
+import { ticketQuantity } from "@/utils/ticket-counts";
+
 /** Keys must match admin "Edit targets" labels and ticket type aggregation labels. */
 export const PASS_TARGET_DEFAULTS: Record<string, number> = {
   "Platinum Pass": 50,
@@ -56,7 +58,7 @@ export function resolvePassTargets(saved: unknown): Record<string, number> {
 
 /** Count tickets per pass name using `tickets.type`. */
 export function soldCountsFromTickets(
-  tickets: { type?: string | null }[]
+  tickets: { type?: string | null; quantity?: unknown }[]
 ): Record<string, number> {
   const counts: Record<string, number> = {
     "Platinum Pass": 0,
@@ -68,7 +70,9 @@ export function soldCountsFromTickets(
     const raw = t.type;
     if (!raw) continue;
     const name = TICKET_TYPE_TO_PASS_NAME[raw];
-    if (name && counts[name] !== undefined) counts[name]++;
+    if (name && counts[name] !== undefined) {
+      counts[name] += ticketQuantity(t);
+    }
   }
   return counts;
 }

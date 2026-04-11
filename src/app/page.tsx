@@ -88,15 +88,20 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="z-10 flex flex-col items-center w-full max-w-[440px]">
-        {/* Logo Section */}
-        <div className="flex flex-col items-center mb-6">
+      <div className="z-10 flex w-full max-w-xl flex-col items-center px-3 sm:px-4">
+        {/* Logo — two copy lines only: tagline + initiative (wider column avoids awkward wrap) */}
+        <div className="mb-6 flex w-full flex-col items-center">
           <img src="/logo.png" alt="Rhapsody Logo" className="h-32 sm:h-36 w-auto object-contain block" />
-          <p className="text-center text-base sm:text-lg font-bold text-slate-600 leading-tight mt-0">Thenmozhi Memorial Trust</p>
+          <p className="mt-3 text-center text-sm font-semibold leading-snug text-slate-700 text-balance sm:text-base">
+            Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer
+          </p>
+          <p className="mt-2 text-center text-xs font-medium leading-snug text-slate-500 sm:text-sm">
+            An Initiative by Thenmozhi Memorial Trust
+          </p>
         </div>
 
         {/* Login Card */}
-        <div className="w-full bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
+        <div className="w-full max-w-[440px] bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
           <h2 className="text-xl font-bold text-slate-900">Welcome Back</h2>
           <p className="text-slate-500 text-sm mt-1 mb-6">
             Enter your credentials to access your account
@@ -112,6 +117,7 @@ export default function LoginPage() {
                 onChange={setPhoneDigits}
                 className="border-gray-200 bg-gray-50"
                 prefixClassName="bg-gray-100 border-gray-200 text-slate-600"
+                inputClassName="!text-slate-900 !placeholder:text-slate-400 dark:!text-slate-900 dark:!placeholder:text-slate-400"
               />
               <p className="text-slate-400 text-xs mt-1.5">India (+91)</p>
             </div>

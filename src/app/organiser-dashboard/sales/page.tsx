@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Download, Search, Loader2, FileSpreadsheet, Filter, X, ChevronDown } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 
 export default function SalesReport() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -63,14 +64,20 @@ export default function SalesReport() {
 
   // Summary Metrics
   const metrics = useMemo(() => {
-    const revenue = filteredTickets.reduce((acc, t) => acc + (Number(t.price) || 0), 0);
-    const bookedCount = filteredTickets.filter(t => t.status === 'booked' || t.status === 'pending').length;
-    
+    const revenue = filteredTickets.reduce((acc, t) => acc + ticketLineTotal(t), 0);
+    const bookedCount = filteredTickets.reduce((acc, t) => {
+      if (t.status === "booked" || t.status === "pending") {
+        return acc + ticketQuantity(t);
+      }
+      return acc;
+    }, 0);
+    const passCount = filteredTickets.reduce((acc, t) => acc + ticketQuantity(t), 0);
+
     return {
       totalEntries: filteredTickets.length,
-      totalTickets: filteredTickets.length, // Mapping 1:1 for now
+      totalTickets: passCount,
       totalRevenue: revenue,
-      bookedTickets: bookedCount
+      bookedTickets: bookedCount,
     };
   }, [filteredTickets]);
 
@@ -84,16 +91,29 @@ export default function SalesReport() {
   const handleExport = () => {
     if (filteredTickets.length === 0) return;
     
-    const headers = ["Order ID", "Purchaser Name", "Purchaser Phone", "Ticket Type", "Amount", "Status", "Sold By", "Date"];
-    const rows = filteredTickets.map(t => [
+    const headers = [
+      "Order ID",
+      "Purchaser Name",
+      "Purchaser Phone",
+      "Ticket Type",
+      "Qty",
+      "Unit INR",
+      "Line INR",
+      "Status",
+      "Sold By",
+      "Date",
+    ];
+    const rows = filteredTickets.map((t) => [
       t.id,
       t.purchaser_name || "N/A",
       t.purchaser_phone || "N/A",
       t.type,
-      t.price,
+      ticketQuantity(t),
+      ticketUnitPrice(t),
+      ticketLineTotal(t),
       t.status,
       t.sold_by || "N/A",
-      new Date(t.created_at).toLocaleString()
+      new Date(t.created_at).toLocaleString(),
     ]);
 
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -257,9 +277,14 @@ export default function SalesReport() {
                                  <p className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{t.purchaser_name || "Unknown"}</p>
                                  <p className="text-[11px] text-gray-500 dark:text-violet-300/70 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
                               </div>
-                              <span className="text-sm font-bold text-gray-900 dark:text-violet-100 shrink-0 tabular-nums">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
+                              <span className="text-sm font-bold text-gray-900 dark:text-violet-100 shrink-0 tabular-nums">
+                                 ₹{new Intl.NumberFormat("en-IN").format(ticketLineTotal(t))}
+                              </span>
                            </div>
                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                              <span className="font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-1.5 py-0.5 rounded tabular-nums">
+                                 Qty {ticketQuantity(t)}
+                              </span>
                               <span className="font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-1.5 py-0.5 rounded uppercase">{t.type}</span>
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
                                  {t.status.replace('_', ' ')}
@@ -279,6 +304,7 @@ export default function SalesReport() {
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Order ID</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Purchaser</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Ticket Type</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Qty</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Amount</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Status</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Date</th>
@@ -287,7 +313,7 @@ export default function SalesReport() {
                   <tbody className="divide-y divide-gray-50">
                      {filteredTickets.length === 0 ? (
                         <tr>
-                           <td colSpan={6} className="px-6 py-12 text-center">
+                           <td colSpan={7} className="px-6 py-12 text-center">
                               <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                               <h3 className="text-base font-bold text-gray-900 dark:text-violet-100">No transactions found</h3>
                               <p className="text-sm text-gray-500 dark:text-violet-300/70 mt-1">Adjust your filters to see more results.</p>
@@ -315,8 +341,11 @@ export default function SalesReport() {
                                  <td className="px-6 py-4">
                                     <span className="text-xs font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-tighter">{t.type}</span>
                                  </td>
+                                 <td className="px-6 py-4 text-center">
+                                    <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-violet-100">{ticketQuantity(t)}</span>
+                                 </td>
                                  <td className="px-6 py-4 text-right">
-                                    <span className="text-sm font-bold text-gray-900 dark:text-violet-100">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
+                                    <span className="text-sm font-bold text-gray-900 dark:text-violet-100">₹{new Intl.NumberFormat('en-IN').format(ticketLineTotal(t))}</span>
                                  </td>
                                  <td className="px-6 py-4 text-center">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>

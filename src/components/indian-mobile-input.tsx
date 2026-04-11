@@ -56,7 +56,7 @@ export function IndianMobileInput({
         value={value}
         onChange={(e) => onChange(nationalDigitsForIndia(e.target.value))}
         placeholder={placeholder}
-        className={`flex-1 min-w-0 bg-transparent border-0 py-2.5 pr-3 pl-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 dark:text-violet-100 dark:placeholder:text-purple-400/45 focus:outline-none focus:ring-0 disabled:opacity-60 ${inputClassName}`}
+        className={`flex-1 min-w-0 bg-transparent border-0 py-2.5 pr-3 pl-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 disabled:opacity-60 ${inputClassName}`}
       />
     </div>
   );
