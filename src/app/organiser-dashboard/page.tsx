@@ -3,52 +3,75 @@
 import { useEffect, useState } from "react";
 import { Ticket, TrendingUp, Calendar, Target, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import {
+  buildTargetRowsFromProfile,
+  soldCountsFromTickets,
+  totalPassTarget,
+} from "@/utils/pass-targets";
 
 export default function OrganiserDashboard() {
   const [loading, setLoading] = useState(true);
-  const [overall, setOverall] = useState({ sold: 0, target: 205, revenue: 0 });
-  const [ticketData, setTicketData] = useState([
-    { name: "Platinum Pass", id: "Platinum", sold: 0, target: 50 },
-    { name: "Donor Pass", id: "Donor", sold: 0, target: 15 },
-    { name: "Bulk Pass", id: "Bulk", sold: 0, target: 100 },
-    { name: "Student Pass", id: "Student", sold: 0, target: 40 }
+  const [overall, setOverall] = useState({ sold: 0, target: 0, revenue: 0 });
+  const [ticketData, setTicketData] = useState<
+    { name: string; sold: number; target: number }[]
+  >([
+    { name: "Platinum Pass", sold: 0, target: 50 },
+    { name: "Donor Pass", sold: 0, target: 15 },
+    { name: "Bulk Tickets", sold: 0, target: 100 },
+    { name: "Student Pass", sold: 0, target: 40 },
   ]);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const savedName = localStorage.getItem('rhapsody_user') || '';
-        let query = supabase.from("tickets").select("*");
-        
+        const savedName = localStorage.getItem("rhapsody_user") || "";
+        const phone = localStorage.getItem("rhapsody_phone") || "";
+
+        let ticketsQuery = supabase.from("tickets").select("*");
         if (savedName) {
-           query = query.eq('sold_by', savedName);
+          ticketsQuery = ticketsQuery.eq("sold_by", savedName);
         }
 
-        const { data: tickets } = await query;
+        const profilePromise = phone
+          ? supabase
+              .from("profiles")
+              .select("pass_targets")
+              .eq("phone", phone)
+              .maybeSingle()
+          : Promise.resolve({ data: null as { pass_targets: unknown } | null });
+
+        const [{ data: tickets }, { data: profileRow }] = await Promise.all([
+          ticketsQuery,
+          profilePromise,
+        ]);
+
         const t = tickets || [];
-        
+
         let personalRev = 0;
-        const typeCounts: Record<string, number> = { 'Platinum': 0, 'Donor': 0, 'Bulk': 0, 'Student': 0 };
-        
-        t.forEach(ticket => {
+        t.forEach((ticket) => {
           personalRev += Number(ticket.price || 0);
-          const tType = ticket.type;
-          if (typeCounts[tType] !== undefined) {
-             typeCounts[tType]++;
-          }
         });
 
-        setTicketData(prev => prev.map(item => ({
-             ...item,
-             sold: typeCounts[item.id] || 0
-        })));
+        const soldByName = soldCountsFromTickets(t);
+        const rows = buildTargetRowsFromProfile(
+          profileRow?.pass_targets,
+          soldByName
+        );
 
-        setOverall(prev => ({ 
-           ...prev, 
-           sold: t.length,
-           revenue: personalRev
+        setTicketData(
+          rows.map((r) => ({
+            name: r.name,
+            sold: r.sold,
+            target: r.target,
+          }))
+        );
+
+        setOverall((prev) => ({
+          ...prev,
+          sold: t.length,
+          revenue: personalRev,
+          target: totalPassTarget(profileRow?.pass_targets),
         }));
-
       } catch (error) {
         console.error("Error fetching organiser data:", error);
       } finally {

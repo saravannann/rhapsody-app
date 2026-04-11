@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { UserPlus, Search, Edit2, CheckCircle2, Phone, Clock, Loader2, ArrowLeft, X, Target, Eye, EyeOff } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { UserPlus, Search, Edit2, CheckCircle2, Phone, Clock, Loader2, ArrowLeft, Target, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
+import { CenteredModal } from "@/components/centered-modal";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
+import {
+  buildTargetRowsFromProfile,
+  soldCountsFromTickets,
+} from "@/utils/pass-targets";
 
 export default function OrganisersPage() {
+  const pathname = usePathname();
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loading, setLoading] = useState(true);
   const [organisers, setOrganisers] = useState<any[]>([]);
@@ -14,6 +21,7 @@ export default function OrganisersPage() {
 
   // Target Editing State
   const [editingOrg, setEditingOrg] = useState<any>(null);
+  const [savingTargets, setSavingTargets] = useState(false);
 
   // Add Form State
   const [formData, setFormData] = useState({ name: "", phone: "", roles: ["organiser"], password: "" });
@@ -22,16 +30,25 @@ export default function OrganisersPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (view === 'list') loadOrganisers();
-  }, [view]);
+    if (view === "list") loadOrganisers();
+  }, [view, pathname]);
 
   async function loadOrganisers() {
     setLoading(true);
     try {
       const [profilesRes, ticketsRes] = await Promise.all([
-        supabase.from("profiles").select("*"),
-        supabase.from("tickets").select("*")
+        supabase
+          .from("profiles")
+          .select("id, name, phone, roles, role, pass_targets"),
+        supabase.from("tickets").select("*"),
       ]);
+
+      if (profilesRes.error) {
+        console.error("[Organisers] profiles:", profilesRes.error);
+      }
+      if (ticketsRes.error) {
+        console.error("[Organisers] tickets:", ticketsRes.error);
+      }
 
       const profiles = profilesRes.data || [];
       const tickets = ticketsRes.data || [];
@@ -45,15 +62,7 @@ export default function OrganisersPage() {
            // Aggregate sales for this SPECIFIC organiser - case insensitive and trimmed
            const orgNameLower = org.name.trim().toLowerCase();
            const orgTickets = tickets.filter(t => t.sold_by?.trim().toLowerCase() === orgNameLower);
-           
-           const typeSld = { 'Platinum Pass': 0, 'Donor Pass': 0, 'Bulk Tickets': 0, 'Student Pass': 0 };
-           
-           orgTickets.forEach(t => {
-              if (t.type === 'Platinum') typeSld['Platinum Pass']++;
-              else if (t.type === 'Donor') typeSld['Donor Pass']++;
-              else if (t.type === 'Bulk') typeSld['Bulk Tickets']++;
-              else if (t.type === 'Student') typeSld['Student Pass']++;
-           });
+           const soldByName = soldCountsFromTickets(orgTickets);
 
            return {
               id: org.id,
@@ -62,12 +71,8 @@ export default function OrganisersPage() {
               status: "active",
               lastLogin: "Just now",
               totalSales: orgTickets.length,
-              targets: [
-                { name: "Platinum Pass", sold: typeSld['Platinum Pass'], target: 50, color: "bg-[#ec4899]" },
-                { name: "Donor Pass", sold: typeSld['Donor Pass'], target: 15, color: "bg-[#3b82f6]" },
-                { name: "Bulk Tickets", sold: typeSld['Bulk Tickets'], target: 100, color: "bg-[#10b981]" },
-                { name: "Student Pass", sold: typeSld['Student Pass'], target: 40, color: "bg-[#f59e0b]" }
-              ]
+              pass_targets: org.pass_targets,
+              targets: buildTargetRowsFromProfile(org.pass_targets, soldByName),
            };
         });
         setOrganisers(orgs);
@@ -130,10 +135,49 @@ export default function OrganisersPage() {
     }
   };
 
-  const saveTargetEdits = () => {
-     if (!editingOrg) return;
-     setOrganisers(prev => prev.map(o => o.id === editingOrg.id ? editingOrg : o));
-     setEditingOrg(null);
+  const closeTargetEditor = useCallback(() => setEditingOrg(null), []);
+
+  const saveTargetEdits = async () => {
+    if (!editingOrg) return;
+    const pass_targets: Record<string, number> = {};
+    for (const row of editingOrg.targets as { name: string; target: number }[]) {
+      pass_targets[row.name] = row.target;
+    }
+    setSavingTargets(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ pass_targets })
+        .eq("id", editingOrg.id)
+        .select("id, pass_targets")
+        .maybeSingle();
+
+      if (error) {
+        console.error(error);
+        alert(
+          "Could not save targets. Run the SQL migration `supabase/migrations/add_pass_targets_to_profiles.sql` in Supabase, then try again."
+        );
+        return;
+      }
+      if (!data) {
+        alert(
+          "No profile row was updated. Your session may not match this organiser, or the id is invalid."
+        );
+        return;
+      }
+
+      const mergedPassTargets = data.pass_targets ?? pass_targets;
+      setOrganisers((prev) =>
+        prev.map((o) =>
+          o.id === editingOrg.id
+            ? { ...editingOrg, pass_targets: mergedPassTargets }
+            : o
+        )
+      );
+      setEditingOrg(null);
+    } finally {
+      setSavingTargets(false);
+    }
   };
 
   const filteredOrganisers = organisers.filter(o => 
@@ -144,51 +188,71 @@ export default function OrganisersPage() {
   return (
     <div className="space-y-4 sm:space-y-5 max-w-5xl mx-auto">
       
-      {/* Target Editor Modal */}
-      {editingOrg && (
-        <div className="fixed inset-0 bg-violet-950/55 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm max-h-[min(92vh,640px)] flex flex-col shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 sm:slide-in-from-bottom-0 duration-200 overflow-hidden">
-             <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-                <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
-                   <Target className="w-5 h-5 text-primary shrink-0" /> Edit Targets
-                </h3>
-                <button type="button" onClick={() => setEditingOrg(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
-                   <X className="w-4 h-4" />
-                </button>
-             </div>
-             
-             <div className="p-4 sm:p-5 space-y-2 overflow-y-auto flex-1 min-h-0">
-                <p className="text-xs sm:text-sm text-gray-500 mb-3">Quotas for <span className="font-bold text-gray-900">{editingOrg.name}</span></p>
-                
-                {editingOrg.targets.map((tgt: any, i: number) => (
-                   <div key={tgt.name} className="flex justify-between items-center gap-3 p-3 rounded-xl border border-gray-100 bg-[#fdfaff]">
-                      <span className="font-bold text-gray-700 text-xs sm:text-sm flex items-center gap-2 min-w-0">
-                         <span className={`w-2 h-2 rounded-full shrink-0 ${tgt.color}`} />
-                         <span className="truncate">{tgt.name}</span>
-                      </span>
-                      <input 
-                        type="number" 
-                        min="0"
-                        inputMode="numeric"
-                        value={tgt.target} 
-                        onChange={(e) => {
-                           const newTargets = [...editingOrg.targets];
-                           newTargets[i].target = Number(e.target.value);
-                           setEditingOrg({ ...editingOrg, targets: newTargets });
-                        }}
-                        className="w-[4.5rem] sm:w-20 text-center bg-white border border-gray-200 rounded-lg py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-gray-900" 
-                      />
-                   </div>
-                ))}
-             </div>
-
-             <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex gap-2 sm:gap-3 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                <button type="button" onClick={() => setEditingOrg(null)} className="flex-1 bg-white border border-gray-200 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-100 transition-colors text-sm sm:text-base">Cancel</button>
-                <button type="button" onClick={saveTargetEdits} className="flex-1 bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-500/20 hover:opacity-90 transition-all active:scale-[0.98] text-sm sm:text-base">Save</button>
-             </div>
+      <CenteredModal
+        open={!!editingOrg}
+        onClose={closeTargetEditor}
+        closeBlocked={savingTargets}
+        title="Edit Targets"
+        titleId="organiser-targets-modal-title"
+        headerIcon={<Target className="h-5 w-5 shrink-0 text-primary" />}
+        footer={
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={closeTargetEditor}
+              disabled={savingTargets}
+              className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 transition-colors hover:bg-gray-100 disabled:opacity-50 sm:text-base"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveTargetEdits()}
+              disabled={savingTargets}
+              className="flex-1 rounded-xl bg-gradient-to-r from-primary to-secondary py-3 text-sm font-bold text-white shadow-lg shadow-pink-500/20 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 sm:text-base"
+            >
+              {savingTargets ? (
+                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+              ) : (
+                "Save"
+              )}
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        {editingOrg ? (
+          <>
+            <p className="mb-3 text-xs text-gray-500 sm:text-sm">
+              Quotas for <span className="font-bold text-gray-900">{editingOrg.name}</span>
+            </p>
+            <div className="space-y-2">
+              {editingOrg.targets.map((tgt: any, i: number) => (
+                <div
+                  key={tgt.name}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-[#fdfaff] p-3"
+                >
+                  <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-gray-700 sm:text-sm">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${tgt.color}`} />
+                    <span className="truncate">{tgt.name}</span>
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={tgt.target}
+                    onChange={(e) => {
+                      const newTargets = [...editingOrg.targets];
+                      newTargets[i].target = Number(e.target.value);
+                      setEditingOrg({ ...editingOrg, targets: newTargets });
+                    }}
+                    className="w-[4.5rem] rounded-lg border border-gray-200 bg-white py-2 text-center text-sm font-bold text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:w-20"
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </CenteredModal>
 
       {/* Header Layout */}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">

@@ -11,6 +11,13 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
-  supabaseKey || "placeholder-key"
+  supabaseKey || "placeholder-key",
+  {
+    global: {
+      // Avoid stale reads when navigating back to admin screens (browser HTTP cache).
+      fetch: (input, init) =>
+        fetch(input, { ...init, cache: "no-store" }),
+    },
+  }
 );
 
