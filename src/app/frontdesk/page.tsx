@@ -326,38 +326,6 @@ export default function FrontdeskCheckInPage() {
 
   const checkInRate = metrics.totalScannable > 0 ? ((metrics.totalCheckedIn / metrics.totalScannable) * 100).toFixed(1) : "0.0";
 
-  // Mock Simulations for Demo
-  const simulateScan = async (type: 'valid' | 'duplicate' | 'invalid') => {
-     setLookup({ kind: "loading" });
-     setTimeout(async () => {
-        if (type === 'invalid') {
-           setLookup({ kind: "error", message: "Invalid QR code format. Please scan a valid Rhapsody ticket." });
-           return;
-        }
-
-        const { data: tickets } = await supabase
-           .from("tickets")
-           .select("*")
-           .not("type", "ilike", "%Donor%")
-           .limit(50);
-        
-        if (!tickets || tickets.length === 0) {
-           setLookup({ kind: "error", message: "No scannable tickets found in database for simulation." });
-           return;
-        }
-
-        if (type === 'valid') {
-           const valid = tickets.find(t => t.status !== 'checked_in');
-           if (valid) runLookup(valid.id);
-           else setLookup({ kind: "error", message: "No unchecked tickets available for simulation." });
-        } else {
-           const dup = tickets.find(t => t.status === 'checked_in');
-           if (dup) runLookup(dup.id);
-           else setLookup({ kind: "error", message: "No checked-in tickets available for duplicate simulation." });
-        }
-     }, 800);
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 sm:py-8 space-y-6 sm:space-y-10 animate-in fade-in duration-700">
       
@@ -565,30 +533,7 @@ export default function FrontdeskCheckInPage() {
                   )}
                </div>
 
-               {/* Simulation Area */}
-               <div className="mt-12 pt-8 border-t border-gray-100 dark:border-violet-500/15">
-                  <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6 underline underline-offset-4 decoration-primary/30">Wireframe Demo - Simulate Scans</p>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                     <button 
-                        onClick={() => simulateScan('valid')}
-                        className="flex-1 bg-emerald-100/50 hover:bg-emerald-600 border border-emerald-200 text-emerald-700 hover:text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
-                     >
-                        <CheckCircle className="w-4 h-4" /> Scan Valid Ticket
-                     </button>
-                     <button 
-                         onClick={() => simulateScan('duplicate')}
-                         className="flex-1 bg-amber-50 hover:bg-amber-600 border border-amber-200 text-amber-700 hover:text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
-                     >
-                        <AlertTriangle className="w-4 h-4" /> Scan Duplicate (Already Checked-in)
-                     </button>
-                     <button 
-                         onClick={() => simulateScan('invalid')}
-                         className="flex-1 bg-red-50 hover:bg-red-600 border border-red-200 text-red-700 hover:text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
-                     >
-                        <XCircle className="w-4 h-4" /> Scan Invalid QR
-                     </button>
-                  </div>
-               </div>
+
             </div>
          </div>
 
