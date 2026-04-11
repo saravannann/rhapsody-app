@@ -5,6 +5,7 @@ import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, Al
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
+import { resolvePassTargets } from "@/utils/pass-targets";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -14,7 +15,8 @@ export default function DashboardPage() {
     totalTickets: 0,
     checkedIn: 0,
     activeOrganisers: 0,
-    hasTickets: false
+    hasTickets: false,
+    totalTarget: 2050
   });
 
   const [chartData, setChartData] = useState<any[]>([]);
@@ -106,19 +108,39 @@ export default function DashboardPage() {
 
     const passesSold = filteredTickets.reduce((sum, t) => sum + ticketQuantity(t), 0);
 
+    let targetPlatinum = 0;
+    let targetDonor = 0;
+    let targetBulk = 0;
+    let targetStudent = 0;
+
+    const organisersToCount = filterOrganiser === 'All Organisers' 
+      ? allOrganisers 
+      : allOrganisers.filter(o => o.name === filterOrganiser);
+
+    organisersToCount.forEach(org => {
+      const targets = resolvePassTargets(org.pass_targets);
+      targetPlatinum += targets['Platinum Pass'] || 0;
+      targetDonor += targets['Donor Pass'] || 0;
+      targetBulk += targets['Bulk Tickets'] || 0;
+      targetStudent += targets['Student Pass'] || 0;
+    });
+
+    const totalTargetCount = targetPlatinum + targetDonor + targetBulk + targetStudent;
+
     setMetrics({
       totalRevenue: totalRev,
       totalTickets: passesSold,
       checkedIn: checkInCount,
       activeOrganisers: allOrganisers.length,
-      hasTickets: allTickets.length > 0
+      hasTickets: allTickets.length > 0,
+      totalTarget: totalTargetCount
     });
 
     setChartData([
-      { name: 'Platinum Pass', Sold: typeCount['Platinum'], Target: 250, Revenue: revCount['Platinum'] },
-      { name: 'Donor Pass', Sold: typeCount['Donor'], Target: 150, Revenue: revCount['Donor'] },
-      { name: 'Bulk Pass', Sold: typeCount['Bulk'], Target: 800, Revenue: revCount['Bulk'] },
-      { name: 'Student Pass', Sold: typeCount['Student'], Target: 400, Revenue: revCount['Student'] },
+      { name: 'Platinum Pass', Sold: typeCount['Platinum'], Target: targetPlatinum, Revenue: revCount['Platinum'] },
+      { name: 'Donor Pass', Sold: typeCount['Donor'], Target: targetDonor, Revenue: revCount['Donor'] },
+      { name: 'Bulk Pass', Sold: typeCount['Bulk'], Target: targetBulk, Revenue: revCount['Bulk'] },
+      { name: 'Student Pass', Sold: typeCount['Student'], Target: targetStudent, Revenue: revCount['Student'] },
     ]);
 
     setStatusData([
@@ -278,7 +300,7 @@ export default function DashboardPage() {
               <div>
                 <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums">{metrics.totalTickets}</div>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 mb-1">All categories</p>
-                <div className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-violet-300/70">Target 2,050</div>
+                <div className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-violet-300/70">Target {new Intl.NumberFormat('en-IN').format(metrics.totalTarget)}</div>
               </div>
             </div>
 
