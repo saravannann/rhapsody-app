@@ -21,7 +21,6 @@ import { ticketQuantity } from "@/utils/ticket-counts";
 const TYPE_LABELS: Record<string, string> = {
   Platinum: "Platinum Pass",
   Donor: "Donor Pass",
-  Bulk: "Bulk Tickets",
   Student: "Student Pass",
 };
 

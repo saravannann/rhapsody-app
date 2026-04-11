@@ -4,14 +4,12 @@ import { ticketQuantity } from "@/utils/ticket-counts";
 export const PASS_TARGET_DEFAULTS: Record<string, number> = {
   "Platinum Pass": 50,
   "Donor Pass": 15,
-  "Bulk Tickets": 100,
   "Student Pass": 40,
 };
 
 const PASS_COLORS: Record<string, string> = {
   "Platinum Pass": "bg-[#ec4899]",
   "Donor Pass": "bg-[#3b82f6]",
-  "Bulk Tickets": "bg-[#10b981]",
   "Student Pass": "bg-[#f59e0b]",
 };
 
@@ -19,7 +17,6 @@ const PASS_COLORS: Record<string, string> = {
 export const TICKET_TYPE_TO_PASS_NAME: Record<string, keyof typeof PASS_TARGET_DEFAULTS | string> = {
   Platinum: "Platinum Pass",
   Donor: "Donor Pass",
-  Bulk: "Bulk Tickets",
   Student: "Student Pass",
 };
 
@@ -63,7 +60,6 @@ export function soldCountsFromTickets(
   const counts: Record<string, number> = {
     "Platinum Pass": 0,
     "Donor Pass": 0,
-    "Bulk Tickets": 0,
     "Student Pass": 0,
   };
   for (const t of tickets) {

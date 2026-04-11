@@ -22,7 +22,6 @@ type SaleReceipt = {
 const CATEGORIES = [
   { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
   { id: 'Donor', name: 'Donor Pass', price: 1000, icon: Gift, color: 'text-primary', bg: 'bg-purple-50', border: 'border-purple-200', btn: 'bg-primary hover:bg-purple-700' },
-  { id: 'Bulk', name: 'Bulk Tickets', price: 500, icon: Users, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', btn: 'bg-green-600 hover:bg-green-700' },
   { id: 'Student', name: 'Student Pass', price: 200, icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' },
 ];
 
@@ -173,8 +172,8 @@ export default function SellTicketsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Quick Sell</h1>
            </div>
 
-           <div className={`grid grid-cols-2 ${currentUser.role === 'admin' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-2 sm:gap-3`}>
-              {CATEGORIES.filter(cat => cat.id !== 'Bulk' || currentUser.role === 'admin').map(cat => (
+           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+              {CATEGORIES.map(cat => (
                  <div key={cat.id} onClick={() => setSelectedCategory(cat)} className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-[0.99]`}>
                     <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                        <cat.icon className="w-16 h-16" />

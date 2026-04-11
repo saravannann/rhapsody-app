@@ -219,11 +219,10 @@ export default function SalesReport() {
                 onChange={e => setTicketTypeFilter(e.target.value)}
                 className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30"
               >
-                <option>All Types</option>
-                <option>Platinum</option>
-                <option>Donor</option>
-                <option>Bulk</option>
-                <option>Student</option>
+                 <option>All Types</option>
+                 <option>Platinum</option>
+                 <option>Donor</option>
+                 <option>Student</option>
               </select>
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>

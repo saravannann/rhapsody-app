@@ -101,8 +101,8 @@ export default function DashboardPage() {
     let checkInCount = 0;
     let scannableCount = 0;
     
-    const typeCount = { 'Platinum': 0, 'Donor': 0, 'Bulk': 0, 'Student': 0 };
-    const revCount = { 'Platinum': 0, 'Donor': 0, 'Bulk': 0, 'Student': 0 };
+    const typeCount = { 'Platinum': 0, 'Donor': 0, 'Student': 0 };
+    const revCount = { 'Platinum': 0, 'Donor': 0, 'Student': 0 };
     const statusCount = { 'pending': 0, 'checked_in': 0, 'cancelled': 0 };
 
     filteredTickets.forEach(t => {
@@ -134,7 +134,6 @@ export default function DashboardPage() {
 
     let targetPlatinum = 0;
     let targetDonor = 0;
-    let targetBulk = 0;
     let targetStudent = 0;
 
     const organisersToCount = filterOrganiser === 'All Organisers' 
@@ -145,11 +144,10 @@ export default function DashboardPage() {
       const targets = resolvePassTargets(org.pass_targets);
       targetPlatinum += targets['Platinum Pass'] || 0;
       targetDonor += targets['Donor Pass'] || 0;
-      targetBulk += targets['Bulk Tickets'] || 0;
       targetStudent += targets['Student Pass'] || 0;
     });
 
-    const totalTargetCount = targetPlatinum + targetDonor + targetBulk + targetStudent;
+    const totalTargetCount = targetPlatinum + targetDonor + targetStudent;
 
     setMetrics({
       totalRevenue: totalRev,
@@ -164,11 +162,10 @@ export default function DashboardPage() {
     });
 
     const data = [
-      { name: 'Platinum Pass', Sold: typeCount['Platinum'], Target: targetPlatinum, Revenue: revCount['Platinum'] },
-      { name: 'Donor Pass', Sold: typeCount['Donor'], Target: targetDonor, Revenue: revCount['Donor'] },
-      { name: 'Bulk Pass', Sold: typeCount['Bulk'], Target: targetBulk, Revenue: revCount['Bulk'] },
-      { name: 'Student Pass', Sold: typeCount['Student'], Target: targetStudent, Revenue: revCount['Student'] },
-    ].filter(d => d.name !== 'Bulk Pass' || role === 'admin');
+      { name: 'Platinum Pass', Sold: typeCount['Platinum'] || 0, Target: targetPlatinum, Revenue: revCount['Platinum'] || 0 },
+      { name: 'Donor Pass', Sold: typeCount['Donor'] || 0, Target: targetDonor, Revenue: revCount['Donor'] || 0 },
+      { name: 'Student Pass', Sold: typeCount['Student'] || 0, Target: targetStudent, Revenue: revCount['Student'] || 0 },
+    ];
 
     setChartData(data);
 
@@ -178,7 +175,7 @@ export default function DashboardPage() {
       { name: 'Cancelled', value: statusCount['cancelled'] },
     ]);
 
-    // LeaderBoard ranking (always based on ALL tickets filtered by type/payment, but aggregated by person)
+    // LeaderBoard ranking aggregated by person
     const orgSales: Record<string, { count: number, categories: Record<string, number> }> = {};
     
     allOrganisers.forEach(org => {
@@ -199,7 +196,6 @@ export default function DashboardPage() {
           name: org.name,
           platinum: sales?.categories['Platinum'] || 0,
           donor: sales?.categories['Donor'] || 0,
-          bulk: sales?.categories['Bulk'] || 0,
           student: sales?.categories['Student'] || 0,
           total: sales?.count || 0
        };
@@ -224,7 +220,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Filters Card — 2×2 on mobile */}
+          {/* Filters Card */}
           <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm border border-pink-50 dark:border-violet-500/18">
             <h3 className="text-xs font-bold text-secondary mb-3 uppercase tracking-wider">Filters</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -257,7 +253,6 @@ export default function DashboardPage() {
                      <option>All Types</option>
                      <option value="Platinum">Platinum Pass</option>
                      <option value="Donor">Donor Pass</option>
-                     {role === 'admin' && <option value="Bulk">Bulk Pass</option>}
                      <option value="Student">Student Pass</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-primary absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -300,7 +295,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Metric Cards — 2×2 on mobile */}
+          {/* Metric Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-violet-500/15 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
               <div className="flex justify-between items-start gap-1 mb-2 sm:mb-4">
@@ -367,7 +362,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Chart Nav Tabs — scroll on narrow screens */}
+          {/* Nav Tabs */}
           <div className="-mx-1 px-1 sm:mx-0">
             <div className="flex gap-1 sm:gap-2 bg-[#fdfaff] dark:bg-violet-950/25 p-1.5 sm:p-2 rounded-xl border border-pink-50 dark:border-violet-500/18 overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full max-w-full">
             {['Sales Overview', 'LeaderBoard', 'Ticket Status', 'Check-in Stats'].map((tab) => (
@@ -451,7 +446,7 @@ export default function DashboardPage() {
                </div>
              )}
 
-             {/* 2. LeaderBoard - Ranked Table */}
+             {/* 2. LeaderBoard */}
              {activeTab === 'LeaderBoard' && (
                 <div className="animate-in fade-in duration-500">
                    <div className="mb-3 sm:mb-4">
@@ -459,7 +454,7 @@ export default function DashboardPage() {
                       <p className="text-xs sm:text-sm text-gray-400 dark:text-violet-400/60 font-medium">Sales by category</p>
                    </div>
 
-                   {/* Mobile: compact cards — no horizontal scroll */}
+                   {/* Mobile: compact cards */}
                    <ul className="md:hidden space-y-2 list-none p-0 m-0">
                      {organiserList.length === 0 ? (
                        <li className="text-center text-sm text-gray-500 dark:text-violet-300/70 py-8">No performance data yet</li>
@@ -476,24 +471,18 @@ export default function DashboardPage() {
                                </div>
                                <span className="shrink-0 text-xs font-bold bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 px-2 py-1 rounded-md text-gray-700 dark:text-violet-300">{org.total} total</span>
                              </div>
-                             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] sm:text-xs">
-                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
-                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Platinum</span>
-                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.platinum}</span>
+                             <div className="grid grid-cols-3 gap-x-2 gap-y-1.5 text-[10px] sm:text-xs">
+                               <div className="flex flex-col items-center justify-center rounded-lg bg-white/70 px-1 py-1.5 dark:bg-violet-950/35">
+                                 <span className="font-medium text-gray-500 dark:text-violet-400/80">Platinum</span>
+                                 <span className="font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.platinum}</span>
                                </div>
-                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
-                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Donor</span>
-                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.donor}</span>
+                               <div className="flex flex-col items-center justify-center rounded-lg bg-white/70 px-1 py-1.5 dark:bg-violet-950/35">
+                                 <span className="font-medium text-gray-500 dark:text-violet-400/80">Donor</span>
+                                 <span className="font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.donor}</span>
                                </div>
-                                {role === 'admin' && (
-                                 <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
-                                   <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Bulk</span>
-                                   <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.bulk}</span>
-                                 </div>
-                                )}
-                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
-                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Student</span>
-                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.student}</span>
+                               <div className="flex flex-col items-center justify-center rounded-lg bg-white/70 px-1 py-1.5 dark:bg-violet-950/35">
+                                 <span className="font-medium text-gray-500 dark:text-violet-400/80">Student</span>
+                                 <span className="font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.student}</span>
                                </div>
                              </div>
                            </li>
@@ -502,56 +491,50 @@ export default function DashboardPage() {
                      )}
                    </ul>
 
+                   {/* Desktop Table */}
                    <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 dark:border-violet-500/15">
-                   <table className="w-full text-left border-collapse min-w-[640px]">
-                      <thead>
-                         <tr className="border-b border-gray-100 dark:border-violet-500/12">
-                            <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organiser Name</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
-                             {role === 'admin' && <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Bulk</th>}
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total</th>
-                            <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Action</th>
-                         </tr>
-                      </thead>
-                      <tbody>
-                         {organiserList.length === 0 ? (
-                            <tr><td colSpan={7} className="py-12 text-center text-gray-500 dark:text-violet-300/70 font-medium italic">No performance data recorded yet</td></tr>
-                         ) : (
-                            organiserList.map((org, idx) => {
-                               let rLabel = (idx + 1) + (idx === 0 ? "st" : idx === 1 ? "nd" : idx === 2 ? "rd" : "th");
-                               let rBadge = idx === 0 ? "bg-[#EAB308]" : idx === 1 ? "bg-[#94A3B8]" : idx === 2 ? "bg-[#CC5500]" : "bg-[#CBD5E1]";
+                    <table className="w-full text-left border-collapse min-w-[640px]">
+                       <thead>
+                          <tr className="border-b border-gray-100 dark:border-violet-500/12">
+                             <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Rank</th>
+                             <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organiser Name</th>
+                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
+                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
+                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
+                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total</th>
+                          </tr>
+                       </thead>
+                       <tbody>
+                          {organiserList.length === 0 ? (
+                             <tr><td colSpan={6} className="py-12 text-center text-gray-500 dark:text-violet-300/70 font-medium italic">No performance data recorded yet</td></tr>
+                          ) : (
+                             organiserList.map((org, idx) => {
+                                let rLabel = (idx + 1) + (idx === 0 ? "st" : idx === 1 ? "nd" : idx === 2 ? "rd" : "th");
+                                let rBadge = idx === 0 ? "bg-[#EAB308]" : idx === 1 ? "bg-[#94A3B8]" : idx === 2 ? "bg-[#CC5500]" : "bg-[#CBD5E1]";
 
-                               return (
-                                  <tr key={org.name} className="border-b border-gray-50 hover:bg-gray-50/50 dark:hover:bg-violet-950/35 transition-colors">
-                                     <td className="py-5 px-2">
-                                        <div className="flex items-center">
-                                           <span className={`inline-flex items-center justify-center w-8 h-5 ${rBadge} text-white text-[10px] font-bold rounded-full mr-3 shadow-sm`}>{rLabel}</span>
-                                           <span className="text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</span>
-                                        </div>
-                                     </td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.platinum}</td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.donor}</td>
-                                      {role === 'admin' && <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.bulk}</td>}
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.student}</td>
-                                     <td className="py-5 px-4 text-center">
-                                        <span className="inline-block bg-[#F8FAFC] text-gray-600 dark:text-violet-300/85 text-xs font-bold px-3 py-1 rounded-md border border-gray-100 dark:border-violet-500/15">
-                                           {org.total}
-                                        </span>
-                                     </td>
-                                     <td className="py-5 px-2 text-right">
-                                        <button className="text-xs font-bold text-gray-500 dark:text-violet-300/70 border border-gray-200 dark:border-violet-500/22 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-all">View Details</button>
-                                     </td>
-                                  </tr>
-                               );
-                            })
-                         )}
-                      </tbody>
-                   </table>
+                                return (
+                                   <tr key={org.name} className="border-b border-gray-50 hover:bg-gray-50/50 dark:hover:bg-violet-950/35 transition-colors">
+                                      <td className="py-5 px-2 text-center">
+                                         <span className={`inline-flex items-center justify-center w-8 h-5 ${rBadge} text-white text-[10px] font-bold rounded-full shadow-sm`}>{rLabel}</span>
+                                      </td>
+                                      <td className="py-5 px-2 text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</td>
+                                      <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.platinum}</td>
+                                      <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.donor}</td>
+                                      <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.student}</td>
+                                      <td className="py-5 px-4 text-center">
+                                         <span className="inline-block bg-[#F8FAFC] text-gray-600 dark:text-violet-300/85 text-xs font-bold px-3 py-1 rounded-md border border-gray-100 dark:border-violet-500/15">
+                                            {org.total}
+                                         </span>
+                                      </td>
+                                   </tr>
+                                );
+                             })
+                          )}
+                       </tbody>
+                    </table>
                    </div>
                 </div>
-              )}
+             )}
 
              {/* 3. Ticket Status */}
              {activeTab === 'Ticket Status' && (

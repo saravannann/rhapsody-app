@@ -18,7 +18,6 @@ export default function OrganiserDashboard() {
   >([
     { name: "Platinum Pass", sold: 0, target: 50 },
     { name: "Donor Pass", sold: 0, target: 15 },
-    { name: "Bulk Tickets", sold: 0, target: 100 },
     { name: "Student Pass", sold: 0, target: 40 },
   ]);
 
@@ -67,11 +66,9 @@ export default function OrganiserDashboard() {
           soldByName
         );
 
-        const savedRole = localStorage.getItem("rhapsody_role") || "organiser";
-
         setTicketData(
           rows
-            .filter((r) => r.name !== "Bulk Tickets" || savedRole === "admin")
+            .filter((r) => r.name !== "Bulk Tickets")
             .map((r) => ({
               name: r.name,
               sold: r.sold,
@@ -193,7 +190,7 @@ export default function OrganiserDashboard() {
           </div>
 
           {/* Category grid — 2×2 on phones */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {ticketData.map(item => {
               const perc = item.target > 0 ? Math.min(100, Math.floor((item.sold / item.target) * 100)) : 0;
               const remain = Math.max(0, item.target - item.sold);
