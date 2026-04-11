@@ -79,7 +79,7 @@ export default function FrontdeskCheckInPage() {
     try {
       const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("status, type, quantity, updated_at");
+        .select("status, type, quantity, created_at");
       
       if (error) {
         console.error("Supabase error fetching tickets:", error);
@@ -109,7 +109,7 @@ export default function FrontdeskCheckInPage() {
           if (status === "checked_in") {
             checkedInTotal += q;
             
-            const updateTime = t.updated_at ? new Date(t.updated_at).getTime() : 0;
+            const updateTime = t.created_at ? new Date(t.created_at).getTime() : 0;
             if (updateTime > hourAgo) {
               hourCount += q;
             }
@@ -140,7 +140,7 @@ export default function FrontdeskCheckInPage() {
         .from("tickets")
         .select("*")
         .eq("status", "checked_in")
-        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(8);
 
       setMetrics({
@@ -288,7 +288,7 @@ export default function FrontdeskCheckInPage() {
     try {
       const { error } = await supabase
         .from("tickets")
-        .update({ status: "checked_in", updated_at: new Date().toISOString() })
+        .update({ status: "checked_in" })
         .eq("id", row.id as string);
 
       if (error) throw error;
@@ -623,7 +623,7 @@ export default function FrontdeskCheckInPage() {
                               </div>
                               <div className="text-right shrink-0">
                                  <span className="inline-block bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-md mb-1">Checked-in</span>
-                                 <p className="text-[9px] font-bold text-gray-400">{new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</p>
+                                 <p className="text-[9px] font-bold text-gray-400">{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</p>
                               </div>
                            </div>
                         </div>
