@@ -8,6 +8,7 @@ import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
 import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
 import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl } from "@/utils/whatsapp-ticket";
+import * as XLSX from "xlsx";
 
 type SaleReceipt = {
   ticketId: string;
@@ -38,10 +39,15 @@ export default function SellTicketsPage() {
     fundsDestination: 'organizer' as 'trust' | 'organizer',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const [saleReceipt, setSaleReceipt] = useState<SaleReceipt | null>(null);
   const [organisers, setOrganisers] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState({ name: '', role: '' });
   const [appOrigin, setAppOrigin] = useState("");
+  const [sellMode, setSellMode] = useState<'individual' | 'mass'>('individual');
+  const [massFile, setMassFile] = useState<File | null>(null);
+  const [massData, setMassData] = useState<{name: string, phone: string, qty: number, type: string, price: number}[]>([]);
+  const [massStatus, setMassStatus] = useState<{total: number, sent: number, totalQty: number, errors: string[]} | null>(null);
 
   useEffect(() => {
      setAppOrigin(typeof window !== "undefined" ? window.location.origin : "");
@@ -63,11 +69,18 @@ export default function SellTicketsPage() {
 
   const handleCheckout = async (e: React.FormEvent) => {
      e.preventDefault();
-     if (!hasIndianNationalDigits(formData.phone)) {
-        alert("Enter the purchaser phone number.");
+     
+     const isPhoneValid = hasIndianNationalDigits(formData.phone);
+     const isNameValid = !!formData.name.trim();
+     const isPocValid = !!formData.poc;
+
+     if (!isPhoneValid || !isNameValid || !isPocValid) {
+        setShowErrors(true);
         return;
      }
+
      setIsSubmitting(true);
+     setShowErrors(false);
      setSaleReceipt(null);
 
      try {
@@ -124,17 +137,147 @@ export default function SellTicketsPage() {
        console.error("Error selling ticket:", err);
        const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: string }).message) : '';
        if (msg.toLowerCase().includes("quantity")) {
-          alert(
-            "Database may need the quantity column. Run supabase/migrations/add_quantity_to_tickets.sql in the Supabase SQL editor."
-          );
-       } else if (msg.includes("funds_destination")) {
-          alert("Database needs column funds_destination on tickets. Run the SQL in supabase/migrations/add_funds_destination_to_tickets.sql");
+          alert("Database error: Missing quantity column.");
        } else {
           alert("Failed to confirm ticket sale.");
        }
      } finally {
        setIsSubmitting(false);
      }
+  };
+
+  const downloadMassTemplate = () => {
+    const templateData = [
+      ["Purchaser Name", "Phone Number", "Quantity", "Category"],
+      ["John Doe", "9876543210", 30, "Platinum"],
+      ["Jane Smith", "9123456789", 5, "Student"]
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    
+    // Add a simple instruction note in cell E1
+    ws['E1'] = { t: 's', v: 'IMPORTANT: Category must be exactly "Platinum", "Donor", or "Student".' };
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mass_Issuance_Template");
+    XLSX.writeFile(wb, "Rhapsody_Mass_Issuance_Template.xlsx");
+  };
+
+  const handleMassUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Clear previous states to ensure a fresh UI
+    setMassData([]);
+    setMassStatus(null);
+    setShowErrors(false);
+    setMassFile(file);
+
+    // Reset input value so the same file can be uploaded again if needed
+    e.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+      
+      const parsed = data.slice(1).filter(row => row[0] && row[1]).map(row => {
+        const catName = String(row[3] || '').trim();
+        const category = CATEGORIES.find(c => 
+          c.name.toLowerCase() === catName.toLowerCase() || 
+          c.id.toLowerCase() === catName.toLowerCase() ||
+          c.name.toLowerCase().replace(' pass', '') === catName.toLowerCase()
+        );
+        
+        if (!category && catName) {
+          // If category is provided but invalid, we'll flag it for skip
+          return {
+            name: String(row[0]).trim(),
+            phone: String(row[1]).trim(),
+            qty: 0, 
+            type: 'INVALID',
+            price: 0,
+            originalCat: catName
+          };
+        }
+
+        const finalCat = category || CATEGORIES[0]; // Default to Platinum if empty
+
+        return {
+          name: String(row[0]).trim(),
+          phone: String(row[1]).trim(),
+          qty: parseInt(String(row[2]), 10) || 1,
+          type: finalCat.id,
+          price: finalCat.price
+        };
+      });
+
+      setMassData(parsed);
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleMassIssuance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const isFileValid = massData.length > 0;
+    const isPocValid = !!formData.poc;
+    const totalQty = massData.reduce((sum, item) => sum + item.qty, 0);
+    const isVolumeValid = totalQty >= 30;
+
+    if (!isFileValid || !isPocValid || !isVolumeValid) {
+       setShowErrors(true);
+       return;
+    }
+
+    setIsSubmitting(true);
+    setShowErrors(false);
+    setMassStatus({ total: massData.length, sent: 0, totalQty, errors: [] });
+
+    for (const person of massData) {
+      if (person.type === 'INVALID') {
+        setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid category ("${(person as any).originalCat}")`] } : null);
+        continue;
+      }
+      try {
+        let phone: string;
+        try {
+          phone = toIndianE164(person.phone);
+        } catch {
+          setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid phone`] } : null);
+          continue;
+        }
+
+        const { error } = await supabase.from("tickets").insert({
+          type: person.type,
+          price: person.price,
+          quantity: person.qty,
+          status: "pending",
+          purchaser_name: person.name,
+          purchaser_phone: phone,
+          sold_by: formData.poc,
+          funds_destination: formData.fundsDestination,
+        });
+
+        if (error) throw error;
+        setMassStatus(prev => prev ? { ...prev, sent: prev.sent + 1 } : null);
+      } catch (err) {
+        setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Failed to insert`] } : null);
+      }
+    }
+
+    setIsSubmitting(false);
+    if (!massStatus?.errors.length) {
+       alert(`Successfully issued ${totalQty} tickets for ${massData.length} people!`);
+       setSelectedCategory(null);
+       setMassFile(null);
+       setMassData([]);
+       setMassStatus(null);
+       setSellMode('individual');
+    }
   };
 
   const totalAmount = selectedCategory?.price * formData.qty;
@@ -192,7 +335,13 @@ export default function SellTicketsPage() {
               ))}
            </div>
 
-           <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white overflow-hidden relative group">
+           <div 
+             onClick={() => {
+               setSelectedCategory({ id: 'Mass', name: 'General Issuance', price: 0, icon: UploadCloud, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' });
+               setSellMode('mass');
+             }}
+             className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white overflow-hidden relative group cursor-pointer hover:shadow-2xl transition-all"
+           >
               <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-10 group-hover:rotate-12 transition-transform pointer-events-none">
                  <UploadCloud className="w-24 h-24 sm:w-40 sm:h-40" />
               </div>
@@ -200,11 +349,11 @@ export default function SellTicketsPage() {
                  <h4 className="text-sm sm:text-lg font-bold flex items-center">
                     <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-secondary shrink-0" /> Mass issuance
                  </h4>
-                 <p className="text-[10px] sm:text-xs text-gray-400 font-medium">Excel upload — coming soon</p>
+                 <p className="text-[10px] sm:text-xs text-gray-400 font-medium tracking-wide font-sans mt-1">Upload Excel to issue tickets in bulk (30+ qty)</p>
               </div>
-              <button type="button" disabled className="relative z-10 bg-white/10 border border-white/20 text-white font-bold py-2.5 min-h-[44px] px-4 sm:px-6 rounded-xl text-xs opacity-50 cursor-not-allowed shrink-0 w-full sm:w-auto">
-                 Contact Admin
-              </button>
+              <div className="relative z-10 bg-white/10 border border-white/20 text-white font-bold py-2.5 min-h-[44px] px-4 sm:px-6 rounded-xl text-xs flex items-center group-hover:bg-white group-hover:text-gray-900 transition-colors">
+                 Get Started <ChevronRight className="w-4 h-4 ml-1" />
+              </div>
            </div>
         </div>
       ) : (
@@ -214,6 +363,11 @@ export default function SellTicketsPage() {
               onClick={() => {
                  setSaleReceipt(null);
                  setSelectedCategory(null);
+                 setSellMode('individual');
+                 setMassFile(null);
+                 setMassData([]);
+                 setMassStatus(null);
+                 setShowErrors(false);
               }}
               className="flex items-center min-h-[44px] text-xs font-bold text-gray-400 hover:text-primary mb-2 sm:mb-4 transition-colors"
            >
@@ -336,132 +490,267 @@ export default function SellTicketsPage() {
            ) : (
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
               
-              {/* Form + summary: on mobile, summary stacks after form with less padding */}
+              {/* Form + summary */}
               <div className="lg:col-span-2 space-y-3 sm:space-y-4">
                  <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-gray-50 dark:border-violet-500/12 flex justify-between items-center bg-[#fdfaff] dark:bg-violet-950/30">
                        <div>
-                          <h2 className={`text-lg sm:text-xl font-bold ${selectedCategory.color}`}>{selectedCategory.name}</h2>
-                          <p className="text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest mt-0.5">Details</p>
+                          <h2 className={`text-lg sm:text-xl font-bold ${selectedCategory.color}`}>{sellMode === 'mass' ? 'Mass Ticket Issuance' : selectedCategory.name}</h2>
+                          <p className="text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest mt-0.5">{sellMode === 'mass' ? 'Bulk Export' : 'Details'}</p>
                        </div>
+                       {sellMode === 'mass' && (
+                         <div className="bg-violet-100 text-violet-700 px-2 py-1 rounded text-[10px] font-bold">EXCEL MODE</div>
+                       )}
                     </div>
 
-                    <form id="sell-ticket-form" onSubmit={handleCheckout} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          <div>
-                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Purchaser name</label>
-                             <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
-                                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="ex: Sara" autoComplete="name" enterKeyHint="next" className="w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border border-gray-100 dark:border-violet-500/20 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
-                             </div>
-                          </div>
-                          <div>
-                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Phone</label>
-                             <IndianMobileInput
-                                LeftIcon={Phone}
-                                required
-                                value={formData.phone}
-                                onChange={(digits) => setFormData({ ...formData, phone: digits })}
-                                className="border-gray-100 dark:border-violet-500/20 bg-[#f8fafc] dark:bg-violet-950/25 shadow-sm"
-                                prefixClassName="bg-[#f0f4f8] border-gray-100 text-gray-700 dark:bg-violet-950/50 dark:border-violet-500/25 dark:text-violet-200"
-                                inputClassName="font-bold text-gray-900 dark:text-violet-100"
-                             />
-                             <p className="text-[10px] text-gray-400 dark:text-violet-400/55 mt-1 ml-1">India (+91)</p>
-                          </div>
-                       </div>
+                    <form id="sell-ticket-form" onSubmit={sellMode === 'mass' ? handleMassIssuance : handleCheckout} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                      {sellMode === 'mass' ? (
+                        /* Mass Mode Fields */
+                        <>
+                           <div className="space-y-4">
+                              <div>
+                                 <div className="flex justify-between items-center mb-2 ml-1">
+                                   <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest">Upload Data (Excel)</label>
+                                   <button 
+                                     type="button" 
+                                     onClick={downloadMassTemplate}
+                                     className="text-[10px] font-bold text-violet-600 hover:text-violet-700 underline uppercase tracking-tight"
+                                   >
+                                     Download Template
+                                   </button>
+                                 </div>
+                                 <label className={`flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed transition-all cursor-pointer ${
+                                    showErrors && !massFile ? 'border-red-500 bg-red-50/20' : 
+                                    massFile ? 'border-emerald-500 bg-emerald-50/30' : 
+                                    'border-gray-200 hover:border-violet-400 bg-gray-50'
+                                  }`}>
+                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <UploadCloud className={`w-8 h-8 mb-2 ${showErrors && !massFile ? 'text-red-500' : massFile ? 'text-emerald-500' : 'text-gray-400'}`} />
+                                        {massFile ? (
+                                          <p className="text-sm font-bold text-emerald-600 truncate px-4">{massFile.name}</p>
+                                        ) : (
+                                          <p className={`text-xs font-medium uppercase tracking-wider ${showErrors && !massFile ? 'text-red-500' : 'text-gray-500'}`}>
+                                            {showErrors && !massFile ? 'Excel Required' : 'Tap to upload .xlsx / .xls'}
+                                          </p>
+                                        )}
+                                        <p className="text-[9px] text-gray-400 mt-1 uppercase">Col 1: Name, Col 2: Phone, Col 3: Qty, Col 4: Category (Platinum, Donor, Student)</p>
+                                     </div>
+                                     <input type="file" className="hidden" accept=".xlsx,.xls" onChange={handleMassUpload} />
+                                  </label>
+                                  {showErrors && !massFile && <p className="text-[10px] text-red-500 font-bold mt-2 ml-1 animate-in fade-in slide-in-from-top-1">Please upload an Excel file to proceed</p>}
+                                  {massData.length > 0 && (
+                                     <div className="flex flex-wrap items-center gap-x-2 mt-2 ml-1">
+                                       <p className="text-[10px] text-emerald-600 font-bold">✓ {massData.length} recipients</p>
+                                       <span className="text-gray-300">|</span>
+                                       <p className="text-[10px] text-violet-600 font-bold uppercase tracking-tight">Total Qty: {massData.reduce((s, i) => s + i.qty, 0)}</p>
+                                       {massData.some(p => p.type === 'INVALID') && (
+                                         <>
+                                           <span className="text-gray-300">|</span>
+                                           <p className="text-[10px] text-red-600 font-bold uppercase tracking-tight animate-pulse underline select-none">
+                                              {massData.filter(p => p.type === 'INVALID').length} Errors Found
+                                           </p>
+                                         </>
+                                       )}
+                                     </div>
+                                   )}
+                              </div>
+                           </div>
+                        </>
+                      ) : (
+                        /* Individual Mode Fields */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                           <div>
+                              <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Purchaser name</label>
+                              <div className="relative">
+                                 <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors pointer-events-none ${showErrors && !formData.name ? 'text-red-500' : 'text-gray-400 dark:text-violet-400/60'}`} />
+                                 <input 
+                                   value={formData.name} 
+                                   onChange={e=>setFormData({...formData, name: e.target.value})} 
+                                   placeholder="ex: Sara" 
+                                   autoComplete="name" 
+                                   enterKeyHint="next" 
+                                   className={`w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 transition-all ${
+                                     showErrors && !formData.name 
+                                       ? 'border-red-500 ring-red-500/20 focus:ring-red-500/20 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]' 
+                                       : 'border-gray-100 dark:border-violet-500/20 focus:ring-primary/20'
+                                   }`} 
+                                 />
+                              </div>
+                              {showErrors && !formData.name && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Enter purchaser name</p>}
+                           </div>
+                           <div>
+                              <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Phone</label>
+                              <IndianMobileInput
+                                 LeftIcon={Phone}
+                                 value={formData.phone}
+                                 onChange={(digits) => setFormData({ ...formData, phone: digits })}
+                                 className={`${showErrors && !hasIndianNationalDigits(formData.phone) ? 'border-red-500 ring-red-500/10' : 'border-gray-100 dark:border-violet-500/20'} bg-[#f8fafc] dark:bg-violet-950/25 shadow-sm transition-all`}
+                                 prefixClassName={`transition-colors ${showErrors && !hasIndianNationalDigits(formData.phone) ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-950/30' : 'bg-[#f0f4f8] border-gray-100 text-gray-700 dark:bg-violet-950/50 dark:border-violet-500/25 dark:text-violet-200'}`}
+                                 inputClassName="font-bold text-gray-900 dark:text-violet-100"
+                              />
+                              {showErrors && !hasIndianNationalDigits(formData.phone) ? (
+                                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Enter valid mobile number</p>
+                              ) : (
+                                <p className="text-[10px] text-gray-400 dark:text-violet-400/55 mt-1 ml-1">India (+91)</p>
+                              )}
+                           </div>
+                        </div>
+                      )}
 
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <div className="min-w-0">
                              <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Organiser (POC)</label>
                              <div className="relative">
-                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                <Users className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors pointer-events-none ${showErrors && !formData.poc ? 'text-red-500' : 'text-gray-400'}`} />
                                 {currentUser.role === 'admin' ? (
-                                   <select required value={formData.poc} onChange={e=>setFormData({...formData, poc: e.target.value})} className="w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border border-gray-100 dark:border-violet-500/20 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none">
+                                   <select 
+                                     value={formData.poc} 
+                                     onChange={e=>setFormData({...formData, poc: e.target.value})} 
+                                     className={`w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 transition-all appearance-none ${
+                                       showErrors && !formData.poc 
+                                         ? 'border-red-500 ring-red-500/20 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]' 
+                                         : 'border-gray-100 dark:border-violet-500/20 focus:ring-primary/20'
+                                     }`}
+                                   >
                                       <option value="">Choose organiser…</option>
                                       {organisers.map(org => <option key={org.id} value={org.name}>{org.name}</option>)}
                                    </select>
                                 ) : (
                                    <input disabled value={currentUser.name} className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/25 border border-gray-100 dark:border-violet-500/15 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-400 dark:text-violet-400/70" />
                                 )}
-                                {currentUser.role === 'admin' && <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />}
+                                {currentUser.role === 'admin' && <ChevronRight className={`absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors rotate-90 pointer-events-none ${showErrors && !formData.poc ? 'text-red-500' : 'text-gray-400'}`} />}
                              </div>
+                             {showErrors && !formData.poc && currentUser.role === 'admin' && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Select an organiser</p>}
                           </div>
-                          <div className="min-w-0">
-                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Quantity</label>
-                             <div className="flex items-stretch gap-1.5 sm:gap-2 touch-manipulation">
-                                <button
-                                   type="button"
-                                   aria-label="Decrease quantity"
-                                   onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty - 1) }))}
-                                   disabled={formData.qty <= 1}
-                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-violet-500/25 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/45"
-                                >
-                                   <Minus className="w-5 h-5 stroke-[2.25]" aria-hidden />
-                                </button>
-                                <input
-                                   type="number"
-                                   inputMode="numeric"
-                                   required
-                                   min={1}
-                                   max={50}
-                                   value={formData.qty}
-                                   onChange={e => {
-                                      const raw = parseInt(e.target.value, 10);
-                                      setFormData({ ...formData, qty: clampQty(Number.isNaN(raw) ? 1 : raw) });
-                                   }}
-                                   className="min-h-[44px] min-w-0 flex-1 bg-[#f8fafc] border border-gray-100 rounded-xl px-2 py-2.5 text-center text-sm font-bold text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none dark:bg-violet-950/35 dark:border-violet-500/25 dark:text-violet-100"
-                                />
-                                <button
-                                   type="button"
-                                   aria-label="Increase quantity"
-                                   onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty + 1) }))}
-                                   disabled={formData.qty >= 50}
-                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-violet-500/25 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/45"
-                                >
-                                   <Plus className="w-5 h-5 stroke-[2.25]" aria-hidden />
-                                </button>
-                             </div>
-                          </div>
-                       </div>
-
-                       <fieldset className="border-0 p-0 m-0 min-w-0">
-                          <legend className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Payment settlement</legend>
-                          <div className="grid grid-cols-2 gap-2 sm:gap-3" role="radiogroup" aria-label="Payment settlement">
-                             {(
-                                [
-                                   { value: 'organizer' as const, label: 'Organizer' },
-                                   { value: 'trust' as const, label: 'Trust' },
-                                ] as const
-                             ).map(({ value, label }) => {
-                                const selected = formData.fundsDestination === value;
-                                return (
-                                   <label
-                                      key={value}
-                                      className={`relative flex min-h-[44px] cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-bold transition-colors focus-within:ring-2 focus-within:ring-primary/25 ${
-                                         selected
-                                            ? 'border-primary/35 bg-pink-50/80 text-primary shadow-sm dark:bg-primary/20 dark:border-primary/45 dark:text-pink-200 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.2)]'
-                                            : 'border-gray-100 bg-[#f8fafc] text-gray-800 hover:border-gray-200 dark:border-violet-500/20 dark:bg-violet-950/30 dark:text-violet-100 dark:hover:border-violet-400/35'
-                                      }`}
+                          
+                          {/* Only show Quantity input for INDIVIDUAL mode */}
+                          {sellMode === 'individual' && (
+                             <div className="min-w-0">
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Quantity</label>
+                                <div className="flex items-stretch gap-1.5 sm:gap-2 touch-manipulation">
+                                   <button
+                                      type="button"
+                                      aria-label="Decrease quantity"
+                                      onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty - 1) }))}
+                                      disabled={formData.qty <= 1}
+                                      className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-violet-500/25 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/45"
                                    >
-                                      <input
-                                         type="radio"
-                                         name="fundsDestination"
-                                         value={value}
-                                         checked={selected}
-                                         onChange={() => setFormData({ ...formData, fundsDestination: value })}
-                                         className="sr-only"
-                                      />
-                                      {label}
-                                   </label>
-                                );
-                             })}
-                          </div>
-                       </fieldset>
+                                      <Minus className="w-5 h-5 stroke-[2.25]" aria-hidden />
+                                   </button>
+                                   <input
+                                      type="number"
+                                      inputMode="numeric"
+                                      min={1}
+                                      max={50}
+                                      value={formData.qty}
+                                      onChange={e => {
+                                         const raw = parseInt(e.target.value, 10);
+                                         setFormData({ ...formData, qty: clampQty(Number.isNaN(raw) ? 1 : raw) });
+                                      }}
+                                      className="min-h-[44px] min-w-0 flex-1 bg-[#f8fafc] border border-gray-100 rounded-xl px-2 py-2.5 text-center text-sm font-bold text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none dark:bg-violet-950/35 dark:border-violet-500/25 dark:text-violet-100"
+                                   />
+                                   <button
+                                      type="button"
+                                      aria-label="Increase quantity"
+                                      onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty + 1) }))}
+                                      disabled={formData.qty >= 50}
+                                      className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-violet-500/25 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/45"
+                                   >
+                                      <Plus className="w-5 h-5 stroke-[2.25]" aria-hidden />
+                                   </button>
+                                </div>
+                             </div>
+                           )}
 
-                       <div className="pt-5 sm:pt-6">
-                          <button type="submit" disabled={isSubmitting || !formData.name || !hasIndianNationalDigits(formData.phone) || !formData.poc} className={`w-full min-h-[48px] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center text-sm ${selectedCategory.btn}`}>
-                             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm sale"}
+                           {/* Show Volume summary for MASS mode */}
+                           {sellMode === 'mass' && (
+                             <div className={`rounded-xl border p-3 flex flex-col justify-center transition-all ${
+                               showErrors && massData.reduce((s,i)=>s+i.qty,0) < 30 ? 'bg-red-50 border-red-200' : 'bg-violet-50 dark:bg-violet-950/40 border-violet-100 dark:border-violet-500/20'
+                             }`}>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${showErrors && massData.reduce((s,i)=>s+i.qty,0) < 30 ? 'text-red-500' : 'text-violet-500'}`}>Total Volume</p>
+                                <div className="flex items-baseline gap-1.5">
+                                   <span className={`text-2xl font-bold tabular-nums ${
+                                     showErrors && massData.reduce((s,i)=>s+i.qty,0) < 30 ? 'text-red-600' :
+                                     massData.reduce((s,i)=>s+i.qty,0) >= 30 ? 'text-violet-700 dark:text-violet-200' : 'text-amber-600'
+                                   }`}>
+                                      {massData.reduce((s,i)=>s+i.qty,0)}
+                                   </span>
+                                   <span className={`text-[10px] font-bold uppercase tracking-tight ${showErrors && massData.reduce((s,i)=>s+i.qty,0) < 30 ? 'text-red-400' : 'text-violet-400'}`}>Passes</span>
+                                </div>
+                                {massData.reduce((s,i)=>s+i.qty,0) < 30 && (
+                                   <p className={`text-[9px] font-bold uppercase mt-1 ${showErrors ? 'text-red-600 underline' : 'text-amber-600'}`}>
+                                      Min. 30 required for mass issuance
+                                   </p>
+                                )}
+                             </div>
+                           )}
+                      </div>
+
+                      <fieldset className="border-0 p-0 m-0 min-w-0">
+                         <legend className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Payment settlement</legend>
+                         <div className="grid grid-cols-2 gap-2 sm:gap-3" role="radiogroup" aria-label="Payment settlement">
+                            {(
+                               [
+                                  { value: 'organizer' as const, label: 'Organizer' },
+                                  { value: 'trust' as const, label: 'Trust' },
+                               ] as const
+                            ).map(({ value, label }) => {
+                               const selected = formData.fundsDestination === value;
+                               return (
+                                  <label
+                                     key={value}
+                                     className={`relative flex min-h-[44px] cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-bold transition-colors focus-within:ring-2 focus-within:ring-primary/25 ${
+                                        selected
+                                           ? 'border-primary/35 bg-pink-50/80 text-primary shadow-sm dark:bg-primary/20 dark:border-primary/45 dark:text-pink-200 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.2)]'
+                                           : 'border-gray-100 bg-[#f8fafc] text-gray-800 hover:border-gray-200 dark:border-violet-500/20 dark:bg-violet-950/30 dark:text-violet-100 dark:hover:border-violet-400/35'
+                                     }`}
+                                  >
+                                     <input
+                                        type="radio"
+                                        name="fundsDestination"
+                                        value={value}
+                                        checked={selected}
+                                        onChange={() => setFormData({ ...formData, fundsDestination: value })}
+                                        className="sr-only"
+                                     />
+                                     {label}
+                                  </label>
+                               );
+                            })}
+                         </div>
+                      </fieldset>
+
+                      <div className="pt-5 sm:pt-6">
+                          <button 
+                            type="submit" 
+                            disabled={isSubmitting} 
+                            className={`w-full min-h-[48px] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center text-sm ${
+                              sellMode === 'mass' ? (
+                                showErrors && (massData.length === 0 || massData.reduce((s,i)=>s+i.qty,0) < 30 || !formData.poc) 
+                                  ? 'bg-red-500 hover:bg-red-600' 
+                                  : 'bg-violet-600 hover:bg-violet-700'
+                              ) :
+                              showErrors && (!formData.name || !hasIndianNationalDigits(formData.phone) || !formData.poc) 
+                                ? 'bg-red-500 hover:bg-red-600' 
+                                : selectedCategory.btn
+                            }`}
+                          >
+                             {isSubmitting ? (
+                               <>
+                                 <Loader2 className="w-4 h-4 animate-spin mr-2" /> 
+                                 {massStatus ? `Issuing ${massStatus.sent}/${massStatus.total}...` : "Processing..."}
+                               </>
+                             ) : sellMode === 'mass' ? "Issue All Tickets" : "Confirm sale"}
                           </button>
+                          {massStatus && massStatus.errors.length > 0 && (
+                            <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-100">
+                              <p className="text-[10px] font-bold text-red-600 uppercase mb-2">Errors occurred:</p>
+                              <ul className="text-[9px] text-red-500 space-y-1">
+                                {massStatus.errors.slice(0, 3).map((err, i) => <li key={i}>• {err}</li>)}
+                                {massStatus.errors.length > 3 && <li>...and {massStatus.errors.length - 3} more</li>}
+                              </ul>
+                            </div>
+                          )}
                        </div>
                     </form>
                  </div>
@@ -477,8 +766,14 @@ export default function SellTicketsPage() {
                     
                     <div className="space-y-2 relative z-10">
                        <div className="flex justify-between items-center text-xs gap-2">
-                          <span className="font-bold text-gray-500 truncate">{selectedCategory.name} × {formData.qty}</span>
-                          <span className="font-bold text-gray-900 shrink-0 tabular-nums">₹{selectedCategory.price * formData.qty}</span>
+                          <span className="font-bold text-gray-500 truncate">
+                            {sellMode === 'mass' ? `${massData.length} recipients` : selectedCategory.name}
+                          </span>
+                          <span className="font-bold text-gray-900 shrink-0 tabular-nums">
+                             ₹{(sellMode === 'mass' 
+                                ? massData.reduce((s, i) => s + (i.price * i.qty), 0)
+                                : (selectedCategory.price * formData.qty)).toLocaleString('en-IN')}
+                          </span>
                        </div>
                        <div className="flex justify-between items-center text-[11px] gap-2">
                           <span className="font-bold text-gray-500">Settlement</span>
@@ -493,7 +788,11 @@ export default function SellTicketsPage() {
                        <div className="pt-2 border-t border-gray-100 flex justify-between items-end gap-2">
                           <div className="flex flex-col min-w-0">
                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</span>
-                             <span className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight tabular-nums">₹{totalAmount}</span>
+                             <span className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight tabular-nums">
+                               ₹{(sellMode === 'mass' 
+                                  ? massData.reduce((s, i) => s + (i.price * i.qty), 0)
+                                  : (selectedCategory.price * formData.qty)).toLocaleString('en-IN')}
+                             </span>
                           </div>
                           <div className="bg-purple-50 text-primary text-[9px] font-bold px-2 py-1 rounded shrink-0">
                              Inc. taxes
