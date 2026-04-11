@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navLinks = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Organisers", href: "/dashboard/organisers", icon: Users },
+    { name: "User Management", href: "/dashboard/organisers", icon: Users },
     { name: "Sell Tickets", href: "/dashboard/sell", icon: Ticket },
     { name: "Sales Report", href: "/dashboard/sales", icon: BarChart2 },
     { name: "Notifications", href: "#", icon: Bell, disabled: true },

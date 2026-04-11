@@ -1,8 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { UserPlus, Search, Edit2, CheckCircle2, Phone, Clock, Loader2, ArrowLeft, Target, Eye, EyeOff } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  UserPlus,
+  Search,
+  Edit2,
+  CheckCircle2,
+  Phone,
+  Clock,
+  Loader2,
+  ArrowLeft,
+  Target,
+  Eye,
+  EyeOff,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { CenteredModal } from "@/components/centered-modal";
@@ -45,8 +59,89 @@ function sortedRoleEntries(roles: string[]): { key: string; label: string }[] {
   }));
 }
 
+/** Normalise role strings for editing (stable slugs for known roles). */
+function canonicalRoleSlugs(roles: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of roles) {
+    const low = r.trim().toLowerCase();
+    let key = r.trim();
+    if (low === "admin") key = "admin";
+    else if (low === "organiser" || low === "organizer") key = "organiser";
+    else if (low === "front_desk" || low === "front desk") key = "front_desk";
+    const dedup = key.toLowerCase();
+    if (seen.has(dedup)) continue;
+    seen.add(dedup);
+    out.push(key);
+  }
+  return out;
+}
+
+/** Shared role toggles (admin / organiser / front_desk). */
+function RoleChecklist({
+  selected,
+  onToggle,
+}: {
+  selected: string[];
+  onToggle: (role: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <label className="flex cursor-pointer items-center gap-3 group">
+        <div
+          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${selected.includes("admin") ? "border-primary bg-primary" : "border-pink-200 bg-[#fdfaff] group-hover:border-primary"}`}
+        >
+          {selected.includes("admin") && <CheckCircle2 className="h-3 w-3 text-white" />}
+        </div>
+        <input
+          type="checkbox"
+          className="hidden"
+          checked={selected.includes("admin")}
+          onChange={() => onToggle("admin")}
+        />
+        <span className="text-sm font-bold text-gray-700">
+          Administrator <span className="font-normal text-gray-500">(Full Access)</span>
+        </span>
+      </label>
+      <label className="flex cursor-pointer items-center gap-3 group">
+        <div
+          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${selected.includes("organiser") ? "border-primary bg-primary" : "border-pink-200 bg-[#fdfaff] group-hover:border-primary"}`}
+        >
+          {selected.includes("organiser") && <CheckCircle2 className="h-3 w-3 text-white" />}
+        </div>
+        <input
+          type="checkbox"
+          className="hidden"
+          checked={selected.includes("organiser")}
+          onChange={() => onToggle("organiser")}
+        />
+        <span className="text-sm font-bold text-gray-700">
+          Organiser <span className="font-normal text-gray-500">(Dashboard Access)</span>
+        </span>
+      </label>
+      <label className="flex cursor-pointer items-center gap-3 group">
+        <div
+          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${selected.includes("front_desk") ? "border-primary bg-primary" : "border-pink-200 bg-[#fdfaff] group-hover:border-primary"}`}
+        >
+          {selected.includes("front_desk") && <CheckCircle2 className="h-3 w-3 text-white" />}
+        </div>
+        <input
+          type="checkbox"
+          className="hidden"
+          checked={selected.includes("front_desk")}
+          onChange={() => onToggle("front_desk")}
+        />
+        <span className="text-sm font-bold text-gray-700">
+          Front Desk <span className="font-normal text-gray-500">(Scanner Only)</span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
 export default function OrganisersPage() {
   const pathname = usePathname();
+  const router = useRouter();
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -57,25 +152,24 @@ export default function OrganisersPage() {
   const [editingOrg, setEditingOrg] = useState<any>(null);
   const [savingTargets, setSavingTargets] = useState(false);
 
+  const [editingRoles, setEditingRoles] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+    rolesDraft: string[];
+  } | null>(null);
+  const [savingRoles, setSavingRoles] = useState(false);
+
   // Add Form State
   const [formData, setFormData] = useState({ name: "", phone: "", roles: ["organiser"], password: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (view === "list") loadOrganisers();
   }, [view, pathname]);
-
-  function profileIsOrganiser(p: { roles?: unknown; role?: unknown }): boolean {
-    if (Array.isArray(p.roles)) return p.roles.includes("organiser");
-    if (typeof p.roles === "string") {
-      const s = p.roles.trim().toLowerCase();
-      return s === "organiser" || s.split(/[,\s]+/).includes("organiser");
-    }
-    if (p.role === "organiser") return true;
-    return false;
-  }
 
   async function loadOrganisers() {
     setLoading(true);
@@ -104,7 +198,7 @@ export default function OrganisersPage() {
       const tickets = ticketsRes.data || [];
 
       if (profiles) {
-        const orgs = profiles.filter(profileIsOrganiser).map(org => {
+        const orgs = profiles.map((org) => {
            // Aggregate sales for this SPECIFIC organiser - case insensitive and trimmed
            const orgNameLower = org.name.trim().toLowerCase();
            const orgTickets = tickets.filter(t => t.sold_by?.trim().toLowerCase() === orgNameLower);
@@ -183,6 +277,127 @@ export default function OrganisersPage() {
   };
 
   const closeTargetEditor = useCallback(() => setEditingOrg(null), []);
+
+  const closeRolesEditor = useCallback(() => setEditingRoles(null), []);
+
+  const deleteUser = async (org: {
+    id: string;
+    name: string;
+    phone: string;
+    roles?: string[];
+  }) => {
+    const selfPhone =
+      typeof window !== "undefined" ? localStorage.getItem("rhapsody_phone") : null;
+    const isSelf = Boolean(selfPhone && org.phone === selfPhone);
+
+    const adminRows = organisers.filter((o) =>
+      (o.roles || []).some((r: string) => String(r).toLowerCase() === "admin")
+    );
+    const targetIsAdmin = (org.roles || []).some(
+      (r: string) => String(r).toLowerCase() === "admin"
+    );
+    const onlyAdminInSystem = targetIsAdmin && adminRows.length === 1;
+
+    let msg: string;
+    if (onlyAdminInSystem) {
+      msg = isSelf
+        ? `You are the only Administrator. Deleting your account removes all admin access to this app. Continue?`
+        : `This user is the only Administrator. Deleting them removes all admin access to User Management. Continue?`;
+    } else if (isSelf) {
+      msg = `Delete your own account "${org.name}"? You will be signed out. This cannot be undone.`;
+    } else {
+      msg = `Delete user "${org.name}" (${org.phone})? This cannot be undone.`;
+    }
+
+    if (!window.confirm(msg)) return;
+    if (onlyAdminInSystem || isSelf) {
+      if (!window.confirm("Final confirmation: permanently delete this profile?")) return;
+    }
+
+    setDeletingId(org.id);
+    try {
+      const { error } = await supabase.from("profiles").delete().eq("id", org.id);
+
+      if (error) {
+        console.error(error);
+        alert(
+          error.message.includes("permission") || error.code === "42501"
+            ? "Delete failed: run the profiles delete policy migration in Supabase (see supabase/migrations/profiles_delete_policy.sql)."
+            : error.message || "Could not delete user."
+        );
+        return;
+      }
+
+      setOrganisers((prev) => prev.filter((o) => o.id !== org.id));
+      setEditingOrg(null);
+      setEditingRoles(null);
+
+      if (isSelf) {
+        localStorage.removeItem("rhapsody_user");
+        localStorage.removeItem("rhapsody_role");
+        localStorage.removeItem("rhapsody_phone");
+        router.replace("/");
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const toggleDraftRole = useCallback((role: string) => {
+    setEditingRoles((prev) => {
+      if (!prev) return null;
+      const cur = prev.rolesDraft;
+      const has = cur.some((r) => r.toLowerCase() === role);
+      const next = has ? cur.filter((r) => r.toLowerCase() !== role) : [...cur, role];
+      return { ...prev, rolesDraft: next };
+    });
+  }, []);
+
+  const saveRoleEdits = async () => {
+    if (!editingRoles) return;
+    if (editingRoles.rolesDraft.length === 0) {
+      alert("Select at least one role.");
+      return;
+    }
+
+    const selfPhone =
+      typeof window !== "undefined" ? localStorage.getItem("rhapsody_phone") : null;
+    const isSelf = Boolean(selfPhone && editingRoles.phone === selfPhone);
+    if (isSelf && !editingRoles.rolesDraft.some((r) => r.toLowerCase() === "admin")) {
+      const ok = window.confirm(
+        "You are removing Admin access from your own account. You may lose access to this screen. Continue?"
+      );
+      if (!ok) return;
+    }
+
+    setSavingRoles(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ roles: editingRoles.rolesDraft })
+        .eq("id", editingRoles.id)
+        .select("id, roles")
+        .maybeSingle();
+
+      if (error) {
+        console.error(error);
+        alert("Could not save roles. Check your connection and try again.");
+        return;
+      }
+      if (!data) {
+        alert("No profile was updated.");
+        return;
+      }
+
+      const nextRoles = normalizeProfileRoles({ roles: data.roles });
+      setOrganisers((prev) =>
+        prev.map((o) => (o.id === data.id ? { ...o, roles: nextRoles } : o))
+      );
+      setEditingRoles(null);
+    } finally {
+      setSavingRoles(false);
+    }
+  };
 
   const saveTargetEdits = async () => {
     if (!editingOrg) return;
@@ -305,6 +520,51 @@ export default function OrganisersPage() {
         ) : null}
       </CenteredModal>
 
+      <CenteredModal
+        open={!!editingRoles}
+        onClose={closeRolesEditor}
+        closeBlocked={savingRoles}
+        title="Edit roles"
+        titleId="user-roles-modal-title"
+        headerIcon={<Shield className="h-5 w-5 shrink-0 text-primary" />}
+        footer={
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={closeRolesEditor}
+              disabled={savingRoles}
+              className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 transition-colors hover:bg-gray-100 disabled:opacity-50 sm:text-base"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveRoleEdits()}
+              disabled={savingRoles}
+              className="flex-1 rounded-xl bg-gradient-to-r from-primary to-secondary py-3 text-sm font-bold text-white shadow-lg shadow-pink-500/20 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 sm:text-base"
+            >
+              {savingRoles ? (
+                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+              ) : (
+                "Save roles"
+              )}
+            </button>
+          </div>
+        }
+      >
+        {editingRoles ? (
+          <>
+            <p className="mb-3 text-xs text-gray-500 sm:text-sm">
+              Access for <span className="font-bold text-gray-900">{editingRoles.name}</span>
+            </p>
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500">
+              System roles
+            </label>
+            <RoleChecklist selected={editingRoles.rolesDraft} onToggle={toggleDraftRole} />
+          </>
+        ) : null}
+      </CenteredModal>
+
       {/* Header Layout */}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div className="min-w-0">
@@ -314,7 +574,7 @@ export default function OrganisersPage() {
              </button>
           ) : null}
           <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">
-             {view === 'add' ? 'User Management' : 'Organiser Management'}
+             User Management
           </h1>
           {view === 'add' ? (
              <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium leading-snug">
@@ -393,30 +653,8 @@ export default function OrganisersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-3">System Roles / Access Types</label>
-              <div className="flex flex-col gap-3">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData.roles.includes('admin') ? 'bg-primary border-primary' : 'bg-[#fdfaff] border-pink-200 group-hover:border-primary'}`}>
-                     {formData.roles.includes('admin') && <CheckCircle2 className="w-3 h-3 text-white" />}
-                  </div>
-                  <input type="checkbox" className="hidden" checked={formData.roles.includes('admin')} onChange={()=>toggleRole('admin')} />
-                  <span className="text-sm font-bold text-gray-700">Administrator <span className="font-normal text-gray-500">(Full Access)</span></span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData.roles.includes('organiser') ? 'bg-primary border-primary' : 'bg-[#fdfaff] border-pink-200 group-hover:border-primary'}`}>
-                     {formData.roles.includes('organiser') && <CheckCircle2 className="w-3 h-3 text-white" />}
-                  </div>
-                  <input type="checkbox" className="hidden" checked={formData.roles.includes('organiser')} onChange={()=>toggleRole('organiser')} />
-                  <span className="text-sm font-bold text-gray-700">Organiser <span className="font-normal text-gray-500">(Dashboard Access)</span></span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData.roles.includes('front_desk') ? 'bg-primary border-primary' : 'bg-[#fdfaff] border-pink-200 group-hover:border-primary'}`}>
-                     {formData.roles.includes('front_desk') && <CheckCircle2 className="w-3 h-3 text-white" />}
-                  </div>
-                  <input type="checkbox" className="hidden" checked={formData.roles.includes('front_desk')} onChange={()=>toggleRole('front_desk')} />
-                  <span className="text-sm font-bold text-gray-700">Front Desk <span className="font-normal text-gray-500">(Scanner Only)</span></span>
-                </label>
-              </div>
+              <label className="mb-3 block text-sm font-bold text-secondary">System Roles / Access Types</label>
+              <RoleChecklist selected={formData.roles} onToggle={toggleRole} />
             </div>
 
             <div className="pt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -454,10 +692,10 @@ export default function OrganisersPage() {
            ) : filteredOrganisers.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-10 text-center">
                  <p className="text-sm font-semibold text-gray-700">
-                    {organisers.length === 0 ? "No organisers yet" : "No matches"}
+                    {organisers.length === 0 ? "No users yet" : "No matches"}
                  </p>
                  <p className="text-xs text-gray-500 mt-1">
-                    {organisers.length === 0 ? "Add your first organiser with the button above" : "Try a different name or phone"}
+                    {organisers.length === 0 ? "Add your first user with the button above" : "Try a different name or phone"}
                  </p>
               </div>
            ) : (
@@ -499,15 +737,56 @@ export default function OrganisersPage() {
                                   <span className="inline-flex items-center gap-1.5 text-gray-400"><Clock className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="hidden sm:inline">Last login:</span> {org.lastLogin}</span>
                                </div>
                             </div>
-                            <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t border-gray-50 sm:border-0 sm:shrink-0">
-                               <div className="text-left sm:text-right">
-                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sales</p>
-                                  <span className="text-xl sm:text-2xl font-bold text-primary tabular-nums leading-none">{org.totalSales}</span>
+                            <div className="flex flex-col items-stretch gap-2 pt-1 sm:shrink-0 sm:flex-row sm:items-center sm:justify-end sm:border-0 sm:pt-0 border-t border-gray-50">
+                               <div className="flex items-center justify-between gap-3 sm:block sm:text-right">
+                                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 sm:hidden">Sales</p>
+                                  <div>
+                                     <p className="mb-0.5 hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 sm:block">Sales</p>
+                                     <span className="text-xl font-bold leading-none text-primary tabular-nums sm:text-2xl">{org.totalSales}</span>
+                                  </div>
                                </div>
-                               <button type="button" onClick={() => setEditingOrg(org)} className="inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-gray-800 font-bold px-3 py-2 rounded-lg hover:border-primary hover:text-primary transition-all text-[11px] sm:text-sm shadow-sm active:scale-[0.98] min-h-[40px] touch-manipulation whitespace-nowrap">
-                                  <Edit2 className="w-4 h-4 shrink-0" />
-                                  Edit targets
-                               </button>
+                               <div className="flex flex-wrap justify-end gap-2">
+                                  <button
+                                     type="button"
+                                     onClick={() => {
+                                       setEditingOrg(null);
+                                       setEditingRoles({
+                                         id: org.id,
+                                         name: org.name,
+                                         phone: org.phone,
+                                         rolesDraft: canonicalRoleSlugs(org.roles || []),
+                                       });
+                                     }}
+                                     className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-bold text-gray-800 shadow-sm transition-all hover:border-primary hover:text-primary active:scale-[0.98] sm:text-sm"
+                                  >
+                                     <Shield className="h-4 w-4 shrink-0" />
+                                     Edit roles
+                                  </button>
+                                  <button
+                                     type="button"
+                                     onClick={() => {
+                                       setEditingRoles(null);
+                                       setEditingOrg(org);
+                                     }}
+                                     className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-bold text-gray-800 shadow-sm transition-all hover:border-primary hover:text-primary active:scale-[0.98] sm:text-sm"
+                                  >
+                                     <Edit2 className="h-4 w-4 shrink-0" />
+                                     Edit targets
+                                  </button>
+                                  <button
+                                     type="button"
+                                     disabled={deletingId === org.id}
+                                     onClick={() => void deleteUser(org)}
+                                     className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-bold text-red-700 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 disabled:opacity-60 sm:text-sm"
+                                  >
+                                     {deletingId === org.id ? (
+                                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                                     ) : (
+                                        <Trash2 className="h-4 w-4 shrink-0" />
+                                     )}
+                                     Delete user
+                                  </button>
+                               </div>
                             </div>
                          </div>
                       </div>
