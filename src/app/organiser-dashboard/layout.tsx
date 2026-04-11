@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Ticket, BarChart2, Menu, X } from "lucide-react";
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Ticket, BarChart2, Menu, X, Camera } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function OrganiserLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +49,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
   const navLinks = [
     { name: "Dashboard", href: "/organiser-dashboard", icon: LayoutDashboard },
     { name: "Sell Tickets", href: "/organiser-dashboard/sell", icon: Ticket },
+    { name: "Check-in", href: "/frontdesk", icon: Camera },
     { name: "Sales Report", href: "/organiser-dashboard/sales", icon: BarChart2 },
   ];
 
@@ -59,11 +60,10 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
       <Link
         key={link.name}
         href={link.href}
-        className={`flex items-center gap-3 px-3 py-3 md:py-2 rounded-xl md:rounded-lg text-sm font-semibold transition-all ${
-          isActive
-              ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
-              : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
-        }`}
+        className={`flex items-center gap-3 px-3 py-3 md:py-2 rounded-xl md:rounded-lg text-sm font-semibold transition-all ${isActive
+            ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
+            : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
+          }`}
         onClick={() => opts?.onNavigate?.()}
       >
         <Icon className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
@@ -110,43 +110,43 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
 
             <div className="flex items-center gap-1.5 shrink-0">
               <ThemeToggle />
-            {/* User Dropdown */}
-            <div className="relative shrink-0" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--border-subtle)] hover:border-pink-300/50 hover:bg-[var(--muted-bg)] transition-all"
-              >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-sm">
-                  <User className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="text-sm font-bold text-[var(--foreground)] hidden md:block">{userName}</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 dark:text-purple-400/80 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
+              {/* User Dropdown */}
+              <div className="relative shrink-0" ref={dropdownRef}>
+                <button
+                  onClick={() => setDropdownOpen(prev => !prev)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--border-subtle)] hover:border-pink-300/50 hover:bg-[var(--muted-bg)] transition-all"
+                >
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-sm">
+                    <User className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-sm font-bold text-[var(--foreground)] hidden md:block">{userName}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 dark:text-purple-400/80 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-              {dropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--card-bg)] rounded-2xl shadow-xl border border-[var(--border-subtle)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-                    <p className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest">Signed in as</p>
-                    <p className="text-sm font-bold text-[var(--foreground)] mt-0.5 truncate">{userName}</p>
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--card-bg)] rounded-2xl shadow-xl border border-[var(--border-subtle)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
+                      <p className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest">Signed in as</p>
+                      <p className="text-sm font-bold text-[var(--foreground)] mt-0.5 truncate">{userName}</p>
+                    </div>
+                    <div className="p-1.5">
+                      <Link
+                        href="/organiser-dashboard/settings"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-[var(--foreground)]/80 hover:bg-[var(--muted-bg)] rounded-xl transition-colors"
+                      >
+                        <Settings className="w-4 h-4" /> Settings
+                      </Link>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" /> Sign Out
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-1.5">
-                    <Link
-                      href="/organiser-dashboard/settings"
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-[var(--foreground)]/80 hover:bg-[var(--muted-bg)] rounded-xl transition-colors"
-                    >
-                      <Settings className="w-4 h-4" /> Settings
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" /> Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             </div>
 
           </div>

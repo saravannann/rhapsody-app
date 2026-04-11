@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Users, Ticket, BarChart2, Bell, Menu, X } from "lucide-react";
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Users, Ticket, BarChart2, Bell, Menu, X, Camera } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -51,6 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "User Management", href: "/dashboard/organisers", icon: Users },
     { name: "Sell Tickets", href: "/dashboard/sell", icon: Ticket },
+    { name: "Check-in", href: "/frontdesk", icon: Camera },
     { name: "Sales Report", href: "/dashboard/sales", icon: BarChart2 },
     { name: "Notifications", href: "#", icon: Bell, disabled: true },
   ];

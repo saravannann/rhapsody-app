@@ -9,6 +9,18 @@ import {
   Ticket,
   Keyboard,
   Camera,
+  Users,
+  Clock,
+  Zap,
+  ShieldCheck,
+  ShieldX,
+  History,
+  ArrowUpRight,
+  Scan,
+  AlertOctagon,
+  CheckCircle,
+  XCircle,
+  QrCode
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import {
@@ -22,6 +34,7 @@ const TYPE_LABELS: Record<string, string> = {
   Platinum: "Platinum Pass",
   Donor: "Donor Pass",
   Student: "Student Pass",
+  Bulk: "Bulk Booking",
 };
 
 function extractTicketIdFromPaste(raw: string): string | null {
@@ -50,10 +63,99 @@ export default function FrontdeskCheckInPage() {
   const [manualInput, setManualInput] = useState("");
   const [lookup, setLookup] = useState<LookupState>({ kind: "idle" });
   const [checkingIn, setCheckingIn] = useState(false);
+  const [justCheckedIn, setJustCheckedIn] = useState(false);
   const cooldownRef = useRef(false);
+
+  // Metrics State
+  const [metrics, setMetrics] = useState({
+    totalCheckedIn: 0,
+    totalScannable: 0,
+    thisHour: 0,
+    peakTime: "Calculating...",
+    recentCheckIns: [] as any[]
+  });
+
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const { data: tickets } = await supabase.from("tickets").select("status, type, quantity, updated_at");
+      if (!tickets) return;
+
+      let checkedInTotal = 0;
+      let scannableTotal = 0;
+      let hourCount = 0;
+      const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+      // Simple Peak Time logic: count by hour
+      const hourlyDistribution: Record<number, number> = {};
+
+      const processedTickets = tickets.filter(t => {
+        const type = String(t.type || "");
+        const isDonor = type.includes("Donor");
+        return !isDonor; // Donor passes aren't scannable
+      });
+
+      processedTickets.forEach(t => {
+        const q = ticketQuantity(t);
+        const status = String(t.status || "").toLowerCase();
+        scannableTotal += q;
+
+        if (status === "checked_in") {
+          checkedInTotal += q;
+          const updateTime = new Date(t.updated_at);
+          if (updateTime > hourAgo) {
+            hourCount += q;
+          }
+
+          const hr = updateTime.getHours();
+          hourlyDistribution[hr] = (hourlyDistribution[hr] || 0) + q;
+        }
+      });
+
+      // Find peak hour
+      let peakStr = "No data yet";
+      if (Object.keys(hourlyDistribution).length > 0) {
+        let peakHr = 0;
+        let maxVal = 0;
+        for (const [hr, val] of Object.entries(hourlyDistribution)) {
+          if (val > maxVal) {
+            maxVal = val;
+            peakHr = parseInt(hr);
+          }
+        }
+        peakStr = `${peakHr % 12 || 12}:00 ${peakHr >= 12 ? 'PM' : 'AM'} - ${(peakHr + 1) % 12 || 12}:00 ${(peakHr + 1) >= 12 ? 'PM' : 'AM'}`;
+      }
+
+      // Fetch Recent Check-ins
+      const { data: recent } = await supabase
+        .from("tickets")
+        .select("*")
+        .eq("status", "checked_in")
+        .order("updated_at", { ascending: false })
+        .limit(8); // Increased to fill space from removed card
+
+      setMetrics({
+        totalCheckedIn: checkedInTotal,
+        totalScannable: scannableTotal,
+        thisHour: hourCount,
+        peakTime: peakStr,
+        recentCheckIns: recent || []
+      });
+    } catch (error) {
+       console.error("Error fetching check-in metrics:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMetrics();
+    const sub = supabase.channel('tickets-checkin').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, () => {
+       fetchMetrics();
+    }).subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [fetchMetrics]);
 
   const runLookup = useCallback(async (raw: string) => {
     const trimmed = raw.trim();
+    setJustCheckedIn(false);
     if (!trimmed) {
       setLookup({ kind: "error", message: "Scan a QR or paste code / link." });
       return;
@@ -135,7 +237,7 @@ export default function FrontdeskCheckInPage() {
     const scanner = new Html5QrcodeScanner(
       scanContainerId,
       {
-        fps: 8,
+        fps: 12,
         qrbox: { width: minBox(), height: minBox() },
         aspectRatio: 1,
       },
@@ -176,7 +278,7 @@ export default function FrontdeskCheckInPage() {
     try {
       const { error } = await supabase
         .from("tickets")
-        .update({ status: "checked_in" })
+        .update({ status: "checked_in", updated_at: new Date().toISOString() })
         .eq("id", row.id as string);
 
       if (error) throw error;
@@ -193,6 +295,8 @@ export default function FrontdeskCheckInPage() {
         parsed: lookup.parsed,
         mismatch: lookup.mismatch,
       });
+      setJustCheckedIn(true);
+      fetchMetrics(); // Refresh stats
     } catch (e) {
       console.error(e);
       alert("Could not update check-in status.");
@@ -210,195 +314,315 @@ export default function FrontdeskCheckInPage() {
     !result.mismatch &&
     (statusStr === "pending" || statusStr === "booked" || statusStr === "ticket issued" || statusStr === "ticket_issued");
 
+  const checkInRate = metrics.totalScannable > 0 ? ((metrics.totalCheckedIn / metrics.totalScannable) * 100).toFixed(1) : "0.0";
+
+  // Mock Simulations for Demo
+  const simulateScan = async (type: 'valid' | 'duplicate' | 'invalid') => {
+     setLookup({ kind: "loading" });
+     setTimeout(async () => {
+        if (type === 'invalid') {
+           setLookup({ kind: "error", message: "Invalid QR code format. Please scan a valid Rhapsody ticket." });
+           return;
+        }
+
+        const { data: tickets } = await supabase
+           .from("tickets")
+           .select("*")
+           .not("type", "ilike", "%Donor%")
+           .limit(50);
+        
+        if (!tickets || tickets.length === 0) {
+           setLookup({ kind: "error", message: "No scannable tickets found in database for simulation." });
+           return;
+        }
+
+        if (type === 'valid') {
+           const valid = tickets.find(t => t.status !== 'checked_in');
+           if (valid) runLookup(valid.id);
+           else setLookup({ kind: "error", message: "No unchecked tickets available for simulation." });
+        } else {
+           const dup = tickets.find(t => t.status === 'checked_in');
+           if (dup) runLookup(dup.id);
+           else setLookup({ kind: "error", message: "No checked-in tickets available for duplicate simulation." });
+        }
+     }, 800);
+  };
+
   return (
-    <div className="mx-auto max-w-lg px-4 py-6 sm:py-8">
-      <div className="text-center">
-        <h1 className="text-xl font-bold text-[var(--foreground)] sm:text-2xl">
-          Ticket check-in
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-violet-300/75">
-          Scan the guest&apos;s QR or paste the code / ticket link.
-        </p>
+    <div className="max-w-7xl mx-auto px-4 py-4 sm:py-8 space-y-6 sm:space-y-10 animate-in fade-in duration-700">
+      
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+         <div className="flex items-start gap-4">
+            <div className="p-3.5 bg-primary/10 rounded-2xl border border-primary/20 shadow-sm">
+               <QrCode className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-violet-100 flex items-center gap-2">
+                  Front Desk Check-in
+               </h1>
+               <p className="text-gray-500 dark:text-violet-300 font-medium mt-1">Scan QR codes to validate and check-in attendees</p>
+               <div className="mt-3 inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-widest">
+                  Front Desk Portal
+               </div>
+            </div>
+         </div>
+         
+         <div className="hidden lg:flex items-center gap-4">
+             <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">System Status</span>
+                <span className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 mt-1">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                   Fully Operational
+                </span>
+             </div>
+         </div>
       </div>
 
-      <div className="mt-6 space-y-4">
-        <div className="flex rounded-xl border border-[var(--border-subtle)] bg-[var(--card-bg)] p-1">
-          <button
-            type="button"
-            onClick={() => {
-              setScannerActive(true);
-              setLookup({ kind: "idle" });
-            }}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-colors sm:text-sm ${
-              scannerActive
-                ? "bg-gradient-to-r from-primary to-secondary text-white shadow-sm"
-                : "text-gray-600 dark:text-violet-300/80"
-            }`}
-          >
-            <Camera className="h-4 w-4" aria-hidden />
-            Camera
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setScannerActive(false);
-              if (scannerRef.current) {
-                try {
-                  scannerRef.current.clear().catch(() => {});
-                } catch {
-                  /* ignore */
-                }
-                scannerRef.current = null;
-              }
-            }}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-colors sm:text-sm ${
-              !scannerActive
-                ? "bg-gradient-to-r from-primary to-secondary text-white shadow-sm"
-                : "text-gray-600 dark:text-violet-300/80"
-            }`}
-          >
-            <Keyboard className="h-4 w-4" aria-hidden />
-            Manual
-          </button>
-        </div>
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+         <div className="bg-white dark:bg-[var(--card-bg)] p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
+            <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-2 sm:mb-4">Total Checked In</span>
+            <div className="flex items-baseline gap-2">
+               <span className="text-2xl sm:text-4xl font-bold text-emerald-600 tabular-nums">{metrics.totalCheckedIn}</span>
+               <span className="text-xs sm:text-sm font-bold text-gray-400">of {metrics.totalScannable}</span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-400/60 mt-1 sm:mt-2 font-medium">of {metrics.totalScannable} booked</p>
+         </div>
 
-        {scannerActive ? (
-          <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-black/5 dark:bg-violet-950/40">
-            <div id={scanContainerId} className="min-h-[280px]" />
-            <p className="px-3 py-2 text-center text-[10px] text-gray-500 dark:text-violet-400/65">
-              Allow camera access. Hold the QR steady in the frame.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-violet-400/70">
-              Paste QR text or ticket URL
-            </label>
-            <textarea
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              rows={3}
-              placeholder="rhapsody|1|… or https://…/ticket/…"
-              className="w-full resize-y rounded-xl border border-[var(--border-subtle)] bg-[var(--card-bg)] px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <button
-              type="button"
-              onClick={() => void runLookup(manualInput)}
-              className="w-full min-h-[48px] rounded-xl bg-gradient-to-r from-primary to-secondary py-3 text-sm font-bold text-white shadow-lg shadow-pink-500/25 transition-opacity hover:opacity-95"
-            >
-              Look up ticket
-            </button>
-          </div>
-        )}
+         <div className="bg-white dark:bg-[var(--card-bg)] p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
+            <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-2 sm:mb-4">Check-in Rate</span>
+            <div className="text-2xl sm:text-4xl font-bold text-secondary tabular-nums">{checkInRate}%</div>
+            <p className="text-[10px] sm:text-xs text-secondary/70 mt-1 sm:mt-2 font-bold uppercase tracking-wider">progress</p>
+         </div>
+
+         <div className="bg-white dark:bg-[var(--card-bg)] p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
+            <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-1 sm:mb-4">This Hour</span>
+            <div className="text-2xl sm:text-4xl font-bold text-primary tabular-nums">{metrics.thisHour}</div>
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-400/60 mt-1 sm:mt-2 font-medium">check-ins</p>
+         </div>
+
+         <div className="bg-white dark:bg-[var(--card-bg)] p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
+            <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-1 sm:mb-4">Peak Time</span>
+            <div className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 mt-2">{metrics.peakTime}</div>
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-400/60 mt-1 sm:mt-2 font-medium">highest traffic</p>
+         </div>
       </div>
 
-      {lookup.kind === "loading" && (
-        <div className="mt-8 flex flex-col items-center gap-2 py-6">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium text-gray-600 dark:text-violet-300/80">
-            Verifying…
-          </p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+         
+         {/* Left Side: Scanner */}
+         <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white dark:bg-[var(--card-bg)] rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm">
+               <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                     <Scan className="w-5 h-5 text-primary" />
+                     <h3 className="text-lg font-bold text-gray-900 dark:text-violet-100">QR Code Scanner</h3>
+                  </div>
+                  <div className="flex rounded-xl overflow-hidden border border-gray-100 dark:border-violet-500/20">
+                     <button onClick={() => setScannerActive(true)} className={`px-4 py-2 text-xs font-bold transition-all ${scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500 hover:text-primary'}`}>Camera</button>
+                     <button onClick={() => setScannerActive(false)} className={`px-4 py-2 text-xs font-bold transition-all ${!scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500 hover:text-primary'}`}>Manual</button>
+                  </div>
+               </div>
 
-      {lookup.kind === "error" && (
-        <div
-          className="mt-8 flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50/90 p-4 text-left dark:border-amber-500/30 dark:bg-amber-950/35"
-          role="alert"
-        >
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-100/90">
-            {lookup.message}
-          </p>
-        </div>
-      )}
+               <p className="text-gray-500 dark:text-violet-300/80 text-sm font-medium mb-6">Position the QR code in front of the camera</p>
 
-      {lookup.kind === "result" && (
-        <div className="mt-8 space-y-4">
-          {lookup.mismatch && (
-            <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50/90 p-4 dark:border-red-500/35 dark:bg-red-950/40">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-red-600" />
-              <p className="text-sm font-medium text-red-900 dark:text-red-100/90">
-                {lookup.mismatch} Do not check in — ask the guest to show the ticket from their link.
-              </p>
+               <div className="relative group">
+                  <div className={`transition-all duration-300 ${scannerActive ? 'block' : 'hidden'}`}>
+                     <div className="overflow-hidden rounded-2xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative">
+                        <div id={scanContainerId} className="min-h-[340px] w-full" />
+                        <div className="absolute inset-0 pointer-events-none border-[1.5rem] border-black/40 flex items-center justify-center">
+                           <div className="w-48 h-48 sm:w-64 sm:h-64 border-2 border-primary/50 relative">
+                              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-sm"></div>
+                              <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-sm"></div>
+                              <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-sm"></div>
+                              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-sm"></div>
+                              <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                                 <QrCode className="w-24 h-24 text-primary animate-pulse" />
+                              </div>
+                           </div>
+                        </div>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-bold text-white/90 uppercase tracking-widest border border-white/10">
+                           Scan QR Code Here
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className={`transition-all duration-300 ${!scannerActive ? 'block' : 'hidden'} space-y-4`}>
+                     <div className="bg-gray-50 dark:bg-violet-950/30 rounded-2xl border-2 border-dashed border-gray-200 dark:border-violet-500/20 p-8 flex flex-col items-center text-center">
+                        <Keyboard className="w-12 h-12 text-gray-400 mb-4" />
+                        <h4 className="font-bold text-gray-700 dark:text-violet-200 mb-2">Manual Ticket Lookup</h4>
+                        <p className="text-sm text-gray-500 dark:text-violet-400 mb-6 max-w-xs">Paste the QR text or the complete ticket URL below to manually check-in the guest.</p>
+                        <textarea
+                           value={manualInput}
+                           onChange={(e) => setManualInput(e.target.value)}
+                           rows={3}
+                           placeholder="rhapsody|1|... OR https://.../ticket/..."
+                           className="w-full bg-white dark:bg-violet-950/50 border border-gray-200 dark:border-violet-500/30 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all placeholder:text-gray-300"
+                        />
+                        <button
+                           onClick={() => void runLookup(manualInput)}
+                           className="mt-4 w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary/20 transition-all"
+                        >
+                           Look up ticket
+                        </button>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Results / Status Display */}
+               <div className="mt-8 space-y-4">
+                  {lookup.kind === "loading" && (
+                     <div className="flex flex-col items-center py-10 bg-gray-50 dark:bg-violet-950/20 rounded-2xl border border-gray-100 dark:border-violet-500/10">
+                        <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
+                        <p className="text-sm font-bold text-gray-600 dark:text-violet-300/80 uppercase tracking-widest">Verifying Ticket...</p>
+                     </div>
+                  )}
+
+                  {lookup.kind === "error" && (
+                     <div className="p-5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 rounded-2xl flex items-start gap-3">
+                        <AlertOctagon className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                           <p className="font-bold text-amber-900 dark:text-amber-100 text-sm">Action Required</p>
+                           <p className="text-sm text-amber-800 dark:text-amber-200/80 mt-1">{lookup.message}</p>
+                        </div>
+                     </div>
+                  )}
+
+                  {result && (
+                     <div className="p-6 bg-white dark:bg-violet-950/40 border border-gray-100 dark:border-violet-500/30 rounded-2xl shadow-xl space-y-5 animate-in slide-in-from-bottom-2">
+                        {result.mismatch && (
+                           <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-500/40 rounded-xl flex items-center gap-3 text-red-700 dark:text-red-400 font-bold text-xs uppercase tracking-wide">
+                              <AlertTriangle className="w-4 h-4" /> {result.mismatch}
+                           </div>
+                        )}
+                        
+                        <div className="flex items-start justify-between">
+                           <div>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">Pass Details</p>
+                              <h4 className="text-xl font-bold text-gray-900 dark:text-violet-100 leading-tight">
+                                 {String(result.ticket.purchaser_name || "Guest")}
+                              </h4>
+                              <p className="mt-1 text-sm font-bold text-primary">
+                                 {TYPE_LABELS[String(result.ticket.type)] || String(result.ticket.type)} {" "}
+                                 <span className="text-gray-300 mx-1">/</span> {" "}
+                                 Qty {ticketQuantity(result.ticket as any)}
+                              </p>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">Booking Ref</p>
+                              <p className="font-mono text-sm font-bold text-gray-700 dark:text-violet-300">
+                                 #{shortTicketRef(String(result.ticket.id)).toUpperCase()}
+                              </p>
+                           </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 dark:border-violet-500/15 flex items-center justify-between">
+                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                              statusStr === "checked_in" 
+                                 ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30" 
+                                 : statusStr === "cancelled" 
+                                    ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-200/50 dark:border-red-500/30"
+                                    : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30"
+                           }`}>
+                              Status: {statusStr.replace("_", " ")}
+                           </span>
+
+                           {canCheckIn && (
+                              <button 
+                                 disabled={checkingIn}
+                                 onClick={handleCheckIn}
+                                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                              >
+                                 {checkingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Confirm Check-in</>}
+                              </button>
+                           )}
+
+                           {statusStr === "checked_in" && (
+                              <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
+                                 <CheckCircle className="w-5 h-5" />
+                                 {justCheckedIn ? "Welcome! Check-in Complete" : "Already Verified"}
+                              </div>
+                           )}
+                           
+                           {statusStr === "cancelled" && (
+                              <div className="flex items-center gap-2 text-red-600 font-bold text-sm">
+                                 <XCircle className="w-5 h-5" /> Denied: Cancelled
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                  )}
+               </div>
+
+               {/* Simulation Area */}
+               <div className="mt-12 pt-8 border-t border-gray-100 dark:border-violet-500/15">
+                  <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6 underline underline-offset-4 decoration-primary/30">Wireframe Demo - Simulate Scans</p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                     <button 
+                        onClick={() => simulateScan('valid')}
+                        className="flex-1 bg-emerald-100/50 hover:bg-emerald-600 border border-emerald-200 text-emerald-700 hover:text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                     >
+                        <CheckCircle className="w-4 h-4" /> Scan Valid Ticket
+                     </button>
+                     <button 
+                         onClick={() => simulateScan('duplicate')}
+                         className="flex-1 bg-amber-50 hover:bg-amber-600 border border-amber-200 text-amber-700 hover:text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                     >
+                        <AlertTriangle className="w-4 h-4" /> Scan Duplicate (Already Checked-in)
+                     </button>
+                     <button 
+                         onClick={() => simulateScan('invalid')}
+                         className="flex-1 bg-red-50 hover:bg-red-600 border border-red-200 text-red-700 hover:text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                     >
+                        <XCircle className="w-4 h-4" /> Scan Invalid QR
+                     </button>
+                  </div>
+               </div>
             </div>
-          )}
+         </div>
 
-          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--card-bg)] p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-mono text-[10px] font-bold text-gray-400 dark:text-violet-400/70">
-                  Ref {shortTicketRef(String(lookup.ticket.id))}
-                </p>
-                <p className="mt-1 truncate text-lg font-bold text-[var(--foreground)]">
-                  {String(lookup.ticket.purchaser_name || "Guest")}
-                </p>
-                <p className="mt-2 text-sm text-gray-600 dark:text-violet-300/85">
-                  {TYPE_LABELS[String(lookup.ticket.type)] || String(lookup.ticket.type)} ×{" "}
-                  {ticketQuantity(lookup.ticket as { quantity?: unknown })}
-                </p>
-              </div>
-              <Ticket className="h-8 w-8 shrink-0 text-primary/80" aria-hidden />
+         {/* Right Side: Activity & Rules */}
+         <div className="space-y-6 sm:space-y-8">
+            
+            {/* Recent Check-ins */}
+            <div className="bg-white dark:bg-[var(--card-bg)] rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-7 shadow-sm">
+               <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                     <History className="w-5 h-5 text-primary" />
+                     <h3 className="text-lg font-bold text-gray-900 dark:text-violet-100">Recent Check-ins</h3>
+                  </div>
+               </div>
+               <p className="text-gray-500 dark:text-violet-300/80 text-xs font-medium mb-5">Last scanned tickets and their status</p>
+               
+               <div className="space-y-3">
+                  {metrics.recentCheckIns.length === 0 ? (
+                     <p className="text-center py-8 text-sm text-gray-400 italic">No recent check-ins found</p>
+                  ) : (
+                     metrics.recentCheckIns.map(item => (
+                        <div key={item.id} className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/10 rounded-xl relative group hover:border-emerald-500/30 transition-all">
+                           <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-2">
+                                 <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                 <div className="min-w-0">
+                                    <p className="font-bold text-gray-900 dark:text-violet-100 text-sm truncate">{item.purchaser_name}</p>
+                                    <p className="text-[10px] font-bold text-gray-500 dark:text-violet-400 uppercase tracking-tighter">
+                                       #{shortTicketRef(item.id).toUpperCase()} • {TYPE_LABELS[item.type] || item.type} • Qty: {item.quantity}
+                                    </p>
+                                 </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                 <span className="inline-block bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-md mb-1">Checked-in</span>
+                                 <p className="text-[9px] font-bold text-gray-400">{new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</p>
+                              </div>
+                           </div>
+                        </div>
+                     ))
+                  )}
+               </div>
             </div>
-
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border-subtle)] pt-4">
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
-                  statusStr === "checked_in"
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200"
-                    : statusStr === "cancelled"
-                      ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200"
-                      : "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100"
-                }`}
-              >
-                {statusStr.replace("_", " ") || "unknown"}
-              </span>
-            </div>
-
-            {statusStr === "checked_in" && (
-              <div className="mt-4 flex items-center gap-2 text-emerald-700 dark:text-emerald-300/90">
-                <CheckCircle2 className="h-5 w-5 shrink-0" />
-                <span className="text-sm font-bold">Already checked in</span>
-              </div>
-            )}
-
-            {statusStr === "cancelled" && (
-              <p className="mt-4 text-sm font-medium text-red-700 dark:text-red-300/90">
-                This ticket is cancelled. Entry not allowed.
-              </p>
-            )}
-
-            {canCheckIn && (
-              <button
-                type="button"
-                disabled={checkingIn}
-                onClick={() => void handleCheckIn()}
-                className="mt-5 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-md transition-opacity hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {checkingIn ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-5 w-5" />
-                    Confirm check-in
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setLookup({ kind: "idle" });
-              setManualInput("");
-            }}
-            className="w-full rounded-xl border border-[var(--border-subtle)] py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-[var(--muted-bg)] dark:text-violet-200"
-          >
-            Scan next guest
-          </button>
-        </div>
-      )}
+         </div>
+      </div>
     </div>
   );
 }

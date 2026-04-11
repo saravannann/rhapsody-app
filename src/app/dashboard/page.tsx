@@ -107,28 +107,45 @@ export default function DashboardPage() {
     const revCount = { 'Platinum': 0, 'Donor': 0, 'Student': 0 };
     const statusCount = { 'booked': 0, 'checked_in': 0, 'cancelled': 0 };
 
-    filteredTickets.forEach(t => {
+    filteredTickets.forEach((t) => {
       const q = ticketQuantity(t);
       const lineTotal = ticketLineTotal(t);
+      const rawType = String(t.type || "");
+      const status = String(t.status || "").toLowerCase();
+
       totalRev += lineTotal;
-      if (t.funds_destination === 'trust') {
-         trustRev += lineTotal;
+      if (t.funds_destination === "trust") {
+        trustRev += lineTotal;
       } else {
-         organizerRev += lineTotal;
+        organizerRev += lineTotal;
       }
-      
-      const isDonor = t.type === 'Donor Pass' || t.type === 'Donor';
-      if (!isDonor) {
-         scannableCount += q;
-         if (t.status === 'checked_in') checkInCount += q;
-         if (statusCount[t.status as keyof typeof statusCount] !== undefined) {
-            statusCount[t.status as keyof typeof statusCount] += q;
-         }
+
+      // Normalize type for internal logic checks
+      const isDonor = rawType.includes("Donor");
+      const isPlatinum = rawType.includes("Platinum");
+      const isStudent = rawType.includes("Student");
+
+      if (status !== "cancelled") {
+        if (!isDonor && (isPlatinum || isStudent)) {
+          scannableCount += q;
+          if (status === "checked_in") checkInCount += q;
+        }
+
+        if (statusCount[status as keyof typeof statusCount] !== undefined) {
+          statusCount[status as keyof typeof statusCount] += q;
+        }
       }
-      
-      if (typeCount[t.type as keyof typeof typeCount] !== undefined) {
-         typeCount[t.type as keyof typeof typeCount] += q;
-         revCount[t.type as keyof typeof revCount] += lineTotal;
+
+      // Map to specific buckets for charts/targets
+      if (isPlatinum) {
+        typeCount["Platinum"] += q;
+        revCount["Platinum"] += lineTotal;
+      } else if (isDonor) {
+        typeCount["Donor"] += q;
+        revCount["Donor"] += lineTotal;
+      } else if (isStudent) {
+        typeCount["Student"] += q;
+        revCount["Student"] += lineTotal;
       }
     });
 
@@ -172,8 +189,9 @@ export default function DashboardPage() {
     setChartData(data);
 
     setStatusData([
-      { name: 'Booked', value: statusCount['booked'] },
-      { name: 'Checked-in', value: statusCount['checked_in'] },
+      { name: 'TotalVisitors', value: scannableCount },
+      { name: 'CheckedIn', value: checkInCount },
+      { name: 'Remaining', value: Math.max(0, scannableCount - checkInCount) },
       { name: 'Cancelled', value: statusCount['cancelled'] },
     ]);
 
@@ -564,46 +582,22 @@ export default function DashboardPage() {
                 <div className="animate-in fade-in duration-500">
                   <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-10">
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
-                          <span className="text-2xl sm:text-4xl font-bold text-[#10B981] mb-1 sm:mb-2 block tabular-nums">
-                             {(statusData.find(s=>s.name==='Checked-in')?.value || 0) + (statusData.find(s=>s.name==='Booked')?.value || 0)}
+                          <span className="text-2xl sm:text-4xl font-bold text-primary mb-1 sm:mb-2 block tabular-nums">
+                             {statusData.find(s=>s.name==='TotalVisitors')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Booked</h4>
+                          <h4 className="text-[10px] sm:text-sm text-gray-500 dark:text-violet-300 leading-tight font-bold uppercase tracking-wider">Total Visitors</h4>
                       </div>
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
-                          <span className="text-2xl sm:text-4xl font-bold text-[#F59E0B] mb-1 sm:mb-2 block tabular-nums">
-                             {statusData.find(s=>s.name==='Booked')?.value || 0}
+                          <span className="text-2xl sm:text-4xl font-bold text-accent mb-1 sm:mb-2 block tabular-nums">
+                             {statusData.find(s=>s.name==='CheckedIn')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Booked</h4>
+                          <h4 className="text-[10px] sm:text-sm text-gray-500 dark:text-violet-300 leading-tight font-bold uppercase tracking-wider">Checked-in</h4>
                       </div>
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
-                          <span className="text-2xl sm:text-4xl font-bold text-[#8B5CF6] mb-1 sm:mb-2 block tabular-nums">
-                             {statusData.find(s=>s.name==='Checked-in')?.value || 0}
+                          <span className="text-2xl sm:text-4xl font-bold text-gray-400 mb-1 sm:mb-2 block tabular-nums">
+                             {statusData.find(s=>s.name==='Remaining')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Checked-in</h4>
-                      </div>
-                  </div>
-
-                  <div className="max-w-4xl mx-auto mt-4 sm:mt-8">
-                      <p className="text-xs font-bold text-gray-500 dark:text-violet-300/70 mb-3 sm:mb-6 uppercase tracking-wide text-center">Lifecycle</p>
-                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 rounded-xl sm:rounded-2xl p-4 sm:p-8 flex items-center justify-between text-center shadow-sm gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
-                         <div className="relative z-10 w-24">
-                            <div className="w-12 h-12 bg-gray-100 border border-gray-200 dark:border-violet-500/22 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-gray-500 dark:text-violet-300/70 shadow-sm">1</div>
-                            <span className="text-xs font-bold text-gray-700 dark:text-violet-300">Issued</span>
-                         </div>
-                         <div className="flex-1 h-0.5 bg-gray-200 mx-2 relative z-0 min-w-[30px]">
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-t-2 border-r-2 border-gray-300 rotate-45 transform translate-x-1/2"></div>
-                         </div>
-                         <div className="relative z-10 w-24">
-                            <div className="w-12 h-12 bg-green-50 border border-green-200 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-[#10B981] shadow-sm">2</div>
-                            <span className="text-xs font-bold text-gray-700 dark:text-violet-300">Booked</span>
-                         </div>
-                         <div className="flex-1 h-0.5 bg-gray-200 mx-2 relative z-0 min-w-[30px]">
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-t-2 border-r-2 border-gray-300 rotate-45 transform translate-x-1/2"></div>
-                         </div>
-                         <div className="relative z-10 w-24">
-                            <div className="w-12 h-12 bg-gray-900 dark:bg-violet-700 border border-gray-800 dark:border-violet-500 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-white shadow-md shadow-gray-400/30 dark:shadow-violet-900/40">3</div>
-                            <span className="text-xs font-bold text-gray-900 dark:text-violet-100">Checked-in</span>
-                         </div>
+                          <h4 className="text-[10px] sm:text-sm text-gray-500 dark:text-violet-300 leading-tight font-bold uppercase tracking-wider">Remaining</h4>
                       </div>
                   </div>
                 </div>
