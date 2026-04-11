@@ -16,6 +16,7 @@ export default function OrganisersPage() {
   const pathname = usePathname();
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [organisers, setOrganisers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -33,32 +34,44 @@ export default function OrganisersPage() {
     if (view === "list") loadOrganisers();
   }, [view, pathname]);
 
+  function profileIsOrganiser(p: { roles?: unknown; role?: unknown }): boolean {
+    if (Array.isArray(p.roles)) return p.roles.includes("organiser");
+    if (typeof p.roles === "string") {
+      const s = p.roles.trim().toLowerCase();
+      return s === "organiser" || s.split(/[,\s]+/).includes("organiser");
+    }
+    if (p.role === "organiser") return true;
+    return false;
+  }
+
   async function loadOrganisers() {
     setLoading(true);
+    setLoadError(null);
     try {
+      // Use select("*") so missing optional columns (e.g. pass_targets before migration) never break the query.
       const [profilesRes, ticketsRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, name, phone, roles, role, pass_targets"),
+        supabase.from("profiles").select("*"),
         supabase.from("tickets").select("*"),
       ]);
 
       if (profilesRes.error) {
         console.error("[Organisers] profiles:", profilesRes.error);
+        setLoadError(
+          profilesRes.error.message ||
+            "Could not load profiles. Check Supabase connection and RLS policies."
+        );
+        setOrganisers([]);
+        return;
       }
       if (ticketsRes.error) {
-        console.error("[Organisers] tickets:", ticketsRes.error);
+        console.warn("[Organisers] tickets:", ticketsRes.error);
       }
 
       const profiles = profilesRes.data || [];
       const tickets = ticketsRes.data || [];
 
       if (profiles) {
-        const orgs = profiles.filter(p => {
-          if (Array.isArray(p.roles)) return p.roles.includes('organiser');
-          if (p.role) return p.role === 'organiser';
-          return false;
-        }).map(org => {
+        const orgs = profiles.filter(profileIsOrganiser).map(org => {
            // Aggregate sales for this SPECIFIC organiser - case insensitive and trimmed
            const orgNameLower = org.name.trim().toLowerCase();
            const orgTickets = tickets.filter(t => t.sold_by?.trim().toLowerCase() === orgNameLower);
@@ -279,6 +292,22 @@ export default function OrganisersPage() {
         )}
       </div>
 
+      {view === "list" && loadError ? (
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50/95 px-4 py-3 text-sm text-red-950 sm:flex-row sm:items-center sm:justify-between"
+          role="alert"
+        >
+          <p className="font-medium leading-snug">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadOrganisers()}
+            className="shrink-0 rounded-lg border border-red-300 bg-white px-4 py-2 text-xs font-bold text-red-900 shadow-sm transition-colors hover:bg-red-100"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       {view === 'add' ? (
         <div className="w-full max-w-2xl bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 shadow-sm border border-pink-100/80 animate-in fade-in slide-in-from-right-4 duration-300">
           <form onSubmit={handleAddSubmit} className="space-y-5 sm:space-y-6">
@@ -380,6 +409,10 @@ export default function OrganisersPage() {
 
            {loading ? (
               <div className="flex justify-center py-10 sm:py-12"><Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin" /></div>
+           ) : loadError ? (
+              <p className="py-6 text-center text-sm text-gray-600">
+                Fix the issue above, then tap Retry to load the directory.
+              </p>
            ) : filteredOrganisers.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-10 text-center">
                  <p className="text-sm font-semibold text-gray-700">
