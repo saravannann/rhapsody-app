@@ -21,19 +21,72 @@ export function buildTicketWhatsAppMessage(params: {
   ref: string;
   ticketPageUrl: string;
 }): string {
-  const name = params.purchaserName.trim() || "there";
+  const name = params.purchaserName.trim() || "Guest";
   const total = params.totalInr.toLocaleString("en-IN");
+
+  const isPlatinumOrStudent =
+    params.passLabel.toLowerCase().includes("platinum") ||
+    params.passLabel.toLowerCase().includes("student");
+
+  const isDonor = params.passLabel.toLowerCase().includes("donor");
+
+  if (isDonor) {
+    return [
+      `Hello ${name},`,
+      "",
+      `✨ Your Rhapsody Donor Pass is confirmed.`,
+      "",
+      `We extend our heartfelt gratitude for your generous support 🤍`,
+      "",
+      `🎟️ Donor Pass Details`,
+      `Donor Pass × ${params.quantity}`,
+      `Reference: ${params.ref.toUpperCase()}`,
+      `Contribution: ₹${total}`,
+      "",
+      `Your contribution is truly meaningful — this pass will be offered to two cancer survivors, giving them the opportunity to experience an evening of music, hope, and joy.`,
+      "",
+      `Because of you, this evening reaches beyond the stage and touches lives in a deeply personal way.`,
+      "",
+      `With sincere appreciation, we thank you for being a part of this cause.`,
+      "",
+      `With gratitude,`,
+      `Team Rhapsody`,
+      `Thenmozhi Memorial Trust`
+    ].join("\n");
+  }
+
+  if (isPlatinumOrStudent) {
+    return [
+      `Dear ${name},`,
+      `✨ Your booking for Rhapsody is confirmed.`,
+      `We are truly grateful for your generous support — it means a great deal to us 🤍`,
+      `🎟️ Pass Details`,
+      `${params.passLabel} × ${params.quantity}`,
+      `Reference: ${params.ref.toUpperCase()}`,
+      `Contribution: ₹${total}`,
+      `📅 Event Details`,
+      `Date: May 9th 2026`,
+      `Time: 4:30 PM Onwards`,
+      `Venue: Sir Mutha Venkata Subba Rao Concert Hall, Chennai`,
+      `🔗 Your Digital Entry Pass`,
+      params.ticketPageUrl,
+      `Kindly present your QR code at the entrance for a seamless check-in experience.`,
+      `We look forward to hosting you for an evening of elegance, music, and meaningful moments ✨`,
+      `With gratitude,`,
+      `Team Rhapsody`,
+      `Thenmozhi Memorial Trust`
+    ].join("\n");
+  }
+
   return [
     `Hello ${name},`,
     "",
     "Your Rhapsody ticket is confirmed.",
-    `• ${params.passLabel} × ${params.quantity} (Ref ${params.ref})`,
+    `• ${params.passLabel} × ${params.quantity} (Ref ${params.ref.toUpperCase()})`,
     `• Total: ₹${total}`,
     "",
-    "Your QR and full details for check-in:",
+    "Your check-in QR link:",
     params.ticketPageUrl,
-    "",
-    "Please save this link and show the QR at the venue entrance.",
     "",
     "— Rhapsody · Thenmozhi Memorial Trust",
   ].join("\n");

@@ -173,8 +173,8 @@ export default function SellTicketsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Quick Sell</h1>
            </div>
 
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-              {CATEGORIES.map(cat => (
+           <div className={`grid grid-cols-2 ${currentUser.role === 'admin' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-2 sm:gap-3`}>
+              {CATEGORIES.filter(cat => cat.id !== 'Bulk' || currentUser.role === 'admin').map(cat => (
                  <div key={cat.id} onClick={() => setSelectedCategory(cat)} className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-[0.99]`}>
                     <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                        <cat.icon className="w-16 h-16" />
@@ -288,44 +288,40 @@ export default function SellTicketsPage() {
                     </div>
                   </div>
 
-                  {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' && (
-                     <>
-                        <div className="mx-auto mt-6 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
-                           {whatsappSendUrl ? (
-                              <a
-                                 href={whatsappSendUrl}
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
-                              >
-                                 <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
-                                 WhatsApp to purchaser
-                              </a>
-                           ) : null}
-                           {ticketPageUrl ? (
-                              <button
-                                 type="button"
-                                 onClick={async () => {
-                                    try {
-                                       await navigator.clipboard.writeText(ticketPageUrl);
-                                       setLinkCopied(true);
-                                       setTimeout(() => setLinkCopied(false), 2000);
-                                    } catch {
-                                       alert("Could not copy. Copy manually: " + ticketPageUrl);
-                                    }
-                                 }}
-                                 className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
-                              >
-                                 <Link2 className="h-4 w-4 shrink-0" aria-hidden />
-                                 {linkCopied ? "Link copied" : "Copy ticket link"}
-                              </button>
-                           ) : null}
-                        </div>
-                        <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60 text-center">
-                           WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
-                        </p>
-                     </>
-                  )}
+                  <div className="mx-auto mt-6 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
+                     {whatsappSendUrl ? (
+                        <a
+                           href={whatsappSendUrl}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
+                        >
+                           <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
+                           WhatsApp to purchaser
+                        </a>
+                     ) : null}
+                     {ticketPageUrl && saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
+                        <button
+                           type="button"
+                           onClick={async () => {
+                              try {
+                                 await navigator.clipboard.writeText(ticketPageUrl);
+                                 setLinkCopied(true);
+                                 setTimeout(() => setLinkCopied(false), 2000);
+                              } catch {
+                                 alert("Could not copy. Copy manually: " + ticketPageUrl);
+                              }
+                           }}
+                           className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                        >
+                           <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                           {linkCopied ? "Link copied" : "Copy ticket link"}
+                        </button>
+                     ) : null}
+                  </div>
+                  <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60 text-center">
+                     WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
+                  </p>
 
                   <button
                      type="button"

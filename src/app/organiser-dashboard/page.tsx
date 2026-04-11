@@ -67,12 +67,16 @@ export default function OrganiserDashboard() {
           soldByName
         );
 
+        const savedRole = localStorage.getItem("rhapsody_role") || "organiser";
+
         setTicketData(
-          rows.map((r) => ({
-            name: r.name,
-            sold: r.sold,
-            target: r.target,
-          }))
+          rows
+            .filter((r) => r.name !== "Bulk Tickets" || savedRole === "admin")
+            .map((r) => ({
+              name: r.name,
+              sold: r.sold,
+              target: r.target,
+            }))
         );
 
         const passesSold = t.reduce((sum, x) => sum + ticketQuantity(x), 0);

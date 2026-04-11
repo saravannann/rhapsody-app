@@ -34,6 +34,12 @@ export default function DashboardPage() {
   const [filterOrganiser, setFilterOrganiser] = useState('All Organisers');
   const [filterPayment, setFilterPayment] = useState('All Modes');
 
+  const [role, setRole] = useState('organiser');
+
+  useEffect(() => {
+    setRole(localStorage.getItem('rhapsody_role') || 'organiser');
+  }, []);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -157,12 +163,14 @@ export default function DashboardPage() {
       totalTarget: totalTargetCount
     });
 
-    setChartData([
+    const data = [
       { name: 'Platinum Pass', Sold: typeCount['Platinum'], Target: targetPlatinum, Revenue: revCount['Platinum'] },
       { name: 'Donor Pass', Sold: typeCount['Donor'], Target: targetDonor, Revenue: revCount['Donor'] },
       { name: 'Bulk Pass', Sold: typeCount['Bulk'], Target: targetBulk, Revenue: revCount['Bulk'] },
       { name: 'Student Pass', Sold: typeCount['Student'], Target: targetStudent, Revenue: revCount['Student'] },
-    ]);
+    ].filter(d => d.name !== 'Bulk Pass' || role === 'admin');
+
+    setChartData(data);
 
     setStatusData([
       { name: 'Pending', value: statusCount['pending'] },
@@ -249,7 +257,7 @@ export default function DashboardPage() {
                      <option>All Types</option>
                      <option value="Platinum">Platinum Pass</option>
                      <option value="Donor">Donor Pass</option>
-                     <option value="Bulk">Bulk Pass</option>
+                     {role === 'admin' && <option value="Bulk">Bulk Pass</option>}
                      <option value="Student">Student Pass</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-primary absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -387,7 +395,7 @@ export default function DashboardPage() {
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 min-h-0">
                    <div className="lg:col-span-2 h-[220px] sm:h-[280px] lg:h-[340px] w-full min-w-0">
                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                       <BarChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }} barGap={0} barSize={32}>
+                       <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={0} barSize={32}>
                          <defs>
                            <linearGradient id="shiningGold" x1="0" y1="0" x2="0" y2="1">
                              <stop offset="0%" stopColor="#FDE047" stopOpacity={1}/>
@@ -397,7 +405,7 @@ export default function DashboardPage() {
                          </defs>
                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11, fontWeight: 500}} dy={6} interval={0} />
-                         <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11, fontWeight: 500}} width={32} />
+                         <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11, fontWeight: 500}} width={45} />
                          <Tooltip 
                            cursor={{fill: '#F3F4F6'}}
                            contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -477,10 +485,12 @@ export default function DashboardPage() {
                                  <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Donor</span>
                                  <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.donor}</span>
                                </div>
-                               <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
-                                 <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Bulk</span>
-                                 <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.bulk}</span>
-                               </div>
+                                {role === 'admin' && (
+                                 <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
+                                   <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Bulk</span>
+                                   <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.bulk}</span>
+                                 </div>
+                                )}
                                <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-white/70 px-2 py-1.5 dark:bg-violet-950/35">
                                  <span className="truncate font-medium text-gray-500 dark:text-violet-400/80">Student</span>
                                  <span className="shrink-0 font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.student}</span>
@@ -499,7 +509,7 @@ export default function DashboardPage() {
                             <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organiser Name</th>
                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Bulk</th>
+                             {role === 'admin' && <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Bulk</th>}
                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total</th>
                             <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Action</th>
@@ -523,7 +533,7 @@ export default function DashboardPage() {
                                      </td>
                                      <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.platinum}</td>
                                      <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.donor}</td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.bulk}</td>
+                                      {role === 'admin' && <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.bulk}</td>}
                                      <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.student}</td>
                                      <td className="py-5 px-4 text-center">
                                         <span className="inline-block bg-[#F8FAFC] text-gray-600 dark:text-violet-300/85 text-xs font-bold px-3 py-1 rounded-md border border-gray-100 dark:border-violet-500/15">
