@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle } from "lucide-react";
+import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
@@ -210,8 +210,30 @@ export default function DashboardPage() {
     <div className="space-y-4 sm:space-y-5 max-w-7xl mx-auto">
       
       {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-4 gap-y-2 min-w-0">
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Dashboard</h1>
+          </div>
+
+          {/* Dynamic Countdown Inline */}
+          {(() => {
+            const eventDate = new Date('2026-05-09T16:30:00');
+            const diffTime = eventDate.getTime() - new Date().getTime();
+            const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return (
+              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 bg-white dark:bg-violet-950/25 border border-pink-100 dark:border-violet-500/20 rounded-full shadow-sm animate-pulse-soft cursor-default">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+                </span>
+                <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-violet-100 tabular-nums">
+                  {days > 0 ? days : 0} <span className="text-secondary uppercase tracking-wide ml-0.5 text-[10px] sm:text-xs">Days to go · Rhapsody</span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {loading ? (

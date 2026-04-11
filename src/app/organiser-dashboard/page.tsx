@@ -100,15 +100,35 @@ export default function OrganiserDashboard() {
     <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto">
       
       {/* Header — compact; actions full-width on small screens */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">
-            My Dashboard
-          </h1>
-          <p className="text-gray-500 dark:text-violet-300/70 mt-0.5 text-xs sm:text-sm font-medium">Your ticket sales at a glance</p>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-4 gap-y-2 min-w-0">
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">
+              My Dashboard
+            </h1>
+            <p className="text-gray-500 dark:text-violet-300/70 mt-0.5 text-xs sm:text-sm font-medium">Your ticket sales at a glance</p>
+          </div>
+
+          {/* Dynamic Countdown Inline */}
+          {(() => {
+            const eventDate = new Date('2026-05-09T16:30:00');
+            const diffTime = eventDate.getTime() - new Date().getTime();
+            const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return (
+              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 bg-white dark:bg-violet-950/25 border border-pink-100 dark:border-violet-500/20 rounded-full shadow-sm animate-pulse-soft cursor-default">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+                </span>
+                <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-violet-100 tabular-nums">
+                  {days > 0 ? days : 0} <span className="text-secondary uppercase tracking-wide ml-0.5 text-[10px] sm:text-xs">Days to go · Rhapsody</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
         
-        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto">
            <button
              type="button"
              onClick={() => window.location.href='/organiser-dashboard/sales'}
@@ -134,7 +154,7 @@ export default function OrganiserDashboard() {
         <>
           {/* Performance — dense on mobile: 2-col metrics + slim countdown */}
           <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl shadow-sm border border-pink-100/80 dark:border-violet-500/18 overflow-hidden relative">
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-violet-500/15">
+             <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-violet-500/15">
                 <div className="p-4 sm:p-5 relative">
                    <div className="flex items-center gap-2 mb-1">
                       <Target className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0" />
@@ -176,14 +196,6 @@ export default function OrganiserDashboard() {
                    
                    <div className="inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 mt-1">
                       <CheckCircle2 className="w-3 h-3 mr-1 shrink-0" /> Live sync
-                   </div>
-                </div>
-
-                <div className="p-4 sm:p-5 flex flex-row sm:flex-col items-center justify-between sm:justify-center gap-3 sm:text-center lg:min-w-[140px] bg-white dark:bg-violet-950/20">
-                   <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-secondary shrink-0 sm:mx-auto" />
-                   <div>
-                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">15</div>
-                      <p className="text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-wide">Days to event</p>
                    </div>
                 </div>
              </div>
