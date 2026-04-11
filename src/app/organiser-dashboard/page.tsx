@@ -12,7 +12,7 @@ import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
 
 export default function OrganiserDashboard() {
   const [loading, setLoading] = useState(true);
-  const [overall, setOverall] = useState({ sold: 0, target: 0, revenue: 0 });
+  const [overall, setOverall] = useState({ sold: 0, target: 0, revenue: 0, trustRevenue: 0, organizerRevenue: 0 });
   const [ticketData, setTicketData] = useState<
     { name: string; sold: number; target: number }[]
   >([
@@ -49,8 +49,16 @@ export default function OrganiserDashboard() {
         const t = tickets || [];
 
         let personalRev = 0;
+        let trustRevenue = 0;
+        let organizerRevenue = 0;
         t.forEach((ticket) => {
-          personalRev += ticketLineTotal(ticket);
+          const lineTot = ticketLineTotal(ticket);
+          personalRev += lineTot;
+          if (ticket.funds_destination === 'trust') {
+             trustRevenue += lineTot;
+          } else {
+             organizerRevenue += lineTot;
+          }
         });
 
         const soldByName = soldCountsFromTickets(t);
@@ -72,6 +80,8 @@ export default function OrganiserDashboard() {
           ...prev,
           sold: passesSold,
           revenue: personalRev,
+          trustRevenue,
+          organizerRevenue,
           target: totalPassTarget(profileRow?.pass_targets),
         }));
       } catch (error) {
@@ -149,12 +159,21 @@ export default function OrganiserDashboard() {
                    </div>
                    <p className="text-[11px] sm:text-xs text-gray-500 dark:text-violet-300/70 font-medium mb-3">From your sales</p>
                    
-                   <div className="flex items-baseline gap-1 mb-3">
+                   <div className="flex items-baseline gap-1 mb-2">
                       <span className="text-base font-bold text-gray-400 dark:text-violet-400/60">₹</span>
                       <span className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-violet-100 tabular-nums leading-none">{new Intl.NumberFormat('en-IN').format(overall.revenue)}</span>
                    </div>
                    
-                   <div className="inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                   <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                      <div className="bg-white/80 dark:bg-violet-950/40 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-200 dark:border-green-500/20 text-[9px] font-bold">
+                         Trust: ₹{new Intl.NumberFormat('en-IN').format(overall.trustRevenue)}
+                      </div>
+                      <div className="bg-white/80 dark:bg-violet-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 text-[9px] font-bold">
+                         Org: ₹{new Intl.NumberFormat('en-IN').format(overall.organizerRevenue)}
+                      </div>
+                   </div>
+                   
+                   <div className="inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 mt-1">
                       <CheckCircle2 className="w-3 h-3 mr-1 shrink-0" /> Live sync
                    </div>
                 </div>

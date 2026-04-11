@@ -12,6 +12,8 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('Sales Overview');
   const [metrics, setMetrics] = useState({
     totalRevenue: 0,
+    trustRevenue: 0,
+    organizerRevenue: 0,
     totalTickets: 0,
     checkedIn: 0,
     activeOrganisers: 0,
@@ -87,6 +89,8 @@ export default function DashboardPage() {
     });
 
     let totalRev = 0;
+    let trustRev = 0;
+    let organizerRev = 0;
     let checkInCount = 0;
     
     const typeCount = { 'Platinum': 0, 'Donor': 0, 'Bulk': 0, 'Student': 0 };
@@ -95,14 +99,21 @@ export default function DashboardPage() {
 
     filteredTickets.forEach(t => {
       const q = ticketQuantity(t);
-      totalRev += ticketLineTotal(t);
+      const lineTotal = ticketLineTotal(t);
+      totalRev += lineTotal;
+      if (t.funds_destination === 'trust') {
+         trustRev += lineTotal;
+      } else {
+         organizerRev += lineTotal;
+      }
+      
       if (t.status === 'checked_in') checkInCount += q;
       if (statusCount[t.status as keyof typeof statusCount] !== undefined) {
          statusCount[t.status as keyof typeof statusCount] += q;
       }
       if (typeCount[t.type as keyof typeof typeCount] !== undefined) {
          typeCount[t.type as keyof typeof typeCount] += q;
-         revCount[t.type as keyof typeof revCount] += ticketLineTotal(t);
+         revCount[t.type as keyof typeof revCount] += lineTotal;
       }
     });
 
@@ -129,6 +140,8 @@ export default function DashboardPage() {
 
     setMetrics({
       totalRevenue: totalRev,
+      trustRevenue: trustRev,
+      organizerRevenue: organizerRev,
       totalTickets: passesSold,
       checkedIn: checkInCount,
       activeOrganisers: allOrganisers.length,
@@ -282,10 +295,17 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums break-all">₹{formattedRevenue}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 mb-1 sm:mb-2 line-clamp-1">Admin view</p>
-                <div className="flex items-center text-[10px] sm:text-xs font-semibold text-green-600">
+                <div className="flex items-center gap-1.5 mt-1 sm:mt-1.5 mb-1.5">
+                   <div className="flex items-center gap-1 bg-green-50/70 border border-green-100 dark:border-green-500/25 dark:bg-green-950/25 px-1.5 py-0.5 rounded text-[9px] font-bold text-green-700 dark:text-green-400">
+                      <span>Trust:</span> <span className="tabular-nums">₹{new Intl.NumberFormat('en-IN').format(metrics.trustRevenue)}</span>
+                   </div>
+                   <div className="flex items-center gap-1 bg-blue-50/70 border border-blue-100 dark:border-blue-500/25 dark:bg-blue-950/25 px-1.5 py-0.5 rounded text-[9px] font-bold text-blue-700 dark:text-blue-400">
+                      <span>Org:</span> <span className="tabular-nums">₹{new Intl.NumberFormat('en-IN').format(metrics.organizerRevenue)}</span>
+                   </div>
+                </div>
+                <div className="flex items-center text-[9px] sm:text-[10px] font-semibold text-green-600">
                   <TrendingUp className="w-3 h-3 mr-1 shrink-0" />
-                  Live
+                  Live combined view
                 </div>
               </div>
             </div>

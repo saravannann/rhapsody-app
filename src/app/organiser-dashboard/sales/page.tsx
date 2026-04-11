@@ -95,9 +95,18 @@ export default function SalesReport() {
     });
   }, [tickets, searchQuery, ticketTypeFilter, paymentModeFilter, pocFilter]);
 
-  // Summary Metrics
   const metrics = useMemo(() => {
-    const revenue = filteredTickets.reduce((acc, t) => acc + ticketLineTotal(t), 0);
+    let revenue = 0;
+    let trustRevenue = 0;
+    let organizerRevenue = 0;
+    
+    filteredTickets.forEach((t) => {
+      const lineTotal = ticketLineTotal(t);
+      revenue += lineTotal;
+      if (t.funds_destination === 'trust') trustRevenue += lineTotal;
+      else organizerRevenue += lineTotal;
+    });
+
     const bookedCount = filteredTickets.reduce((acc, t) => {
       if (t.status === "booked" || t.status === "pending") {
         return acc + ticketQuantity(t);
@@ -110,6 +119,8 @@ export default function SalesReport() {
       totalEntries: filteredTickets.length,
       totalTickets: passCount,
       totalRevenue: revenue,
+      trustRevenue,
+      organizerRevenue,
       bookedTickets: bookedCount,
     };
   }, [filteredTickets]);
@@ -261,12 +272,21 @@ export default function SalesReport() {
             <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wide block mb-0.5">Tickets</span>
             <div className="text-xl sm:text-3xl font-bold text-blue-900 tabular-nums">{metrics.totalTickets}</div>
          </div>
-         <div className="bg-green-50 border border-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
-            <div className="flex justify-between items-start gap-1">
-               <span className="text-[9px] sm:text-[10px] font-bold text-green-600 uppercase tracking-wide block mb-0.5">Revenue</span>
-               {userRole !== 'admin' && <span className="text-[8px] font-bold bg-green-200 text-green-700 px-1 py-0.5 rounded">Admin</span>}
+         <div className="bg-green-50 border border-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+            <div>
+               <div className="flex justify-between items-start gap-1">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-green-600 uppercase tracking-wide block mb-0.5">Revenue</span>
+               </div>
+               <div className="text-xl sm:text-3xl font-bold text-green-900 tabular-nums leading-tight mb-1">₹{new Intl.NumberFormat('en-IN').format(metrics.totalRevenue)}</div>
             </div>
-            <div className="text-xl sm:text-3xl font-bold text-green-900 tabular-nums leading-tight">₹{new Intl.NumberFormat('en-IN').format(userRole === 'admin' ? metrics.totalRevenue : 0)}</div>
+            <div className="flex items-center gap-2 text-[9px] font-bold">
+               <div className="bg-white/60 text-green-700 px-1.5 py-0.5 rounded border border-green-200">
+                  Trust: ₹{new Intl.NumberFormat('en-IN').format(metrics.trustRevenue)}
+               </div>
+               <div className="bg-white/60 text-emerald-700 px-1.5 py-0.5 rounded border border-green-200">
+                  Org: ₹{new Intl.NumberFormat('en-IN').format(metrics.organizerRevenue)}
+               </div>
+            </div>
          </div>
          <div className="bg-gray-50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/15 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
             <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 dark:text-violet-300/85 uppercase tracking-wide block mb-0.5">Booked</span>
