@@ -114,8 +114,8 @@ export default function SalesReport() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight">Sales Report</h1>
-          <p className="text-gray-500 mt-0.5 text-xs sm:text-sm font-medium">Search, filter, export</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-violet-100 leading-tight">Sales Report</h1>
+          <p className="text-gray-500 dark:text-violet-300/70 mt-0.5 text-xs sm:text-sm font-medium">Search, filter, export</p>
         </div>
         
         <button 
@@ -128,9 +128,9 @@ export default function SalesReport() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm">
+      <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-violet-500/15 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-           <h3 className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
+           <h3 className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest flex items-center">
              <Filter className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Filters
            </h3>
            <button type="button" onClick={clearFilters} className="text-xs font-bold text-primary hover:underline min-h-[44px] px-1 sm:min-h-0">Clear</button>
@@ -138,14 +138,14 @@ export default function SalesReport() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
            <div className="relative col-span-2 lg:col-span-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
               <input 
                  type="search"
                  enterKeyHint="search"
                  value={searchQuery}
                  onChange={e => setSearchQuery(e.target.value)}
                  placeholder="Search name, phone, ID" 
-                 className="w-full min-h-[44px] bg-gray-50 border border-transparent focus:bg-white focus:border-primary/30 rounded-xl pl-9 pr-3 py-2 text-sm font-medium transition-all outline-none"
+                 className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30 rounded-xl pl-9 pr-3 py-2 text-sm font-medium transition-all outline-none"
               />
            </div>
 
@@ -153,7 +153,7 @@ export default function SalesReport() {
               <select 
                 value={ticketTypeFilter}
                 onChange={e => setTicketTypeFilter(e.target.value)}
-                className="w-full min-h-[44px] bg-gray-50 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30"
+                className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30"
               >
                 <option>All Types</option>
                 <option>Platinum</option>
@@ -161,21 +161,21 @@ export default function SalesReport() {
                 <option>Bulk</option>
                 <option>Student</option>
               </select>
-              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>
 
            <div className="relative min-w-0">
               <select 
                 value={paymentModeFilter}
                 onChange={e => setPaymentModeFilter(e.target.value)}
-                className="w-full min-h-[44px] bg-gray-50 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30"
+                className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30"
               >
                 <option>All Modes</option>
                 <option>Cash</option>
                 <option>Online</option>
                 <option>Complimentary</option>
               </select>
-              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>
 
            <div className="relative col-span-2 lg:col-span-1 min-w-0">
@@ -183,7 +183,7 @@ export default function SalesReport() {
                 value={pocFilter}
                 disabled={userRole !== 'admin'}
                 onChange={e => setPocFilter(e.target.value)}
-                className="w-full min-h-[44px] bg-gray-50 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30 disabled:opacity-60"
+                className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30 disabled:opacity-60"
               >
                 <option>All Organisers</option>
                 {/* Dynamically this would be populated from profiles */}
@@ -196,7 +196,7 @@ export default function SalesReport() {
                    <option>{userName}</option>
                 )}
               </select>
-              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>
         </div>
       </div>
@@ -217,21 +217,21 @@ export default function SalesReport() {
             </div>
             <div className="text-xl sm:text-3xl font-bold text-green-900 tabular-nums leading-tight">₹{new Intl.NumberFormat('en-IN').format(userRole === 'admin' ? metrics.totalRevenue : 0)}</div>
          </div>
-         <div className="bg-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
-            <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 uppercase tracking-wide block mb-0.5">Booked</span>
-            <div className="text-xl sm:text-3xl font-bold text-gray-900 tabular-nums">{metrics.bookedTickets}</div>
+         <div className="bg-gray-50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/15 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
+            <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 dark:text-violet-300/85 uppercase tracking-wide block mb-0.5">Booked</span>
+            <div className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{metrics.bookedTickets}</div>
          </div>
       </div>
 
       {loading ? (
-         <div className="flex min-h-[12rem] items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm">
+         <div className="flex min-h-[12rem] items-center justify-center bg-white dark:bg-[var(--card-bg)] rounded-xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
             <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin" />
          </div>
       ) : (
-         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+         <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
             <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 flex items-center justify-between gap-2">
-               <h2 className="text-sm sm:text-lg font-bold text-gray-900">Transactions</h2>
-               <span className="text-[10px] sm:text-xs font-bold text-gray-400 shrink-0">{filteredTickets.length} rows</span>
+               <h2 className="text-sm sm:text-lg font-bold text-gray-900 dark:text-violet-100">Transactions</h2>
+               <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 shrink-0">{filteredTickets.length} rows</span>
             </div>
 
             {/* Mobile: stacked cards — no horizontal scroll */}
@@ -239,8 +239,8 @@ export default function SalesReport() {
                {filteredTickets.length === 0 ? (
                   <li className="px-4 py-12 text-center">
                      <FileSpreadsheet className="w-9 h-9 mx-auto text-gray-300 mb-2" />
-                     <h3 className="text-sm font-bold text-gray-900">No transactions</h3>
-                     <p className="text-xs text-gray-500 mt-1">Adjust filters</p>
+                     <h3 className="text-sm font-bold text-gray-900 dark:text-violet-100">No transactions</h3>
+                     <p className="text-xs text-gray-500 dark:text-violet-300/70 mt-1">Adjust filters</p>
                   </li>
                ) : (
                   filteredTickets.map(t => {
@@ -254,17 +254,17 @@ export default function SalesReport() {
                         <li key={t.id} className="px-4 py-3 active:bg-gray-50/80">
                            <div className="flex justify-between items-start gap-2 mb-1">
                               <div className="min-w-0">
-                                 <p className="text-sm font-bold text-gray-900 truncate">{t.purchaser_name || "Unknown"}</p>
-                                 <p className="text-[11px] text-gray-500 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
+                                 <p className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{t.purchaser_name || "Unknown"}</p>
+                                 <p className="text-[11px] text-gray-500 dark:text-violet-300/70 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
                               </div>
-                              <span className="text-sm font-bold text-gray-900 shrink-0 tabular-nums">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
+                              <span className="text-sm font-bold text-gray-900 dark:text-violet-100 shrink-0 tabular-nums">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
                            </div>
                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                              <span className="font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded uppercase">{t.type}</span>
+                              <span className="font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-1.5 py-0.5 rounded uppercase">{t.type}</span>
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
                                  {t.status.replace('_', ' ')}
                               </span>
-                              <span className="text-gray-400 ml-auto">{formattedDate} · {formattedTime}</span>
+                              <span className="text-gray-400 dark:text-violet-400/60 ml-auto">{formattedDate} · {formattedTime}</span>
                            </div>
                         </li>
                      );
@@ -276,12 +276,12 @@ export default function SalesReport() {
                <table className="w-full text-left border-collapse">
                   <thead>
                      <tr className="bg-gray-50/50 border-b border-gray-100">
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Purchaser</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ticket Type</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Amount</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Date</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Order ID</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Purchaser</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Ticket Type</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Amount</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Status</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Date</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -289,8 +289,8 @@ export default function SalesReport() {
                         <tr>
                            <td colSpan={6} className="px-6 py-12 text-center">
                               <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
-                              <h3 className="text-base font-bold text-gray-900">No transactions found</h3>
-                              <p className="text-sm text-gray-500 mt-1">Adjust your filters to see more results.</p>
+                              <h3 className="text-base font-bold text-gray-900 dark:text-violet-100">No transactions found</h3>
+                              <p className="text-sm text-gray-500 dark:text-violet-300/70 mt-1">Adjust your filters to see more results.</p>
                            </td>
                         </tr>
                      ) : (
@@ -306,17 +306,17 @@ export default function SalesReport() {
                            return (
                               <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
                                  <td className="px-6 py-4">
-                                    <span className="text-xs font-bold text-gray-400 font-mono">#{t.id.split('-')[0].toUpperCase()}</span>
+                                    <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{t.id.split('-')[0].toUpperCase()}</span>
                                  </td>
                                  <td className="px-6 py-4">
-                                    <div className="text-sm font-bold text-gray-800">{t.purchaser_name || "Unknown"}</div>
-                                    <div className="text-[11px] font-medium text-gray-500">{t.purchaser_phone || "No phone linked"}</div>
+                                    <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{t.purchaser_name || "Unknown"}</div>
+                                    <div className="text-[11px] font-medium text-gray-500 dark:text-violet-300/70">{t.purchaser_phone || "No phone linked"}</div>
                                  </td>
                                  <td className="px-6 py-4">
-                                    <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-tighter">{t.type}</span>
+                                    <span className="text-xs font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-tighter">{t.type}</span>
                                  </td>
                                  <td className="px-6 py-4 text-right">
-                                    <span className="text-sm font-bold text-gray-900">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
+                                    <span className="text-sm font-bold text-gray-900 dark:text-violet-100">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
                                  </td>
                                  <td className="px-6 py-4 text-center">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
@@ -324,8 +324,8 @@ export default function SalesReport() {
                                     </span>
                                  </td>
                                  <td className="px-6 py-4 text-right">
-                                    <div className="text-sm font-bold text-gray-700">{formattedDate}</div>
-                                    <div className="text-[11px] text-gray-400 font-medium">{formattedTime}</div>
+                                    <div className="text-sm font-bold text-gray-700 dark:text-violet-300">{formattedDate}</div>
+                                    <div className="text-[11px] text-gray-400 dark:text-violet-400/60 font-medium">{formattedTime}</div>
                                  </td>
                               </tr>
                            )

@@ -1,17 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { Music, Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
+import { IndianMobileInput } from "@/components/indian-mobile-input";
+import {
+  hasIndianNationalDigits,
+  indianPhoneLookupVariants,
+  nationalDigitsForIndia,
+  toIndianE164,
+} from "@/utils/phone";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [phone, setPhone] = useState("");
+  /** National digits after +91 */
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Auto-redirect if already logged in
   useEffect(() => {
@@ -31,18 +40,28 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Fetch the roles dynamically from your Supabase profiles table
-      // Validate both phone AND password from the database
-      const { data: profile, error } = await supabase
+      if (!hasIndianNationalDigits(phoneDigits)) {
+        alert("Enter your phone number.");
+        setIsLoading(false);
+        return;
+      }
+
+      const keys = indianPhoneLookupVariants(phoneDigits);
+      const { data: rows } = await supabase
         .from('profiles')
-        .select('name, roles, password')
-        .eq('phone', phone)
-        .eq('password', password)
-        .single();
+        .select('name, roles, password, phone')
+        .in('phone', keys)
+        .eq('password', password);
+
+      const profile = rows?.[0];
 
       if (profile && profile.roles) {
+        const storedPhone =
+          profile.phone && String(profile.phone).startsWith("+91")
+            ? String(profile.phone)
+            : toIndianE164(nationalDigitsForIndia(phoneDigits));
         localStorage.setItem('rhapsody_user', profile.name || 'User');
-        localStorage.setItem('rhapsody_phone', phone); // Added phone storage
+        localStorage.setItem('rhapsody_phone', storedPhone);
         localStorage.setItem('rhapsody_role', profile.roles.includes('admin') ? 'admin' : 'organiser');
         
         if (profile.roles.includes('admin')) {
@@ -64,62 +83,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center relative p-4 bg-[var(--app-bg)] transition-colors">
+    <div className="flex min-h-screen flex-col items-center justify-center relative p-4 bg-white text-slate-900">
       <div className="fixed top-3 right-3 z-20 sm:top-4 sm:right-4">
         <ThemeToggle />
-      </div>
-      {/* Background Soft Glows */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-pink-100/40 blur-[100px] dark:bg-pink-900/25" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-200/40 blur-[100px] dark:bg-purple-900/20" />
       </div>
 
       <div className="z-10 flex flex-col items-center w-full max-w-[440px]">
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-6">
-          <div className="mb-4">
-            <img src="/logo.png" alt="Rhapsody Logo" className="h-24 w-auto object-contain" />
-          </div>
-          <h1 className="text-3xl font-bold text-[var(--foreground)] mb-1">Rhapsody</h1>
-          <p className="text-secondary font-semibold">Ticketing & Event Management</p>
-          <p className="text-gray-400 text-sm mt-1">Thenmozhi Memorial Trust</p>
+          <img src="/logo.png" alt="Rhapsody Logo" className="h-32 sm:h-36 w-auto object-contain block" />
+          <p className="text-center text-base sm:text-lg font-bold text-slate-600 leading-tight mt-0">Thenmozhi Memorial Trust</p>
         </div>
 
         {/* Login Card */}
-        <div className="w-full bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 shadow-[0_4px_30px_rgba(236,72,153,0.06)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.3)] transition-colors">
-          <h2 className="text-xl font-bold text-[var(--foreground)]">Welcome Back</h2>
-          <p className="text-[var(--muted)] text-sm mt-1 mb-6">
+        <div className="w-full bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
+          <h2 className="text-xl font-bold text-slate-900">Welcome Back</h2>
+          <p className="text-slate-500 text-sm mt-1 mb-6">
             Enter your credentials to access your account
           </p>
 
           <form className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-[var(--foreground)] mb-1.5">
+              <label className="block text-sm font-semibold text-slate-900 mb-1.5">
                 Phone Number
               </label>
-              <input
-                type="text"
-                inputMode="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full min-h-[44px] bg-[var(--muted-bg)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm font-medium text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              <IndianMobileInput
+                value={phoneDigits}
+                onChange={setPhoneDigits}
+                className="border-gray-200 bg-gray-50"
+                prefixClassName="bg-gray-100 border-gray-200 text-slate-600"
               />
+              <p className="text-slate-400 text-xs mt-1.5">India (+91)</p>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-[var(--foreground)] mb-1.5">
+              <label className="block text-sm font-semibold text-slate-900 mb-1.5">
                 Password
               </label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full min-h-[44px] bg-[var(--muted-bg)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm font-medium text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-mono"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-11 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex mt-2 mb-6">
@@ -133,7 +152,7 @@ export default function LoginPage() {
             
             <button
               onClick={handleLogin}
-              disabled={isLoading || (!phone && !password)}
+              disabled={isLoading || !hasIndianNationalDigits(phoneDigits) || !password}
               className="w-full flex items-center justify-center bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-primary text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-80 disabled:cursor-not-allowed"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Login"}

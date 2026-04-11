@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { IndianMobileInput } from "@/components/indian-mobile-input";
+import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
 
 const CATEGORIES = [
   { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
@@ -44,16 +46,28 @@ export default function SellTicketsPage() {
 
   const handleCheckout = async (e: React.FormEvent) => {
      e.preventDefault();
+     if (!hasIndianNationalDigits(formData.phone)) {
+        alert("Enter the purchaser phone number.");
+        return;
+     }
      setIsSubmitting(true);
      setSuccess(false);
 
      try {
+       let purchaserPhone: string;
+       try {
+          purchaserPhone = toIndianE164(formData.phone);
+       } catch {
+          alert("Enter a valid phone number.");
+          setIsSubmitting(false);
+          return;
+       }
        const mappedPayload = Array.from({ length: formData.qty }).map(() => ({
              type: selectedCategory.id,
              price: selectedCategory.price,
              status: 'pending',
              purchaser_name: formData.name,
-             purchaser_phone: formData.phone,
+             purchaser_phone: purchaserPhone,
              sold_by: formData.poc,
              funds_destination: formData.fundsDestination,
        }));
@@ -92,7 +106,6 @@ export default function SellTicketsPage() {
         <div className="animate-in fade-in slide-in-from-top-4 duration-500">
            <div className="mb-4 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Quick Sell</h1>
-              <p className="text-gray-500 text-xs sm:text-sm font-medium mt-0.5">Tap a pass type to continue</p>
            </div>
 
            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -140,57 +153,63 @@ export default function SellTicketsPage() {
               
               {/* Form + summary: on mobile, summary stacks after form with less padding */}
               <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-                 <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="p-4 sm:p-5 border-b border-gray-50 flex justify-between items-center bg-[#fdfaff]">
+                 <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
+                    <div className="p-4 sm:p-5 border-b border-gray-50 dark:border-violet-500/12 flex justify-between items-center bg-[#fdfaff] dark:bg-violet-950/30">
                        <div>
                           <h2 className={`text-lg sm:text-xl font-bold ${selectedCategory.color}`}>{selectedCategory.name}</h2>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Details</p>
+                          <p className="text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest mt-0.5">Details</p>
                        </div>
                     </div>
 
                     <form id="sell-ticket-form" onSubmit={handleCheckout} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <div>
-                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Purchaser name</label>
+                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Purchaser name</label>
                              <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="ex: Sara" autoComplete="name" enterKeyHint="next" className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
+                                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="ex: Sara" autoComplete="name" enterKeyHint="next" className="w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border border-gray-100 dark:border-violet-500/20 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                              </div>
                           </div>
                           <div>
-                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Phone</label>
-                             <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                <input required type="tel" inputMode="tel" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} placeholder="+91 …" autoComplete="tel" enterKeyHint="next" className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
-                             </div>
+                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Phone</label>
+                             <IndianMobileInput
+                                LeftIcon={Phone}
+                                required
+                                value={formData.phone}
+                                onChange={(digits) => setFormData({ ...formData, phone: digits })}
+                                className="border-gray-100 dark:border-violet-500/20 bg-[#f8fafc] dark:bg-violet-950/25 shadow-sm"
+                                prefixClassName="bg-[#f0f4f8] border-gray-100 text-gray-700 dark:bg-violet-950/50 dark:border-violet-500/25 dark:text-violet-200"
+                                inputClassName="font-bold text-gray-900 dark:text-violet-100"
+                             />
+                             <p className="text-[10px] text-gray-400 dark:text-violet-400/55 mt-1 ml-1">India (+91)</p>
                           </div>
                        </div>
 
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <div className="min-w-0">
-                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Organiser (POC)</label>
+                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Organiser (POC)</label>
                              <div className="relative">
                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                 {currentUser.role === 'admin' ? (
-                                   <select required value={formData.poc} onChange={e=>setFormData({...formData, poc: e.target.value})} className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none">
+                                   <select required value={formData.poc} onChange={e=>setFormData({...formData, poc: e.target.value})} className="w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border border-gray-100 dark:border-violet-500/20 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none">
                                       <option value="">Choose organiser…</option>
                                       {organisers.map(org => <option key={org.id} value={org.name}>{org.name}</option>)}
                                    </select>
                                 ) : (
-                                   <input disabled value={currentUser.name} className="w-full min-h-[44px] bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-400" />
+                                   <input disabled value={currentUser.name} className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/25 border border-gray-100 dark:border-violet-500/15 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-400 dark:text-violet-400/70" />
                                 )}
                                 {currentUser.role === 'admin' && <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />}
                              </div>
                           </div>
                           <div className="min-w-0">
-                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Quantity</label>
+                             <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Quantity</label>
                              <div className="flex items-stretch gap-1.5 sm:gap-2 touch-manipulation">
                                 <button
                                    type="button"
                                    aria-label="Decrease quantity"
                                    onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty - 1) }))}
                                    disabled={formData.qty <= 1}
-                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:bg-slate-800"
+                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-violet-500/25 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/45"
                                 >
                                    <Minus className="w-5 h-5 stroke-[2.25]" aria-hidden />
                                 </button>
@@ -205,14 +224,14 @@ export default function SellTicketsPage() {
                                       const raw = parseInt(e.target.value, 10);
                                       setFormData({ ...formData, qty: clampQty(Number.isNaN(raw) ? 1 : raw) });
                                    }}
-                                   className="min-h-[44px] min-w-0 flex-1 bg-[#f8fafc] border border-gray-100 rounded-xl px-2 py-2.5 text-center text-sm font-bold text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none dark:bg-slate-900/50 dark:border-slate-600 dark:text-slate-100"
+                                   className="min-h-[44px] min-w-0 flex-1 bg-[#f8fafc] border border-gray-100 rounded-xl px-2 py-2.5 text-center text-sm font-bold text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none dark:bg-violet-950/35 dark:border-violet-500/25 dark:text-violet-100"
                                 />
                                 <button
                                    type="button"
                                    aria-label="Increase quantity"
                                    onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty + 1) }))}
                                    disabled={formData.qty >= 50}
-                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:bg-slate-800"
+                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-violet-500/25 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/45"
                                 >
                                    <Plus className="w-5 h-5 stroke-[2.25]" aria-hidden />
                                 </button>
@@ -235,8 +254,8 @@ export default function SellTicketsPage() {
                                       key={value}
                                       className={`relative flex min-h-[44px] cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-bold transition-colors focus-within:ring-2 focus-within:ring-primary/25 ${
                                          selected
-                                            ? 'border-primary/35 bg-pink-50/80 text-primary shadow-sm dark:bg-primary/15 dark:border-primary/40 dark:text-pink-200'
-                                            : 'border-gray-100 bg-[#f8fafc] text-gray-800 hover:border-gray-200 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-500'
+                                            ? 'border-primary/35 bg-pink-50/80 text-primary shadow-sm dark:bg-primary/20 dark:border-primary/45 dark:text-pink-200 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.2)]'
+                                            : 'border-gray-100 bg-[#f8fafc] text-gray-800 hover:border-gray-200 dark:border-violet-500/20 dark:bg-violet-950/30 dark:text-violet-100 dark:hover:border-violet-400/35'
                                       }`}
                                    >
                                       <input
@@ -255,7 +274,7 @@ export default function SellTicketsPage() {
                        </fieldset>
 
                        <div className="pt-5 sm:pt-6">
-                          <button type="submit" disabled={isSubmitting || !formData.name || !formData.phone || !formData.poc} className={`w-full min-h-[48px] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center text-sm ${selectedCategory.btn}`}>
+                          <button type="submit" disabled={isSubmitting || !formData.name || !hasIndianNationalDigits(formData.phone) || !formData.poc} className={`w-full min-h-[48px] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center text-sm ${selectedCategory.btn}`}>
                              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm sale"}
                           </button>
                        </div>
@@ -263,7 +282,7 @@ export default function SellTicketsPage() {
                  </div>
                  {success && (
                     <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl p-4 flex items-center justify-center gap-3 text-sm font-bold animate-in zoom-in-95">
-                       <CheckCircle2 className="w-5 h-5 text-emerald-500" /> Ticket data synced to Supabase!
+                       <CheckCircle2 className="w-5 h-5 text-emerald-500" /> Sale confirmed — tickets recorded.
                     </div>
                  )}
               </div>

@@ -66,8 +66,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           link.disabled
             ? "text-gray-300 cursor-not-allowed opacity-70"
             : isActive
-              ? "bg-pink-50 text-primary dark:bg-primary/15 dark:text-pink-300"
-              : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-white/5 md:text-gray-500 md:dark:text-slate-400 md:hover:text-gray-900 md:dark:hover:text-slate-200"
+              ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
+              : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
         }`}
         onClick={(e) => {
           if (link.disabled) e.preventDefault();
@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-gray-700 hover:bg-[var(--muted-bg)] border border-transparent hover:border-[var(--border-subtle)] dark:text-slate-200 transition-colors"
+              className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-gray-700 hover:bg-[var(--muted-bg)] border border-transparent hover:border-[var(--border-subtle)] dark:text-violet-200 transition-colors"
               aria-expanded={mobileNavOpen}
               aria-controls="mobile-admin-nav"
               aria-label="Open menu"
@@ -98,13 +98,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
 
             {/* Logo */}
-            <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0 flex-1 md:flex-initial">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 overflow-hidden flex items-center justify-center shrink-0">
+            <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0 max-w-[min(100%,22rem)]">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 overflow-hidden flex items-center justify-center shrink-0">
                 <img src="/logo.png" alt="" className="w-full h-full object-contain" />
               </div>
-              <div className="flex flex-col leading-none min-w-0">
-                <span className="text-sm sm:text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary truncate">Rhapsody</span>
-                <span className="text-[8px] sm:text-[9px] text-accent font-bold uppercase tracking-widest truncate">Admin Portal</span>
+              <div className="flex flex-col leading-tight min-w-0">
+                <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary truncate">Rhapsody</span>
+                <span className="text-[9px] sm:text-[10px] text-accent font-bold uppercase tracking-wider sm:tracking-widest whitespace-normal dark:text-amber-400/90">Admin Portal</span>
               </div>
             </Link>
 
@@ -130,7 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <User className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="text-sm font-bold text-[var(--foreground)] hidden md:block">{userName}</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 dark:text-purple-400/80 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {dropdownOpen && (
@@ -168,7 +168,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-violet-950/45 backdrop-blur-[2px]"
             aria-label="Close menu"
             onClick={() => setMobileNavOpen(false)}
           />

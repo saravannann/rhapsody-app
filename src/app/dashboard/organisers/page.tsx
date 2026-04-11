@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserPlus, Search, Edit2, CheckCircle2, Phone, Clock, Loader2, ArrowLeft, X, Target } from "lucide-react";
+import { UserPlus, Search, Edit2, CheckCircle2, Phone, Clock, Loader2, ArrowLeft, X, Target, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { IndianMobileInput } from "@/components/indian-mobile-input";
+import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
 
 export default function OrganisersPage() {
   const [view, setView] = useState<'list' | 'add'>('list');
@@ -17,6 +19,7 @@ export default function OrganisersPage() {
   const [formData, setFormData] = useState({ name: "", phone: "", roles: ["organiser"], password: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (view === 'list') loadOrganisers();
@@ -87,15 +90,27 @@ export default function OrganisersPage() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.roles.length === 0) return alert("Please select at least one role!");
+    if (!hasIndianNationalDigits(formData.phone)) {
+      alert("Enter a phone number.");
+      return;
+    }
     setIsSubmitting(true);
     setSuccess(false);
 
     try {
       const mockUuid = crypto.randomUUID();
+      let phoneE164: string;
+      try {
+        phoneE164 = toIndianE164(formData.phone);
+      } catch {
+        alert("Enter a valid phone number.");
+        setIsSubmitting(false);
+        return;
+      }
       const { error } = await supabase.from('profiles').insert({
         id: mockUuid, 
         name: formData.name, 
-        phone: formData.phone, 
+        phone: phoneE164, 
         roles: formData.roles,
         password: formData.password
       });
@@ -131,7 +146,7 @@ export default function OrganisersPage() {
       
       {/* Target Editor Modal */}
       {editingOrg && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-violet-950/55 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm max-h-[min(92vh,640px)] flex flex-col shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 sm:slide-in-from-bottom-0 duration-200 overflow-hidden">
              <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -186,9 +201,11 @@ export default function OrganisersPage() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">
              {view === 'add' ? 'User Management' : 'Organiser Management'}
           </h1>
-          <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium leading-snug">
-             {view === 'add' ? 'Provision access by role' : 'Directory, targets, and sales at a glance'}
-          </p>
+          {view === 'add' ? (
+             <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium leading-snug">
+                Provision access by role
+             </p>
+          ) : null}
         </div>
         
         {view === 'list' && (
@@ -208,13 +225,39 @@ export default function OrganisersPage() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-secondary mb-2">Phone Number</label>
-                <input required value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} placeholder="+91 99999 00000" className="w-full bg-[#fdfaff] border border-pink-100 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
+                <IndianMobileInput
+                  required
+                  value={formData.phone}
+                  onChange={(d) => setFormData({ ...formData, phone: d })}
+                  className="border border-pink-100 bg-[#fdfaff]"
+                  prefixClassName="bg-pink-50/90 border-pink-100 text-secondary dark:bg-violet-950/55 dark:border-violet-500/30 dark:text-violet-200"
+                  inputClassName="font-medium text-gray-900 dark:text-violet-100"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 font-medium">India (+91)</p>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-bold text-secondary mb-2">Login Password</label>
-              <input required type="password" value={formData.password} onChange={e=>setFormData({...formData, password: e.target.value})} placeholder="Assign a password" className="w-full bg-[#fdfaff] border border-pink-100 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono" />
+              <div className="relative">
+                <input
+                  required
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={e=>setFormData({...formData, password: e.target.value})}
+                  placeholder="Assign a password"
+                  className="w-full bg-[#fdfaff] border border-pink-100 rounded-xl pl-4 pr-11 py-3 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-pink-50 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               <p className="text-[10px] text-gray-400 mt-1 font-medium">The user will use their phone number and this password to login.</p>
             </div>
 
@@ -249,7 +292,7 @@ export default function OrganisersPage() {
               <div className="min-h-[1.75rem]">
                  {success && <span className="inline-flex items-center text-xs sm:text-sm font-bold text-accent bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100"><CheckCircle2 className="w-4 h-4 mr-2 shrink-0" /> User saved!</span>}
               </div>
-              <button type="submit" disabled={isSubmitting || !formData.name || !formData.phone} className="w-full sm:w-auto bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[140px]">
+              <button type="submit" disabled={isSubmitting || !formData.name || !hasIndianNationalDigits(formData.phone)} className="w-full sm:w-auto bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[140px]">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save member"}
               </button>
             </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lock, ShieldCheck, Loader2, CheckCircle2, AlertTriangle, KeyRound } from "lucide-react";
+import { Lock, ShieldCheck, Loader2, CheckCircle2, AlertTriangle, KeyRound, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { profilePhoneKeysFromSession } from "@/utils/phone";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,9 @@ export default function SettingsPage() {
   });
 
   const [userPhone, setUserPhone] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     setUserPhone(localStorage.getItem('rhapsody_phone') || "");
@@ -43,13 +47,21 @@ export default function SettingsPage() {
     }
 
     try {
-      // 1. Verify current password
-      const { data: user, error: fetchError } = await supabase
+      const keys = profilePhoneKeysFromSession(userPhone);
+      if (keys.length === 0) {
+         setError("Session error: Please log out and log back in to verify your identity.");
+         setLoading(false);
+         return;
+      }
+
+      // 1. Verify current password (match legacy 10-digit or +91 rows)
+      const { data: verifyRows, error: fetchError } = await supabase
         .from('profiles')
-        .select('password')
-        .eq('phone', userPhone)
-        .eq('password', passwords.current)
-        .single();
+        .select('password, phone')
+        .in('phone', keys)
+        .eq('password', passwords.current);
+
+      const user = verifyRows?.[0];
 
       if (fetchError || !user) {
          setError("Incorrect current password.");
@@ -57,11 +69,11 @@ export default function SettingsPage() {
          return;
       }
 
-      // 2. Update to new password
+      // 2. Update using the exact phone value stored in the row
       const { data, error: updateError } = await supabase
         .from('profiles')
         .update({ password: passwords.new })
-        .eq('phone', userPhone)
+        .eq('phone', user.phone)
         .select();
 
       if (updateError) {
@@ -83,6 +95,9 @@ export default function SettingsPage() {
 
       setSuccess(true);
       setPasswords({ current: "", new: "", confirm: "" });
+      if (user.phone && String(user.phone).startsWith("+91")) {
+        localStorage.setItem("rhapsody_phone", String(user.phone));
+      }
       
     } catch (err: any) {
       console.error(err);
@@ -98,17 +113,17 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary">Security Settings</h1>
-        <p className="text-gray-500 mt-1 text-sm font-medium">Manage your account credentials and security preferences.</p>
+        <p className="text-gray-500 dark:text-violet-300/75 mt-1 text-sm font-medium">Manage your account credentials and security preferences.</p>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-pink-50 overflow-hidden">
-         <div className="p-8 border-b border-gray-50 flex items-center gap-4 bg-gray-50/30">
-            <div className="p-3 bg-white rounded-2xl shadow-sm border border-pink-100 text-primary">
+      <div className="bg-white dark:bg-[var(--card-bg)] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_40px_rgba(46,16,80,0.35)] border border-pink-50 dark:border-violet-500/20 overflow-hidden">
+         <div className="p-8 border-b border-gray-50 dark:border-violet-500/15 flex items-center gap-4 bg-gray-50/30 dark:bg-violet-950/35">
+            <div className="p-3 bg-white dark:bg-violet-950/50 rounded-2xl shadow-sm border border-pink-100 dark:border-violet-500/25 text-primary">
                <Lock className="w-6 h-6" />
             </div>
             <div>
-               <h2 className="text-xl font-bold text-gray-900">Change Password</h2>
-               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Updates your login credentials</p>
+               <h2 className="text-xl font-bold text-gray-900 dark:text-violet-100">Change Password</h2>
+               <p className="text-xs font-bold text-gray-400 dark:text-violet-400/65 uppercase tracking-widest mt-1">Updates your login credentials</p>
             </div>
          </div>
 
@@ -130,15 +145,24 @@ export default function SettingsPage() {
                <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Current Password</label>
                   <div className="relative">
-                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
                      <input 
-                        type="password" 
+                        type={showCurrentPassword ? "text" : "password"} 
                         required 
                         value={passwords.current}
                         onChange={e => setPasswords({...passwords, current: e.target.value})}
                         placeholder="••••••••" 
-                        className="w-full bg-[#f8fafc] border border-gray-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
+                        className="w-full bg-[#f8fafc] dark:bg-violet-950/35 border border-gray-100 dark:border-violet-500/20 rounded-2xl pl-12 pr-12 py-3.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
                      />
+                     <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 transition-colors"
+                        aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+                        tabIndex={-1}
+                     >
+                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                     </button>
                   </div>
                </div>
 
@@ -146,29 +170,47 @@ export default function SettingsPage() {
                   <div>
                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">New Password</label>
                      <div className="relative">
-                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
                         <input 
-                           type="password" 
+                           type={showNewPassword ? "text" : "password"} 
                            required 
                            value={passwords.new}
                            onChange={e => setPasswords({...passwords, new: e.target.value})}
                            placeholder="At least 4 chars" 
-                           className="w-full bg-[#fdfaff] border border-gray-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
+                           className="w-full bg-[#fdfaff] dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/20 rounded-2xl pl-12 pr-12 py-3.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
                         />
+                        <button
+                           type="button"
+                           onClick={() => setShowNewPassword((v) => !v)}
+                           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 transition-colors"
+                           aria-label={showNewPassword ? "Hide password" : "Show password"}
+                           tabIndex={-1}
+                        >
+                           {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                      </div>
                   </div>
                   <div>
                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Confirm New Password</label>
                      <div className="relative">
-                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
                         <input 
-                           type="password" 
+                           type={showConfirmPassword ? "text" : "password"} 
                            required 
                            value={passwords.confirm}
                            onChange={e => setPasswords({...passwords, confirm: e.target.value})}
                            placeholder="Confirm new password" 
-                           className="w-full bg-[#fdfaff] border border-gray-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
+                           className="w-full bg-[#fdfaff] dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/20 rounded-2xl pl-12 pr-12 py-3.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
                         />
+                        <button
+                           type="button"
+                           onClick={() => setShowConfirmPassword((v) => !v)}
+                           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 transition-colors"
+                           aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                           tabIndex={-1}
+                        >
+                           {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                      </div>
                   </div>
                </div>

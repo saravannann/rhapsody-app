@@ -26,18 +26,29 @@
   --shadow-header: 0 1px 15px rgba(236, 72, 153, 0.06);
 }
 
-/* Semantic tokens — dark (WCAG-friendly contrast on body text) */
+/* Semantic tokens — dark: deep violet canvas (no pure black; purple-first) */
 html.dark {
   color-scheme: dark;
-  --background: #0a060d;
-  --foreground: #f1f5f9;
-  --app-bg: #0a060d;
-  --card-bg: #15101c;
-  --muted: #94a3b8;
-  --muted-bg: rgba(30, 22, 40, 0.92);
-  --border-subtle: rgba(236, 72, 153, 0.22);
-  --border-strong: rgba(248, 250, 252, 0.12);
-  --shadow-header: 0 1px 20px rgba(0, 0, 0, 0.35);
+  --background: #0f0618;
+  --foreground: #f0e8ff;
+  --app-bg: #0c0512;
+  --card-bg: #1b1026;
+  --muted: #b4a3d4;
+  --muted-bg: rgba(109, 40, 217, 0.16);
+  --border-subtle: rgba(167, 139, 250, 0.26);
+  --border-strong: rgba(196, 181, 254, 0.32);
+  --shadow-header: 0 2px 32px rgba(91, 33, 182, 0.32);
+}
+
+html.dark body {
+  background-image: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(109, 40, 217, 0.14), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 100% 100%, rgba(236, 72, 153, 0.08), transparent 45%),
+    linear-gradient(180deg, var(--background) 0%, #08040d 100%);
+}
+
+html.dark ::selection {
+  background: rgba(236, 72, 153, 0.38);
+  color: #faf5ff;
 }
 
 body {

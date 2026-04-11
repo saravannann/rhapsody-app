@@ -160,29 +160,26 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Dashboard</h1>
-        <p className="text-gray-500 mt-0.5 text-xs sm:text-sm font-medium">
-          Real-time event metrics
-        </p>
       </div>
 
       {loading ? (
-        <div className="flex min-h-[10rem] items-center justify-center rounded-xl border border-pink-50 bg-white">
+        <div className="flex min-h-[10rem] items-center justify-center rounded-xl border border-pink-50 dark:border-violet-500/18 bg-white dark:bg-[var(--card-bg)]">
           <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin" />
         </div>
       ) : (
         <>
           {/* Filters Card — 2×2 on mobile */}
-          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm border border-pink-50">
+          <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm border border-pink-50 dark:border-violet-500/18">
             <h3 className="text-xs font-bold text-secondary mb-3 uppercase tracking-wider">Filters</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               
               <div className="min-w-0">
-                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Date</label>
+                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-violet-300 mb-1">Date</label>
                 <div className="relative">
                    <select 
                      value={filterDate}
                      onChange={(e) => setFilterDate(e.target.value)}
-                     className="w-full min-h-[44px] bg-[#fdfaff] border border-pink-100 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                     className="w-full min-h-[44px] bg-[#fdfaff] dark:bg-violet-950/35 border border-pink-100 dark:border-violet-500/25 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-violet-100 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                    >
                      <option>All Time</option>
                      <option>Today</option>
@@ -194,12 +191,12 @@ export default function DashboardPage() {
               </div>
 
               <div className="min-w-0">
-                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Type</label>
+                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-violet-300 mb-1">Type</label>
                 <div className="relative">
                    <select 
                      value={filterType} 
                      onChange={(e) => setFilterType(e.target.value)}
-                     className="w-full min-h-[44px] bg-[#fdfaff] border border-pink-100 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                     className="w-full min-h-[44px] bg-[#fdfaff] dark:bg-violet-950/35 border border-pink-100 dark:border-violet-500/25 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-violet-100 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                    >
                      <option>All Types</option>
                      <option value="Platinum">Platinum Pass</option>
@@ -212,12 +209,12 @@ export default function DashboardPage() {
               </div>
 
               <div className="min-w-0">
-                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Organiser</label>
+                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-violet-300 mb-1">Organiser</label>
                 <div className="relative">
                    <select 
                      value={filterOrganiser} 
                      onChange={(e) => setFilterOrganiser(e.target.value)}
-                     className="w-full min-h-[44px] bg-[#fdfaff] border border-pink-100 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                     className="w-full min-h-[44px] bg-[#fdfaff] dark:bg-violet-950/35 border border-pink-100 dark:border-violet-500/25 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-violet-100 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                    >
                      <option>All Organisers</option>
                      {allOrganisers.map(org => (
@@ -229,12 +226,12 @@ export default function DashboardPage() {
               </div>
 
               <div className="min-w-0">
-                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Payment</label>
+                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-violet-300 mb-1">Payment</label>
                 <div className="relative">
                    <select 
                      value={filterPayment} 
                      onChange={(e) => setFilterPayment(e.target.value)}
-                     className="w-full min-h-[44px] bg-[#fdfaff] border border-pink-100 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                     className="w-full min-h-[44px] bg-[#fdfaff] dark:bg-violet-950/35 border border-pink-100 dark:border-violet-500/25 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-violet-100 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                    >
                      <option>All Modes</option>
                      <option value="Online">Online</option>
@@ -249,16 +246,16 @@ export default function DashboardPage() {
 
           {/* Metric Cards — 2×2 on mobile */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-            <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
+            <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-violet-500/15 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
               <div className="flex justify-between items-start gap-1 mb-2 sm:mb-4">
-                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight">Total Revenue</h3>
+                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-violet-100 leading-tight">Total Revenue</h3>
                 <div className="p-1 sm:p-1.5 rounded-full bg-green-100 text-green-600 shrink-0">
                   <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
               <div>
-                <div className="text-lg sm:text-3xl font-bold text-gray-900 mb-0.5 tabular-nums break-all">₹{formattedRevenue}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-1 sm:mb-2 line-clamp-1">Admin view</p>
+                <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums break-all">₹{formattedRevenue}</div>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 mb-1 sm:mb-2 line-clamp-1">Admin view</p>
                 <div className="flex items-center text-[10px] sm:text-xs font-semibold text-green-600">
                   <TrendingUp className="w-3 h-3 mr-1 shrink-0" />
                   Live
@@ -266,50 +263,50 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
+            <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-violet-500/15 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
               <div className="flex justify-between items-start gap-1 mb-2 sm:mb-4">
-                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight">Tickets sold</h3>
+                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-violet-100 leading-tight">Tickets sold</h3>
                 <div className="p-1 sm:p-1.5 rounded-full bg-purple-100 text-secondary shrink-0">
                   <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
               <div>
-                <div className="text-lg sm:text-3xl font-bold text-gray-900 mb-0.5 tabular-nums">{metrics.totalTickets}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-1">All categories</p>
-                <div className="text-[10px] sm:text-xs font-medium text-gray-500">Target 2,050</div>
+                <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums">{metrics.totalTickets}</div>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 mb-1">All categories</p>
+                <div className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-violet-300/70">Target 2,050</div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
+            <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-violet-500/15 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
               <div className="flex justify-between items-start gap-1 mb-2 sm:mb-4">
-                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight">Organisers</h3>
+                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-violet-100 leading-tight">Organisers</h3>
                 <div className="p-1 sm:p-1.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
                   <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
               <div>
-                <div className="text-lg sm:text-3xl font-bold text-gray-900 mb-0.5 tabular-nums">{metrics.activeOrganisers}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500">Active profiles</p>
+                <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums">{metrics.activeOrganisers}</div>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70">Active profiles</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
+            <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-violet-500/15 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
               <div className="flex justify-between items-start gap-1 mb-2 sm:mb-4">
-                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight">Check-in</h3>
+                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-violet-100 leading-tight">Check-in</h3>
                 <div className="p-1 sm:p-1.5 rounded-full bg-purple-900 text-white shrink-0">
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
               <div>
-                <div className="text-lg sm:text-3xl font-bold text-gray-900 mb-0.5 tabular-nums">{checkInRate}%</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-2">{metrics.checkedIn}/{metrics.totalTickets} in</p>
+                <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums">{checkInRate}%</div>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-300/70 line-clamp-2">{metrics.checkedIn}/{metrics.totalTickets} in</p>
               </div>
             </div>
           </div>
 
           {/* Chart Nav Tabs — scroll on narrow screens */}
           <div className="-mx-1 px-1 sm:mx-0">
-            <div className="flex gap-1 sm:gap-2 bg-[#fdfaff] p-1.5 sm:p-2 rounded-xl border border-pink-50 overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full max-w-full">
+            <div className="flex gap-1 sm:gap-2 bg-[#fdfaff] dark:bg-violet-950/25 p-1.5 sm:p-2 rounded-xl border border-pink-50 dark:border-violet-500/18 overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full max-w-full">
             {['Sales Overview', 'Top Organisers', 'Ticket Status', 'Check-in Stats'].map((tab) => (
                <button 
                  type="button"
@@ -317,8 +314,8 @@ export default function DashboardPage() {
                  onClick={() => setActiveTab(tab)}
                  className={`shrink-0 snap-start min-h-[44px] px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                    activeTab === tab 
-                     ? "bg-white text-gray-900 shadow-sm border border-gray-100" 
-                     : "text-gray-500 hover:text-gray-700 bg-transparent border border-transparent"
+                     ? "bg-white dark:bg-violet-950/50 text-gray-900 dark:text-violet-100 shadow-sm border border-gray-100 dark:border-violet-400/25" 
+                     : "text-gray-500 dark:text-violet-300/70 hover:text-gray-700 dark:hover:text-violet-200 bg-transparent border border-transparent dark:hover:bg-violet-900/20"
                  }`}
                >
                  {tab}
@@ -327,7 +324,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 min-h-0 md:min-h-[360px]">
+          <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-violet-500/15 min-h-0 md:min-h-[360px]">
              
              {/* 1. Sales Overview */}
              {activeTab === 'Sales Overview' && (
@@ -361,20 +358,20 @@ export default function DashboardPage() {
                      </ResponsiveContainer>
                    </div>
 
-                   <div className="w-full bg-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl p-3 sm:p-5 h-full flex flex-col min-h-0">
+                   <div className="w-full bg-gray-50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/15 rounded-xl sm:rounded-2xl p-3 sm:p-5 h-full flex flex-col min-h-0">
                       <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
-                         <h4 className="text-[11px] sm:text-xs font-bold text-gray-800 uppercase tracking-wide">By category</h4>
+                         <h4 className="text-[11px] sm:text-xs font-bold text-gray-800 dark:text-violet-200 uppercase tracking-wide">By category</h4>
                       </div>
                       
                       <div className="flex-1 space-y-3 sm:space-y-4">
                          {chartData.map(item => (
                             <div key={item.name} className="flex justify-between items-start gap-2 group">
                                <div className="min-w-0">
-                                  <span className="text-xs sm:text-sm font-bold text-gray-900 block group-hover:text-primary transition-colors leading-tight">{item.name}</span>
-                                  <span className="text-[10px] sm:text-xs font-semibold text-gray-500">{item.Sold} / {item.Target}</span>
+                                  <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-violet-100 block group-hover:text-primary transition-colors leading-tight">{item.name}</span>
+                                  <span className="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-violet-300/70">{item.Sold} / {item.Target}</span>
                                </div>
                                <div className="text-right shrink-0">
-                                  <span className="text-sm sm:text-base font-bold text-gray-800 tabular-nums">₹{new Intl.NumberFormat('en-IN').format(item.Revenue)}</span>
+                                  <span className="text-sm sm:text-base font-bold text-gray-800 dark:text-violet-200 tabular-nums">₹{new Intl.NumberFormat('en-IN').format(item.Revenue)}</span>
                                </div>
                             </div>
                          ))}
@@ -382,7 +379,7 @@ export default function DashboardPage() {
 
                       <div className="pt-3 border-t border-gray-200 mt-auto">
                          <div className="flex justify-between items-center gap-2">
-                            <span className="text-xs font-bold text-gray-600">Total</span>
+                            <span className="text-xs font-bold text-gray-600 dark:text-violet-300/85">Total</span>
                             <span className="text-base sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary tabular-nums">₹{formattedRevenue}</span>
                          </div>
                       </div>
@@ -395,32 +392,32 @@ export default function DashboardPage() {
              {activeTab === 'Top Organisers' && (
                 <div className="animate-in fade-in duration-500">
                    <div className="mb-3 sm:mb-4">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 border-b border-gray-100 pb-1.5">Top organisers</h3>
-                      <p className="text-xs sm:text-sm text-gray-400 font-medium">Sales by category</p>
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-violet-100 border-b border-gray-100 dark:border-violet-500/15 pb-1.5">Top organisers</h3>
+                      <p className="text-xs sm:text-sm text-gray-400 dark:text-violet-400/60 font-medium">Sales by category</p>
                    </div>
 
                    {/* Mobile: compact cards — no horizontal scroll */}
                    <ul className="md:hidden space-y-2 list-none p-0 m-0">
                      {organiserList.length === 0 ? (
-                       <li className="text-center text-sm text-gray-500 py-8">No performance data yet</li>
+                       <li className="text-center text-sm text-gray-500 dark:text-violet-300/70 py-8">No performance data yet</li>
                      ) : (
                        organiserList.map((org, idx) => {
                          let rLabel = (idx + 1) + (idx === 0 ? "st" : idx === 1 ? "nd" : idx === 2 ? "rd" : "th");
                          let rBadge = idx === 0 ? "bg-[#EAB308]" : idx === 1 ? "bg-[#94A3B8]" : idx === 2 ? "bg-[#CC5500]" : "bg-[#CBD5E1]";
                          return (
-                           <li key={org.name} className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+                           <li key={org.name} className="rounded-xl border border-gray-100 dark:border-violet-500/15 bg-gray-50/50 dark:bg-violet-950/25 p-3">
                              <div className="flex items-center justify-between gap-2 mb-2">
                                <div className="flex items-center gap-2 min-w-0">
                                  <span className={`inline-flex items-center justify-center min-w-[2rem] h-6 ${rBadge} text-white text-[10px] font-bold rounded-full`}>{rLabel}</span>
-                                 <span className="text-sm font-bold text-gray-900 truncate">{org.name}</span>
+                                 <span className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{org.name}</span>
                                </div>
-                               <span className="shrink-0 text-xs font-bold bg-white border border-gray-200 px-2 py-1 rounded-md text-gray-700">{org.total} total</span>
+                               <span className="shrink-0 text-xs font-bold bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 px-2 py-1 rounded-md text-gray-700 dark:text-violet-300">{org.total} total</span>
                              </div>
                              <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
-                               <div><span className="text-gray-400 block">Plat</span><span className="font-bold text-gray-800">{org.platinum}</span></div>
-                               <div><span className="text-gray-400 block">Donor</span><span className="font-bold text-gray-800">{org.donor}</span></div>
-                               <div><span className="text-gray-400 block">Bulk</span><span className="font-bold text-gray-800">{org.bulk}</span></div>
-                               <div><span className="text-gray-400 block">Stud</span><span className="font-bold text-gray-800">{org.student}</span></div>
+                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Plat</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.platinum}</span></div>
+                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Donor</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.donor}</span></div>
+                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Bulk</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.bulk}</span></div>
+                               <div><span className="text-gray-400 dark:text-violet-400/60 block">Stud</span><span className="font-bold text-gray-800 dark:text-violet-200">{org.student}</span></div>
                              </div>
                            </li>
                          );
@@ -428,46 +425,46 @@ export default function DashboardPage() {
                      )}
                    </ul>
 
-                   <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
+                   <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 dark:border-violet-500/15">
                    <table className="w-full text-left border-collapse min-w-[640px]">
                       <thead>
-                         <tr className="border-b border-gray-100">
-                            <th className="py-4 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Organiser Name</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Platinum</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Donor</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Bulk</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Student</th>
-                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Total</th>
-                            <th className="py-4 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Action</th>
+                         <tr className="border-b border-gray-100 dark:border-violet-500/12">
+                            <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organiser Name</th>
+                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
+                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
+                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Bulk</th>
+                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
+                            <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total</th>
+                            <th className="py-4 px-2 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Action</th>
                          </tr>
                       </thead>
                       <tbody>
                          {organiserList.length === 0 ? (
-                            <tr><td colSpan={7} className="py-12 text-center text-gray-500 font-medium italic">No performance data recorded yet</td></tr>
+                            <tr><td colSpan={7} className="py-12 text-center text-gray-500 dark:text-violet-300/70 font-medium italic">No performance data recorded yet</td></tr>
                          ) : (
                             organiserList.map((org, idx) => {
                                let rLabel = (idx + 1) + (idx === 0 ? "st" : idx === 1 ? "nd" : idx === 2 ? "rd" : "th");
                                let rBadge = idx === 0 ? "bg-[#EAB308]" : idx === 1 ? "bg-[#94A3B8]" : idx === 2 ? "bg-[#CC5500]" : "bg-[#CBD5E1]";
 
                                return (
-                                  <tr key={org.name} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                  <tr key={org.name} className="border-b border-gray-50 hover:bg-gray-50/50 dark:hover:bg-violet-950/35 transition-colors">
                                      <td className="py-5 px-2">
                                         <div className="flex items-center">
                                            <span className={`inline-flex items-center justify-center w-8 h-5 ${rBadge} text-white text-[10px] font-bold rounded-full mr-3 shadow-sm`}>{rLabel}</span>
-                                           <span className="text-sm font-bold text-gray-800">{org.name}</span>
+                                           <span className="text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</span>
                                         </div>
                                      </td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 text-center">{org.platinum}</td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 text-center">{org.donor}</td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 text-center">{org.bulk}</td>
-                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 text-center">{org.student}</td>
+                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.platinum}</td>
+                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.donor}</td>
+                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.bulk}</td>
+                                     <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.student}</td>
                                      <td className="py-5 px-4 text-center">
-                                        <span className="inline-block bg-[#F8FAFC] text-gray-600 text-xs font-bold px-3 py-1 rounded-md border border-gray-100">
+                                        <span className="inline-block bg-[#F8FAFC] text-gray-600 dark:text-violet-300/85 text-xs font-bold px-3 py-1 rounded-md border border-gray-100 dark:border-violet-500/15">
                                            {org.total}
                                         </span>
                                      </td>
                                      <td className="py-5 px-2 text-right">
-                                        <button className="text-xs font-bold text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-all">View Details</button>
+                                        <button className="text-xs font-bold text-gray-500 dark:text-violet-300/70 border border-gray-200 dark:border-violet-500/22 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-all">View Details</button>
                                      </td>
                                   </tr>
                                );
@@ -483,46 +480,46 @@ export default function DashboardPage() {
              {activeTab === 'Ticket Status' && (
                 <div className="animate-in fade-in duration-500 pt-1 sm:pt-4">
                   <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-10">
-                      <div className="bg-white border border-gray-200 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
+                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
                           <span className="text-2xl sm:text-4xl font-bold text-[#10B981] mb-1 sm:mb-2 block tabular-nums">
                              {(statusData.find(s=>s.name==='Checked-in')?.value || 0) + (statusData.find(s=>s.name==='Pending')?.value || 0)}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 leading-tight">Booked</h4>
+                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Booked</h4>
                       </div>
-                      <div className="bg-white border border-gray-200 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
+                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
                           <span className="text-2xl sm:text-4xl font-bold text-[#F59E0B] mb-1 sm:mb-2 block tabular-nums">
                              {statusData.find(s=>s.name==='Pending')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 leading-tight">Pending</h4>
+                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Pending</h4>
                       </div>
-                      <div className="bg-white border border-gray-200 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
+                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
                           <span className="text-2xl sm:text-4xl font-bold text-[#8B5CF6] mb-1 sm:mb-2 block tabular-nums">
                              {statusData.find(s=>s.name==='Checked-in')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 leading-tight">Checked-in</h4>
+                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Checked-in</h4>
                       </div>
                   </div>
 
                   <div className="max-w-4xl mx-auto mt-4 sm:mt-8">
-                      <p className="text-xs font-bold text-gray-500 mb-3 sm:mb-6 uppercase tracking-wide text-center">Lifecycle</p>
-                      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-8 flex items-center justify-between text-center shadow-sm gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
+                      <p className="text-xs font-bold text-gray-500 dark:text-violet-300/70 mb-3 sm:mb-6 uppercase tracking-wide text-center">Lifecycle</p>
+                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 rounded-xl sm:rounded-2xl p-4 sm:p-8 flex items-center justify-between text-center shadow-sm gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
                          <div className="relative z-10 w-24">
-                            <div className="w-12 h-12 bg-gray-100 border border-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-gray-500 shadow-sm">1</div>
-                            <span className="text-xs font-bold text-gray-700">Pending</span>
+                            <div className="w-12 h-12 bg-gray-100 border border-gray-200 dark:border-violet-500/22 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-gray-500 dark:text-violet-300/70 shadow-sm">1</div>
+                            <span className="text-xs font-bold text-gray-700 dark:text-violet-300">Pending</span>
                          </div>
                          <div className="flex-1 h-0.5 bg-gray-200 mx-2 relative z-0 min-w-[30px]">
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-t-2 border-r-2 border-gray-300 rotate-45 transform translate-x-1/2"></div>
                          </div>
                          <div className="relative z-10 w-24">
                             <div className="w-12 h-12 bg-green-50 border border-green-200 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-[#10B981] shadow-sm">2</div>
-                            <span className="text-xs font-bold text-gray-700">Booked</span>
+                            <span className="text-xs font-bold text-gray-700 dark:text-violet-300">Booked</span>
                          </div>
                          <div className="flex-1 h-0.5 bg-gray-200 mx-2 relative z-0 min-w-[30px]">
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-t-2 border-r-2 border-gray-300 rotate-45 transform translate-x-1/2"></div>
                          </div>
                          <div className="relative z-10 w-24">
-                            <div className="w-12 h-12 bg-gray-900 border border-gray-800 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-white shadow-md shadow-gray-400/30">3</div>
-                            <span className="text-xs font-bold text-gray-900">Checked-in</span>
+                            <div className="w-12 h-12 bg-gray-900 dark:bg-violet-700 border border-gray-800 dark:border-violet-500 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-white shadow-md shadow-gray-400/30 dark:shadow-violet-900/40">3</div>
+                            <span className="text-xs font-bold text-gray-900 dark:text-violet-100">Checked-in</span>
                          </div>
                       </div>
                   </div>
@@ -552,17 +549,17 @@ export default function DashboardPage() {
                      </div>
 
                      <div className="space-y-3 sm:space-y-4 w-full">
-                        <div className="flex justify-between items-center border-b border-gray-100 pb-2 sm:pb-3 gap-2">
-                           <span className="text-gray-600 font-bold text-xs sm:text-sm">Checked in</span>
-                           <span className="text-lg sm:text-xl font-bold text-gray-900 tabular-nums">{metrics.checkedIn}</span>
+                        <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
+                           <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Checked in</span>
+                           <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{metrics.checkedIn}</span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-gray-100 pb-2 sm:pb-3 gap-2">
-                           <span className="text-gray-600 font-bold text-xs sm:text-sm">Awaiting</span>
-                           <span className="text-lg sm:text-xl font-bold text-gray-900 tabular-nums">{Math.max(0, metrics.totalTickets - metrics.checkedIn)}</span>
+                        <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
+                           <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Awaiting</span>
+                           <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{Math.max(0, metrics.totalTickets - metrics.checkedIn)}</span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-gray-100 pb-2 sm:pb-3 gap-2">
-                           <span className="text-gray-600 font-bold text-xs sm:text-sm">Rate</span>
-                           <span className="text-lg sm:text-xl font-bold text-gray-900 tabular-nums">{checkInRate}%</span>
+                        <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
+                           <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Rate</span>
+                           <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{checkInRate}%</span>
                         </div>
                      </div>
                   </div>
