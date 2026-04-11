@@ -109,50 +109,51 @@ export default function SalesReport() {
   };
 
   return (
-    <div className="w-full pb-12 animate-in fade-in duration-500">
+    <div className="w-full max-w-6xl mx-auto pb-8 sm:pb-12 animate-in fade-in duration-500 space-y-4 sm:space-y-5">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Sales Report</h1>
-          <p className="text-gray-500 mt-1 text-sm font-medium italic">Filter and export ticket sales data</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight">Sales Report</h1>
+          <p className="text-gray-500 mt-0.5 text-xs sm:text-sm font-medium">Search, filter, export</p>
         </div>
         
         <button 
+          type="button"
           onClick={handleExport}
-          className="flex items-center justify-center bg-[#10b981] hover:bg-[#059669] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md shadow-green-500/20 whitespace-nowrap active:scale-95"
+          className="inline-flex items-center justify-center min-h-[44px] w-full sm:w-auto bg-[#10b981] hover:bg-[#059669] text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-green-500/20 active:scale-[0.98] text-sm"
         >
-          <Download className="w-4 h-4 mr-2" /> Export to Excel
+          <Download className="w-4 h-4 mr-2 shrink-0" /> Export CSV
         </button>
       </div>
 
-      {/* Filters Row */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm mb-6">
-        <div className="flex items-center justify-between mb-4">
-           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
-             <Filter className="w-3.5 h-3.5 mr-2" /> Filters
+      {/* Filters */}
+      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+           <h3 className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
+             <Filter className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Filters
            </h3>
-           <button onClick={clearFilters} className="text-xs font-bold text-primary hover:underline">Clear All</button>
+           <button type="button" onClick={clearFilters} className="text-xs font-bold text-primary hover:underline min-h-[44px] px-1 sm:min-h-0">Clear</button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-           {/* Search */}
-           <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+           <div className="relative col-span-2 lg:col-span-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input 
+                 type="search"
+                 enterKeyHint="search"
                  value={searchQuery}
                  onChange={e => setSearchQuery(e.target.value)}
-                 placeholder="Name, phone, email, or ticket ID" 
-                 className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-primary/30 rounded-xl pl-9 pr-4 py-3 text-sm font-medium transition-all outline-none"
+                 placeholder="Search name, phone, ID" 
+                 className="w-full min-h-[44px] bg-gray-50 border border-transparent focus:bg-white focus:border-primary/30 rounded-xl pl-9 pr-3 py-2 text-sm font-medium transition-all outline-none"
               />
            </div>
 
-           {/* Ticket Type */}
-           <div className="relative">
+           <div className="relative min-w-0">
               <select 
                 value={ticketTypeFilter}
                 onChange={e => setTicketTypeFilter(e.target.value)}
-                className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30"
+                className="w-full min-h-[44px] bg-gray-50 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30"
               >
                 <option>All Types</option>
                 <option>Platinum</option>
@@ -163,12 +164,11 @@ export default function SalesReport() {
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
            </div>
 
-           {/* Payment Mode */}
-           <div className="relative">
+           <div className="relative min-w-0">
               <select 
                 value={paymentModeFilter}
                 onChange={e => setPaymentModeFilter(e.target.value)}
-                className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30"
+                className="w-full min-h-[44px] bg-gray-50 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30"
               >
                 <option>All Modes</option>
                 <option>Cash</option>
@@ -178,13 +178,12 @@ export default function SalesReport() {
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
            </div>
 
-           {/* Organiser POC */}
-           <div className="relative">
+           <div className="relative col-span-2 lg:col-span-1 min-w-0">
               <select 
                 value={pocFilter}
                 disabled={userRole !== 'admin'}
                 onChange={e => setPocFilter(e.target.value)}
-                className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30 disabled:opacity-60"
+                className="w-full min-h-[44px] bg-gray-50 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 appearance-none outline-none focus:bg-white focus:border-primary/30 disabled:opacity-60"
               >
                 <option>All Organisers</option>
                 {/* Dynamically this would be populated from profiles */}
@@ -202,40 +201,78 @@ export default function SalesReport() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-         <div className="bg-purple-50 border border-purple-100 rounded-2xl p-5 shadow-sm">
-            <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest block mb-1">Total Entries</span>
-            <div className="text-3xl font-bold text-purple-900">{metrics.totalEntries}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+         <div className="bg-purple-50 border border-purple-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
+            <span className="text-[9px] sm:text-[10px] font-bold text-purple-600 uppercase tracking-wide block mb-0.5">Entries</span>
+            <div className="text-xl sm:text-3xl font-bold text-purple-900 tabular-nums">{metrics.totalEntries}</div>
          </div>
-         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 shadow-sm">
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1">Total Tickets</span>
-            <div className="text-3xl font-bold text-blue-900">{metrics.totalTickets}</div>
+         <div className="bg-blue-50 border border-blue-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
+            <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wide block mb-0.5">Tickets</span>
+            <div className="text-xl sm:text-3xl font-bold text-blue-900 tabular-nums">{metrics.totalTickets}</div>
          </div>
-         <div className="bg-green-50 border border-green-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex justify-between items-start">
-               <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest block mb-1">Total Revenue</span>
-               {userRole !== 'admin' && <span className="text-[8px] font-bold bg-green-200 text-green-700 px-1.5 py-0.5 rounded leading-none">Admin only</span>}
+         <div className="bg-green-50 border border-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
+            <div className="flex justify-between items-start gap-1">
+               <span className="text-[9px] sm:text-[10px] font-bold text-green-600 uppercase tracking-wide block mb-0.5">Revenue</span>
+               {userRole !== 'admin' && <span className="text-[8px] font-bold bg-green-200 text-green-700 px-1 py-0.5 rounded">Admin</span>}
             </div>
-            <div className="text-3xl font-bold text-green-900">₹{new Intl.NumberFormat('en-IN').format(userRole === 'admin' ? metrics.totalRevenue : 0)}</div>
+            <div className="text-xl sm:text-3xl font-bold text-green-900 tabular-nums leading-tight">₹{new Intl.NumberFormat('en-IN').format(userRole === 'admin' ? metrics.totalRevenue : 0)}</div>
          </div>
-         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-1">Booked Tickets</span>
-            <div className="text-3xl font-bold text-gray-900">{metrics.bookedTickets}</div>
+         <div className="bg-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
+            <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 uppercase tracking-wide block mb-0.5">Booked</span>
+            <div className="text-xl sm:text-3xl font-bold text-gray-900 tabular-nums">{metrics.bookedTickets}</div>
          </div>
       </div>
 
       {loading ? (
-         <div className="flex h-64 items-center justify-center bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+         <div className="flex min-h-[12rem] items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm">
+            <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin" />
          </div>
       ) : (
-         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-               <h2 className="text-lg font-bold text-gray-900">All Sales Transactions</h2>
-               <span className="text-xs font-bold text-gray-400">{filteredTickets.length} results found</span>
+         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+               <h2 className="text-sm sm:text-lg font-bold text-gray-900">Transactions</h2>
+               <span className="text-[10px] sm:text-xs font-bold text-gray-400 shrink-0">{filteredTickets.length} rows</span>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile: stacked cards — no horizontal scroll */}
+            <ul className="md:hidden divide-y divide-gray-100 list-none m-0 p-0">
+               {filteredTickets.length === 0 ? (
+                  <li className="px-4 py-12 text-center">
+                     <FileSpreadsheet className="w-9 h-9 mx-auto text-gray-300 mb-2" />
+                     <h3 className="text-sm font-bold text-gray-900">No transactions</h3>
+                     <p className="text-xs text-gray-500 mt-1">Adjust filters</p>
+                  </li>
+               ) : (
+                  filteredTickets.map(t => {
+                     const d = new Date(t.created_at);
+                     const formattedDate = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+                     const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                     let statusBadge = "bg-yellow-50 text-yellow-700 border-yellow-200";
+                     if (t.status === 'checked_in') statusBadge = "bg-green-50 text-green-700 border-green-200";
+                     else if (t.status === 'cancelled') statusBadge = "bg-red-50 text-red-700 border-red-200";
+                     return (
+                        <li key={t.id} className="px-4 py-3 active:bg-gray-50/80">
+                           <div className="flex justify-between items-start gap-2 mb-1">
+                              <div className="min-w-0">
+                                 <p className="text-sm font-bold text-gray-900 truncate">{t.purchaser_name || "Unknown"}</p>
+                                 <p className="text-[11px] text-gray-500 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
+                              </div>
+                              <span className="text-sm font-bold text-gray-900 shrink-0 tabular-nums">₹{new Intl.NumberFormat('en-IN').format(t.price || 0)}</span>
+                           </div>
+                           <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                              <span className="font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded uppercase">{t.type}</span>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
+                                 {t.status.replace('_', ' ')}
+                              </span>
+                              <span className="text-gray-400 ml-auto">{formattedDate} · {formattedTime}</span>
+                           </div>
+                        </li>
+                     );
+                  })
+               )}
+            </ul>
+
+            <div className="hidden md:block overflow-x-auto">
                <table className="w-full text-left border-collapse">
                   <thead>
                      <tr className="bg-gray-50/50 border-b border-gray-100">
@@ -250,7 +287,7 @@ export default function SalesReport() {
                   <tbody className="divide-y divide-gray-50">
                      {filteredTickets.length === 0 ? (
                         <tr>
-                           <td colSpan={6} className="px-6 py-16 text-center">
+                           <td colSpan={6} className="px-6 py-12 text-center">
                               <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                               <h3 className="text-base font-bold text-gray-900">No transactions found</h3>
                               <p className="text-sm text-gray-500 mt-1">Adjust your filters to see more results.</p>

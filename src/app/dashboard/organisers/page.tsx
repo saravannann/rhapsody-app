@@ -127,80 +127,81 @@ export default function OrganisersPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 max-w-5xl mx-auto">
       
       {/* Target Editor Modal */}
       {editingOrg && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                   <Target className="w-5 h-5 mr-2 text-primary" /> Edit Targets
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm max-h-[min(92vh,640px)] flex flex-col shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 sm:slide-in-from-bottom-0 duration-200 overflow-hidden">
+             <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                   <Target className="w-5 h-5 text-primary shrink-0" /> Edit Targets
                 </h3>
-                <button onClick={() => setEditingOrg(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+                <button type="button" onClick={() => setEditingOrg(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
                    <X className="w-4 h-4" />
                 </button>
              </div>
              
-             <div className="p-6 space-y-3">
-                <p className="text-sm font-medium text-gray-500 mb-6">Modify ticket tier quotas for <span className="font-bold text-gray-900">{editingOrg.name}</span>.</p>
+             <div className="p-4 sm:p-5 space-y-2 overflow-y-auto flex-1 min-h-0">
+                <p className="text-xs sm:text-sm text-gray-500 mb-3">Quotas for <span className="font-bold text-gray-900">{editingOrg.name}</span></p>
                 
                 {editingOrg.targets.map((tgt: any, i: number) => (
-                   <div key={tgt.name} className="flex justify-between items-center p-3 rounded-xl border border-gray-100 bg-[#fdfaff] hover:border-pink-200 transition-colors">
-                      <span className="font-bold text-gray-700 text-sm flex items-center gap-2">
-                         <div className={`w-2 h-2 rounded-full ${tgt.color}`}></div>
-                         {tgt.name}
+                   <div key={tgt.name} className="flex justify-between items-center gap-3 p-3 rounded-xl border border-gray-100 bg-[#fdfaff]">
+                      <span className="font-bold text-gray-700 text-xs sm:text-sm flex items-center gap-2 min-w-0">
+                         <span className={`w-2 h-2 rounded-full shrink-0 ${tgt.color}`} />
+                         <span className="truncate">{tgt.name}</span>
                       </span>
                       <input 
                         type="number" 
                         min="0"
+                        inputMode="numeric"
                         value={tgt.target} 
                         onChange={(e) => {
                            const newTargets = [...editingOrg.targets];
                            newTargets[i].target = Number(e.target.value);
                            setEditingOrg({ ...editingOrg, targets: newTargets });
                         }}
-                        className="w-20 text-center bg-white border border-gray-200 rounded-lg py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-gray-900" 
+                        className="w-[4.5rem] sm:w-20 text-center bg-white border border-gray-200 rounded-lg py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-gray-900" 
                       />
                    </div>
                 ))}
              </div>
 
-             <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
-                <button onClick={() => setEditingOrg(null)} className="flex-1 bg-white border border-gray-200 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-100 transition-colors shadow-sm">Cancel</button>
-                <button onClick={saveTargetEdits} className="flex-1 bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-500/20 hover:opacity-90 transition-all active:scale-[0.98]">Save Quotas</button>
+             <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex gap-2 sm:gap-3 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <button type="button" onClick={() => setEditingOrg(null)} className="flex-1 bg-white border border-gray-200 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-100 transition-colors text-sm sm:text-base">Cancel</button>
+                <button type="button" onClick={saveTargetEdits} className="flex-1 bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-500/20 hover:opacity-90 transition-all active:scale-[0.98] text-sm sm:text-base">Save</button>
              </div>
           </div>
         </div>
       )}
 
       {/* Header Layout */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+        <div className="min-w-0">
           {view === 'add' ? (
-             <button onClick={() => setView('list')} className="flex items-center text-sm font-bold text-gray-500 hover:text-primary mb-2 transition-colors">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back to Directory
+             <button type="button" onClick={() => setView('list')} className="flex items-center text-xs sm:text-sm font-bold text-gray-500 hover:text-primary mb-1 transition-colors">
+                <ArrowLeft className="w-4 h-4 mr-1 shrink-0" /> Back to Directory
              </button>
           ) : null}
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">
              {view === 'add' ? 'User Management' : 'Organiser Management'}
           </h1>
-          <p className="text-gray-500 mt-1 text-sm font-medium">
-             {view === 'add' ? 'Add and manage system access automatically provisioned by roles' : 'Manage organisers and set sales targets'}
+          <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium leading-snug">
+             {view === 'add' ? 'Provision access by role' : 'Directory, targets, and sales at a glance'}
           </p>
         </div>
         
         {view === 'list' && (
-           <button onClick={() => setView('add')} className="flex items-center justify-center bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-primary text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98]">
-             <UserPlus className="w-4 h-4 mr-2" /> Add New Organiser
+           <button type="button" onClick={() => setView('add')} className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-primary text-white font-bold py-3 px-5 rounded-xl text-sm shadow-lg shadow-pink-500/25 transition-all active:scale-[0.98]">
+             <UserPlus className="w-4 h-4" /> Add organiser
            </button>
         )}
       </div>
 
       {view === 'add' ? (
-        <div className="max-w-2xl bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(236,72,153,0.06)] border border-pink-50 mt-8 animate-in fade-in slide-in-from-right-4 duration-300">
-          <form onSubmit={handleAddSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="w-full max-w-2xl bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 shadow-sm border border-pink-100/80 animate-in fade-in slide-in-from-right-4 duration-300">
+          <form onSubmit={handleAddSubmit} className="space-y-5 sm:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-bold text-secondary mb-2">Full Name</label>
                 <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="Sara" className="w-full bg-[#fdfaff] border border-pink-100 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
@@ -244,12 +245,12 @@ export default function OrganisersPage() {
               </div>
             </div>
 
-            <div className="pt-4 flex items-center justify-between">
-              <div className="flex-1">
-                 {success && <span className="flex items-center text-sm font-bold text-accent bg-amber-50 px-3 py-1.5 rounded-lg w-fit border border-amber-100"><CheckCircle2 className="w-4 h-4 mr-2" /> User saved!</span>}
+            <div className="pt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="min-h-[1.75rem]">
+                 {success && <span className="inline-flex items-center text-xs sm:text-sm font-bold text-accent bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100"><CheckCircle2 className="w-4 h-4 mr-2 shrink-0" /> User saved!</span>}
               </div>
-              <button type="submit" disabled={isSubmitting || !formData.name || !formData.phone} className="bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-50 min-w-[140px]">
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Member"}
+              <button type="submit" disabled={isSubmitting || !formData.name || !formData.phone} className="w-full sm:w-auto bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[140px]">
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save member"}
               </button>
             </div>
           </form>
@@ -257,86 +258,110 @@ export default function OrganisersPage() {
       ) : (
         <div className="animate-in fade-in duration-300">
            
-           <div className="relative mb-8">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+           <div className="relative mb-4 sm:mb-5">
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input 
-                type="text" 
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by name or phone number..." 
-                className="w-full bg-[#f3f4f6] border border-gray-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                placeholder="Search name or phone" 
+                className="w-full bg-gray-100/90 border border-gray-200/90 rounded-xl pl-10 sm:pl-11 pr-3 py-2.5 sm:py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
               />
            </div>
 
            {loading ? (
-              <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
+              <div className="flex justify-center py-10 sm:py-12"><Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin" /></div>
+           ) : filteredOrganisers.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-10 text-center">
+                 <p className="text-sm font-semibold text-gray-700">
+                    {organisers.length === 0 ? "No organisers yet" : "No matches"}
+                 </p>
+                 <p className="text-xs text-gray-500 mt-1">
+                    {organisers.length === 0 ? "Add your first organiser with the button above" : "Try a different name or phone"}
+                 </p>
+              </div>
            ) : (
-              <div className="space-y-6">
+              <ul className="space-y-3 sm:space-y-4 list-none p-0 m-0">
                 {filteredOrganisers.map(org => {
                    const totalTgt = org.targets.reduce((acc: number, t: any) => acc + t.target, 0);
                    const totalSld = org.targets.reduce((acc: number, t: any) => acc + t.sold, 0);
-                   const overallPerc = totalTgt > 0 ? ((totalSld / totalTgt) * 100).toFixed(1) : "0";
+                   const overallPercNum = totalTgt > 0 ? Math.min(100, (totalSld / totalTgt) * 100) : 0;
+                   const overallPerc = totalTgt > 0 ? overallPercNum.toFixed(1) : "0";
 
                    return (
-                   <div key={org.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col hover:border-pink-200 transition-colors group">
+                   <li key={org.id}>
+                   <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col hover:border-pink-200/80 transition-colors group">
                       
-                      <div className="p-6 pb-5 flex flex-col md:flex-row justify-between md:items-start border-b border-gray-100 gap-4 md:gap-0">
-                         <div>
-                            <div className="flex items-center gap-3 mb-3">
-                               <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">{org.name}</h3>
-                               <span className="bg-gray-900 text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-sm">
-                                  {org.status}
-                               </span>
+                      <div className="p-3.5 sm:p-4 border-b border-gray-100">
+                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 flex-1">
+                               <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                  <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-primary transition-colors truncate max-w-full">{org.name}</h3>
+                                  <span className="bg-gray-900 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0">
+                                     {org.status}
+                                  </span>
+                               </div>
+                               <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-500 font-medium">
+                                  <span className="inline-flex items-center gap-1.5 min-w-0"><Phone className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="truncate">{org.phone}</span></span>
+                                  <span className="inline-flex items-center gap-1.5 text-gray-400"><Clock className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="hidden sm:inline">Last login:</span> {org.lastLogin}</span>
+                               </div>
                             </div>
-                            <div className="flex items-center gap-5 text-sm font-medium text-gray-500">
-                               <div className="flex items-center"><Phone className="w-4 h-4 mr-2 opacity-70" /> {org.phone}</div>
-                               <div className="flex items-center"><Clock className="w-4 h-4 mr-2 opacity-70" /> Last Login: {org.lastLogin}</div>
+                            <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t border-gray-50 sm:border-0 sm:shrink-0">
+                               <div className="text-left sm:text-right">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sales</p>
+                                  <span className="text-xl sm:text-2xl font-bold text-primary tabular-nums leading-none">{org.totalSales}</span>
+                               </div>
+                               <button type="button" onClick={() => setEditingOrg(org)} className="inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-gray-800 font-bold px-3 py-2 rounded-lg hover:border-primary hover:text-primary transition-all text-[11px] sm:text-sm shadow-sm active:scale-[0.98] min-h-[40px] touch-manipulation whitespace-nowrap">
+                                  <Edit2 className="w-4 h-4 shrink-0" />
+                                  Edit targets
+                               </button>
                             </div>
-                         </div>
-                         <div className="flex items-center gap-8 md:text-right">
-                            <div>
-                               <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total Sales</p>
-                               <span className="text-3xl font-bold text-primary">{org.totalSales}</span>
-                            </div>
-                            <button onClick={() => setEditingOrg(org)} className="flex items-center bg-white border border-gray-200 text-gray-700 font-bold px-4 py-2.5 rounded-lg hover:border-primary hover:text-primary transition-all shadow-sm active:scale-[0.98] text-sm group-hover:shadow-md">
-                               <Edit2 className="w-4 h-4 mr-2" /> Edit Targets
-                            </button>
                          </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100 bg-gray-50/30">
+                      <div className="p-2 sm:p-3 bg-[#fafafa]">
+                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                          {org.targets.map((tgt: any) => {
                             const perc = tgt.target > 0 ? Math.min(100, Math.floor((tgt.sold / tgt.target) * 100)) : 0;
                             return (
-                               <div key={tgt.name} className="p-5">
-                                  <div className="flex justify-between items-center mb-4">
-                                     <h4 className="text-sm font-bold text-gray-700">{tgt.name}</h4>
-                                     <span className="bg-gray-100 border border-gray-200 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-md">{perc}%</span>
+                               <div key={tgt.name} className="rounded-lg bg-white border border-gray-100 p-2.5 sm:p-3">
+                                  <div className="flex justify-between items-start gap-1 mb-1.5">
+                                     <h4 className="text-[11px] sm:text-xs font-bold text-gray-800 leading-tight line-clamp-2">{tgt.name}</h4>
+                                     <span className="shrink-0 bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded tabular-nums">{perc}%</span>
                                   </div>
-                                  <div className="flex items-end gap-1 mb-2">
-                                    <span className="text-xl font-bold text-gray-900">{tgt.sold}</span>
-                                    <span className="text-sm font-medium text-gray-400 mb-0.5">/ {tgt.target}</span>
+                                  <div className="flex items-baseline gap-1 mb-1.5">
+                                    <span className="text-base sm:text-lg font-bold text-gray-900 tabular-nums">{tgt.sold}</span>
+                                    <span className="text-[11px] sm:text-xs font-medium text-gray-400">/ {tgt.target}</span>
                                   </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                  <div className="w-full bg-gray-200 rounded-full h-1 overflow-hidden">
                                      <div className={`${tgt.color} h-full rounded-full transition-all duration-500`} style={{ width: `${perc}%` }}></div>
                                   </div>
                                </div>
                             );
                          })}
+                         </div>
                       </div>
 
-                      <div className="p-4 bg-gray-50 border-t border-gray-100 relative">
-                         <div className="flex justify-between items-center text-sm mb-3 px-2">
-                            <span className="font-bold text-gray-600">Overall Progress</span>
-                            <span className="font-bold text-primary">{overallPerc}% Complete</span>
+                      <div className="px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50/90 border-t border-gray-100">
+                         <div className="flex justify-between items-center text-[11px] sm:text-sm mb-1.5">
+                            <span className="font-semibold text-gray-600">Overall</span>
+                            <span className="font-bold text-primary tabular-nums">{overallPerc}%</span>
                          </div>
-                         <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary to-secondary transition-all duration-500" style={{ width: `${overallPerc}%` }}></div>
+                         <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                               className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+                               style={{ width: `${overallPercNum}%` }}
+                            />
+                         </div>
                       </div>
 
                    </div>
+                   </li>
                    );
                 })}
-              </div>
+              </ul>
            )}
         </div>
       )}
