@@ -13,6 +13,38 @@ import {
 } from "@/utils/pass-targets";
 import { ticketQuantity } from "@/utils/ticket-counts";
 
+/** Roles from `profiles.roles` (array) or legacy `profiles.role` (string). */
+function normalizeProfileRoles(p: { roles?: unknown; role?: unknown }): string[] {
+  if (Array.isArray(p.roles)) {
+    return p.roles.filter((r): r is string => typeof r === "string" && r.length > 0);
+  }
+  if (typeof p.roles === "string") {
+    const s = p.roles.trim();
+    if (!s) return [];
+    return s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
+  }
+  if (typeof p.role === "string" && p.role.trim()) return [p.role.trim()];
+  return [];
+}
+
+const ROLE_DISPLAY_ORDER = ["admin", "organiser", "front_desk"] as const;
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  organiser: "Organiser",
+  front_desk: "Front Desk",
+};
+
+/** Stable keys for role chips (raw role id when available). */
+function sortedRoleEntries(roles: string[]): { key: string; label: string }[] {
+  const uniq = [...new Set(roles.map((r) => r.toLowerCase()))];
+  const rest = uniq.filter((r) => !ROLE_DISPLAY_ORDER.includes(r as (typeof ROLE_DISPLAY_ORDER)[number]));
+  const ordered = ROLE_DISPLAY_ORDER.filter((r) => uniq.includes(r));
+  return [...ordered, ...rest.sort()].map((r) => ({
+    key: r,
+    label: ROLE_LABELS[r] ?? r,
+  }));
+}
+
 export default function OrganisersPage() {
   const pathname = usePathname();
   const [view, setView] = useState<'list' | 'add'>('list');
@@ -82,6 +114,7 @@ export default function OrganisersPage() {
               id: org.id,
               name: org.name,
               phone: org.phone,
+              roles: normalizeProfileRoles(org),
               status: "active",
               lastLogin: "Just now",
               totalSales: orgTickets.reduce((sum, t) => sum + ticketQuantity(t), 0),
@@ -194,10 +227,14 @@ export default function OrganisersPage() {
     }
   };
 
-  const filteredOrganisers = organisers.filter(o => 
-     o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     o.phone.includes(searchQuery)
-  );
+  const filteredOrganisers = organisers.filter((o) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    if (o.name.toLowerCase().includes(q) || o.phone.includes(searchQuery)) return true;
+    const roleStr = (o.roles as string[] | undefined)?.join(" ").toLowerCase() ?? "";
+    if (roleStr.includes(q)) return true;
+    return sortedRoleEntries(o.roles || []).some((e) => e.label.toLowerCase().includes(q));
+  });
 
   return (
     <div className="space-y-4 sm:space-y-5 max-w-5xl mx-auto">
@@ -425,11 +462,12 @@ export default function OrganisersPage() {
               </div>
            ) : (
               <ul className="space-y-3 sm:space-y-4 list-none p-0 m-0">
-                {filteredOrganisers.map(org => {
+                {filteredOrganisers.map((org) => {
                    const totalTgt = org.targets.reduce((acc: number, t: any) => acc + t.target, 0);
                    const totalSld = org.targets.reduce((acc: number, t: any) => acc + t.sold, 0);
                    const overallPercNum = totalTgt > 0 ? Math.min(100, (totalSld / totalTgt) * 100) : 0;
                    const overallPerc = totalTgt > 0 ? overallPercNum.toFixed(1) : "0";
+                   const roleEntries = sortedRoleEntries(org.roles || []);
 
                    return (
                    <li key={org.id}>
@@ -444,6 +482,18 @@ export default function OrganisersPage() {
                                      {org.status}
                                   </span>
                                </div>
+                               {roleEntries.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1.5 mb-2" aria-label="User roles">
+                                     {roleEntries.map(({ key, label }) => (
+                                        <span
+                                           key={key}
+                                           className="inline-flex items-center rounded-full border border-pink-200/90 bg-pink-50/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary"
+                                        >
+                                           {label}
+                                        </span>
+                                     ))}
+                                  </div>
+                               ) : null}
                                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-500 font-medium">
                                   <span className="inline-flex items-center gap-1.5 min-w-0"><Phone className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="truncate">{org.phone}</span></span>
                                   <span className="inline-flex items-center gap-1.5 text-gray-400"><Clock className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="hidden sm:inline">Last login:</span> {org.lastLogin}</span>

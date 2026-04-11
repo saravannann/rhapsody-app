@@ -27,10 +27,12 @@ export default function LoginPage() {
     const user = localStorage.getItem('rhapsody_user');
     const role = localStorage.getItem('rhapsody_role');
     if (user && role) {
-      if (role === 'admin') {
-        router.replace('/dashboard');
+      if (role === "admin") {
+        router.replace("/dashboard");
+      } else if (role === "front_desk") {
+        router.replace("/frontdesk");
       } else {
-        router.replace('/organiser-dashboard');
+        router.replace("/organiser-dashboard");
       }
     }
   }, [router]);
@@ -62,16 +64,29 @@ export default function LoginPage() {
             : toIndianE164(nationalDigitsForIndia(phoneDigits));
         localStorage.setItem('rhapsody_user', profile.name || 'User');
         localStorage.setItem('rhapsody_phone', storedPhone);
-        localStorage.setItem('rhapsody_role', profile.roles.includes('admin') ? 'admin' : 'organiser');
-        
-        if (profile.roles.includes('admin')) {
-           router.push('/dashboard'); 
-        } else if (profile.roles.includes('organiser')) {
-           router.push('/organiser-dashboard');
+        const pr = profile as { roles?: unknown; role?: unknown };
+        const roles: string[] = Array.isArray(pr.roles)
+          ? (pr.roles as string[])
+          : typeof pr.role === "string"
+            ? [pr.role]
+            : [];
+        const resolvedRole = roles.includes('admin')
+          ? 'admin'
+          : roles.includes('organiser')
+            ? 'organiser'
+            : roles.includes('front_desk')
+              ? 'front_desk'
+              : 'organiser';
+        localStorage.setItem('rhapsody_role', resolvedRole);
+
+        if (roles.includes('admin')) {
+          router.push('/dashboard');
+        } else if (roles.includes('organiser')) {
+          router.push('/organiser-dashboard');
+        } else if (roles.includes('front_desk')) {
+          router.push('/frontdesk');
         } else {
-           // We can mock a screen here or route to a dedicated front desk page
-           alert('Logging into Front Desk Portal...');
-           router.push('/organiser-dashboard'); // Placeholder for front desk
+          router.push('/organiser-dashboard');
         }
       } else {
          alert('Invalid phone number or password. Please check your credentials and try again.');
