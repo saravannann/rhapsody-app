@@ -390,7 +390,7 @@ export default function DashboardPage() {
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 min-h-0">
                    <div className="lg:col-span-2 h-[220px] sm:h-[280px] lg:h-[340px] w-full min-w-0">
                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                       <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={0} barSize={32}>
+                       <BarChart data={chartData} margin={{ top: 8, right: 8, left: 10, bottom: 0 }} barGap={0} barSize={32}>
                          <defs>
                            <linearGradient id="shiningGold" x1="0" y1="0" x2="0" y2="1">
                              <stop offset="0%" stopColor="#FDE047" stopOpacity={1}/>
