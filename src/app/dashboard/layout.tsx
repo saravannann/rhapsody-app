@@ -22,7 +22,7 @@ export default function DashboardLayout({
     { name: "Organisers", href: "/dashboard/organisers" },
     { name: "Sell Tickets", href: "/dashboard/sell" },
     { name: "Bulk Upload", href: "#" },
-    { name: "Sales Report", href: "/organiser-dashboard/sales" },
+    { name: "Sales Report", href: "/dashboard/sales" },
     { name: "Settings", href: "/dashboard/settings" },
     { name: "Push Notifications", href: "#" },
   ];
