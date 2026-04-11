@@ -77,41 +77,51 @@ export default function FrontdeskCheckInPage() {
 
   const fetchMetrics = useCallback(async () => {
     try {
-      const { data: tickets } = await supabase.from("tickets").select("status, type, quantity, updated_at");
+      const { data: tickets, error } = await supabase
+        .from("tickets")
+        .select("status, type, quantity, updated_at");
+      
+      if (error) {
+        console.error("Supabase error fetching tickets:", error);
+        return;
+      }
       if (!tickets) return;
 
       let checkedInTotal = 0;
       let scannableTotal = 0;
       let hourCount = 0;
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const now = Date.now();
+      const hourAgo = now - 60 * 60 * 1000;
 
-      // Simple Peak Time logic: count by hour
       const hourlyDistribution: Record<number, number> = {};
 
-      const processedTickets = tickets.filter(t => {
-        const type = String(t.type || "");
-        const isDonor = type.includes("Donor");
-        return !isDonor; // Donor passes aren't scannable
-      });
-
-      processedTickets.forEach(t => {
+      tickets.forEach(t => {
         const q = ticketQuantity(t);
+        const type = String(t.type || "").toLowerCase();
         const status = String(t.status || "").toLowerCase();
-        scannableTotal += q;
 
-        if (status === "checked_in") {
-          checkedInTotal += q;
-          const updateTime = new Date(t.updated_at);
-          if (updateTime > hourAgo) {
-            hourCount += q;
+        // Standard scannable logic: exclude Donor passes, exclude cancelled tickets
+        const isDonor = type.includes("donor");
+        
+        if (status !== "cancelled" && !isDonor) {
+          scannableTotal += q;
+
+          if (status === "checked_in") {
+            checkedInTotal += q;
+            
+            const updateTime = t.updated_at ? new Date(t.updated_at).getTime() : 0;
+            if (updateTime > hourAgo) {
+              hourCount += q;
+            }
+
+            if (updateTime > 0) {
+              const hr = new Date(updateTime).getHours();
+              hourlyDistribution[hr] = (hourlyDistribution[hr] || 0) + q;
+            }
           }
-
-          const hr = updateTime.getHours();
-          hourlyDistribution[hr] = (hourlyDistribution[hr] || 0) + q;
         }
       });
 
-      // Find peak hour
       let peakStr = "No data yet";
       if (Object.keys(hourlyDistribution).length > 0) {
         let peakHr = 0;
@@ -131,7 +141,7 @@ export default function FrontdeskCheckInPage() {
         .select("*")
         .eq("status", "checked_in")
         .order("updated_at", { ascending: false })
-        .limit(8); // Increased to fill space from removed card
+        .limit(8);
 
       setMetrics({
         totalCheckedIn: checkedInTotal,
@@ -141,7 +151,7 @@ export default function FrontdeskCheckInPage() {
         recentCheckIns: recent || []
       });
     } catch (error) {
-       console.error("Error fetching check-in metrics:", error);
+       console.error("System error fetching check-in metrics:", error);
     }
   }, []);
 
@@ -387,7 +397,7 @@ export default function FrontdeskCheckInPage() {
                <span className="text-2xl sm:text-4xl font-bold text-emerald-600 tabular-nums">{metrics.totalCheckedIn}</span>
                <span className="text-xs sm:text-sm font-bold text-gray-400">of {metrics.totalScannable}</span>
             </div>
-            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-400/60 mt-1 sm:mt-2 font-medium">of {metrics.totalScannable} booked</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-violet-400/60 mt-1 sm:mt-2 font-medium uppercase tracking-wider">booked & confirmed</p>
          </div>
 
          <div className="bg-white dark:bg-[var(--card-bg)] p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
