@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Music, User } from "lucide-react";
+import { Music, User, LogOut } from "lucide-react";
 
 export default function OrganiserLayout({
   children,
@@ -11,11 +11,19 @@ export default function OrganiserLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
     setUserName(localStorage.getItem('rhapsody_user') || 'Organiser');
   }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('rhapsody_user');
+    localStorage.removeItem('rhapsody_role');
+    localStorage.removeItem('rhapsody_phone');
+    router.replace('/');
+  };
 
   const navLinks = [
     { name: "Dashboard", href: "/organiser-dashboard" },
@@ -61,11 +69,17 @@ export default function OrganiserLayout({
               })}
             </nav>
 
-            {/* Profile Icon */}
+            {/* Profile + Sign Out */}
             <div className="flex items-center gap-3">
               {userName && <span className="hidden md:block text-sm font-bold text-gray-700">Welcome, {userName}</span>}
               <button className="p-2 border border-pink-100 bg-pink-50 rounded-full text-primary hover:bg-pink-100 transition-colors shadow-sm">
                 <User className="h-5 w-5" />
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-100 hover:border-red-100 rounded-xl transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
               </button>
             </div>
             
