@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Music, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 
 export default function LoginPage() {
@@ -11,6 +11,19 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const user = localStorage.getItem('rhapsody_user');
+    const role = localStorage.getItem('rhapsody_role');
+    if (user && role) {
+      if (role === 'admin') {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/organiser-dashboard');
+      }
+    }
+  }, [router]);
 
   const handleLogin = async (e: React.MouseEvent) => {
     e.preventDefault();
