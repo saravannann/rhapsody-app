@@ -5,6 +5,27 @@ import { Download, Search, Loader2, FileSpreadsheet, Filter, X, ChevronDown } fr
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 
+/** One display name per seller (lower-case key → canonical string from DB). */
+function buildSellerOptions(
+  tickets: { sold_by?: string | null }[],
+  profiles: { name?: string | null }[]
+): string[] {
+  const map = new Map<string, string>();
+  for (const t of tickets) {
+    const s = t.sold_by?.trim();
+    if (!s) continue;
+    const low = s.toLowerCase();
+    if (!map.has(low)) map.set(low, s);
+  }
+  for (const p of profiles) {
+    const s = p.name?.trim();
+    if (!s) continue;
+    const low = s.toLowerCase();
+    if (!map.has(low)) map.set(low, s);
+  }
+  return [...map.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
 export default function SalesReport() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +39,7 @@ export default function SalesReport() {
   const [ticketTypeFilter, setTicketTypeFilter] = useState('All Types');
   const [paymentModeFilter, setPaymentModeFilter] = useState('All Modes');
   const [pocFilter, setPocFilter] = useState('All Organisers');
+  const [sellerOptions, setSellerOptions] = useState<string[]>([]);
 
   useEffect(() => {
      async function fetchSales() {
@@ -37,6 +59,13 @@ export default function SalesReport() {
 
            const { data } = await query.order('created_at', { ascending: false });
            if (data) setTickets(data);
+
+           if (savedRole === 'admin') {
+              const { data: profiles } = await supabase.from('profiles').select('name');
+              setSellerOptions(buildSellerOptions(data || [], profiles || []));
+           } else {
+              setSellerOptions([]);
+           }
         } catch (err) {
            console.error(err);
         } finally {
@@ -56,7 +85,11 @@ export default function SalesReport() {
       const matchType = ticketTypeFilter === 'All Types' || t.type === ticketTypeFilter;
       // Note: Payment mode not yet in schema, defaulting to match all
       const matchPayment = paymentModeFilter === 'All Modes' || true; 
-      const matchPoc = pocFilter === 'All Organisers' || t.sold_by === pocFilter;
+      const matchPoc =
+        pocFilter === 'All Organisers' ||
+        (Boolean(t.sold_by) &&
+          Boolean(pocFilter) &&
+          t.sold_by!.trim().toLowerCase() === pocFilter.trim().toLowerCase());
 
       return matchSearch && matchType && matchPayment && matchPoc;
     });
@@ -206,15 +239,13 @@ export default function SalesReport() {
                 className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30 disabled:opacity-60"
               >
                 <option>All Organisers</option>
-                {/* Dynamically this would be populated from profiles */}
-                {userRole === 'admin' ? (
-                   <>
-                     <option>Master Admin</option>
-                     <option>Sara</option>
-                   </>
-                ) : (
-                   <option>{userName}</option>
-                )}
+                {userRole === 'admin'
+                  ? sellerOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))
+                  : userName && <option value={userName}>{userName}</option>}
               </select>
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>

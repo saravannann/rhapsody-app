@@ -16,6 +16,7 @@ import {
   EyeOff,
   Shield,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
@@ -139,13 +140,72 @@ function RoleChecklist({
   );
 }
 
+function TargetQuotaCells({ targets }: { targets: any[] }) {
+  return (
+    <div className="-mx-0.5 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-0.5 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-2 sm:overflow-visible lg:grid-cols-4">
+      {targets.map((tgt: any) => {
+        const perc =
+          tgt.target > 0 ? Math.min(100, Math.floor((tgt.sold / tgt.target) * 100)) : 0;
+        return (
+          <div
+            key={tgt.name}
+            className="w-[calc((100%-0.375rem)/2)] min-w-[7rem] shrink-0 snap-start rounded-md border border-gray-100 bg-white p-1.5 sm:w-auto sm:min-w-0 sm:rounded-lg sm:p-3"
+          >
+            <div className="mb-0.5 flex items-start justify-between gap-1">
+              <h4 className="line-clamp-2 text-[9px] font-bold leading-tight text-gray-800 sm:text-[11px] md:text-xs">
+                {tgt.name}
+              </h4>
+              <span className="shrink-0 rounded bg-gray-100 px-1 py-px text-[9px] font-bold tabular-nums text-gray-600 sm:px-1.5 sm:py-0.5 sm:text-[10px] md:text-xs">
+                {perc}%
+              </span>
+            </div>
+            <div className="mb-0.5 flex items-baseline gap-0.5">
+              <span className="text-sm font-bold tabular-nums text-gray-900 sm:text-base md:text-lg">{tgt.sold}</span>
+              <span className="text-[10px] font-medium text-gray-400 sm:text-[11px] md:text-xs">/{tgt.target}</span>
+            </div>
+            <div className="h-0.5 w-full overflow-hidden rounded-full bg-gray-200 sm:h-1">
+              <div
+                className={`${tgt.color} h-full rounded-full transition-all duration-500`}
+                style={{ width: `${perc}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function OverallProgressFooter({
+  overallPerc,
+  overallPercNum,
+}: {
+  overallPerc: string;
+  overallPercNum: number;
+}) {
+  return (
+    <div className="border-t border-gray-100 bg-gray-50/90 px-2.5 py-1.5 sm:px-4 sm:py-3">
+      <div className="mb-1 flex items-center justify-between text-[10px] sm:mb-1.5 sm:text-sm">
+        <span className="font-semibold text-gray-600">Overall</span>
+        <span className="font-bold tabular-nums text-primary">{overallPerc}%</span>
+      </div>
+      <div className="h-1 overflow-hidden rounded-full bg-gray-200 sm:h-1.5">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+          style={{ width: `${overallPercNum}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function OrganisersPage() {
   const pathname = usePathname();
   const router = useRouter();
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [organisers, setOrganisers] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Target Editing State
@@ -168,10 +228,10 @@ export default function OrganisersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (view === "list") loadOrganisers();
+    if (view === "list") void loadUsers();
   }, [view, pathname]);
 
-  async function loadOrganisers() {
+  async function loadUsers() {
     setLoading(true);
     setLoadError(null);
     try {
@@ -182,42 +242,48 @@ export default function OrganisersPage() {
       ]);
 
       if (profilesRes.error) {
-        console.error("[Organisers] profiles:", profilesRes.error);
+        console.error("[UserManagement] profiles:", profilesRes.error);
         setLoadError(
           profilesRes.error.message ||
             "Could not load profiles. Check Supabase connection and RLS policies."
         );
-        setOrganisers([]);
+        setUsers([]);
         return;
       }
       if (ticketsRes.error) {
-        console.warn("[Organisers] tickets:", ticketsRes.error);
+        console.warn("[UserManagement] tickets:", ticketsRes.error);
       }
 
       const profiles = profilesRes.data || [];
       const tickets = ticketsRes.data || [];
 
-      if (profiles) {
-        const orgs = profiles.map((org) => {
-           // Aggregate sales for this SPECIFIC organiser - case insensitive and trimmed
-           const orgNameLower = org.name.trim().toLowerCase();
-           const orgTickets = tickets.filter(t => t.sold_by?.trim().toLowerCase() === orgNameLower);
-           const soldByName = soldCountsFromTickets(orgTickets);
+      const rows = profiles.map((org) => {
+        const displayName = String(org.name ?? "").trim();
+        const orgNameLower = displayName.toLowerCase();
+        const orgTickets = tickets.filter(
+          (t) => t.sold_by?.trim().toLowerCase() === orgNameLower
+        );
+        const soldByName = soldCountsFromTickets(orgTickets);
 
-           return {
-              id: org.id,
-              name: org.name,
-              phone: org.phone,
-              roles: normalizeProfileRoles(org),
-              status: "active",
-              lastLogin: "Just now",
-              totalSales: orgTickets.reduce((sum, t) => sum + ticketQuantity(t), 0),
-              pass_targets: org.pass_targets,
-              targets: buildTargetRowsFromProfile(org.pass_targets, soldByName),
-           };
-        });
-        setOrganisers(orgs);
-      }
+        return {
+          id: org.id,
+          name: displayName || "Unnamed user",
+          phone: org.phone,
+          roles: normalizeProfileRoles(org),
+          status: "active",
+          lastLogin: "Just now",
+          totalSales: orgTickets.reduce((sum, t) => sum + ticketQuantity(t), 0),
+          pass_targets: org.pass_targets,
+          targets: buildTargetRowsFromProfile(org.pass_targets, soldByName),
+        };
+      });
+
+      rows.sort((a, b) =>
+        String(a.name).toLowerCase().localeCompare(String(b.name).toLowerCase(), undefined, {
+          sensitivity: "base",
+        })
+      );
+      setUsers(rows);
     } catch (e) {
       console.error(e);
     } finally {
@@ -290,7 +356,7 @@ export default function OrganisersPage() {
       typeof window !== "undefined" ? localStorage.getItem("rhapsody_phone") : null;
     const isSelf = Boolean(selfPhone && org.phone === selfPhone);
 
-    const adminRows = organisers.filter((o) =>
+    const adminRows = users.filter((o) =>
       (o.roles || []).some((r: string) => String(r).toLowerCase() === "admin")
     );
     const targetIsAdmin = (org.roles || []).some(
@@ -328,7 +394,7 @@ export default function OrganisersPage() {
         return;
       }
 
-      setOrganisers((prev) => prev.filter((o) => o.id !== org.id));
+      setUsers((prev) => prev.filter((o) => o.id !== org.id));
       setEditingOrg(null);
       setEditingRoles(null);
 
@@ -390,7 +456,7 @@ export default function OrganisersPage() {
       }
 
       const nextRoles = normalizeProfileRoles({ roles: data.roles });
-      setOrganisers((prev) =>
+      setUsers((prev) =>
         prev.map((o) => (o.id === data.id ? { ...o, roles: nextRoles } : o))
       );
       setEditingRoles(null);
@@ -429,7 +495,7 @@ export default function OrganisersPage() {
       }
 
       const mergedPassTargets = data.pass_targets ?? pass_targets;
-      setOrganisers((prev) =>
+      setUsers((prev) =>
         prev.map((o) =>
           o.id === editingOrg.id
             ? { ...editingOrg, pass_targets: mergedPassTargets }
@@ -442,7 +508,7 @@ export default function OrganisersPage() {
     }
   };
 
-  const filteredOrganisers = organisers.filter((o) => {
+  const filteredUsers = users.filter((o) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     if (o.name.toLowerCase().includes(q) || o.phone.includes(searchQuery)) return true;
@@ -452,7 +518,7 @@ export default function OrganisersPage() {
   });
 
   return (
-    <div className="space-y-4 sm:space-y-5 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-3 sm:space-y-5">
       
       <CenteredModal
         open={!!editingOrg}
@@ -566,26 +632,26 @@ export default function OrganisersPage() {
       </CenteredModal>
 
       {/* Header Layout */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0">
           {view === 'add' ? (
-             <button type="button" onClick={() => setView('list')} className="flex items-center text-xs sm:text-sm font-bold text-gray-500 hover:text-primary mb-1 transition-colors">
-                <ArrowLeft className="w-4 h-4 mr-1 shrink-0" /> Back to Directory
+             <button type="button" onClick={() => setView('list')} className="mb-1 flex items-center text-xs font-bold text-gray-500 transition-colors hover:text-primary sm:text-sm">
+                <ArrowLeft className="mr-1 h-4 w-4 shrink-0" /> Back to Directory
              </button>
           ) : null}
-          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">
+          <h1 className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-xl font-bold leading-tight text-transparent sm:text-2xl md:text-3xl">
              User Management
           </h1>
           {view === 'add' ? (
-             <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium leading-snug">
+             <p className="mt-0.5 text-xs font-medium leading-snug text-gray-500 sm:mt-1 sm:text-sm">
                 Provision access by role
              </p>
           ) : null}
         </div>
         
         {view === 'list' && (
-           <button type="button" onClick={() => setView('add')} className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-primary text-white font-bold py-3 px-5 rounded-xl text-sm shadow-lg shadow-pink-500/25 transition-all active:scale-[0.98]">
-             <UserPlus className="w-4 h-4" /> Add organiser
+           <button type="button" onClick={() => setView('add')} className="inline-flex min-h-[40px] shrink-0 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-2 text-xs font-bold text-white shadow-lg shadow-pink-500/25 transition-all hover:from-primary-dark hover:to-primary active:scale-[0.98] sm:w-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
+             <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Add user
            </button>
         )}
       </div>
@@ -598,7 +664,7 @@ export default function OrganisersPage() {
           <p className="font-medium leading-snug">{loadError}</p>
           <button
             type="button"
-            onClick={() => void loadOrganisers()}
+            onClick={() => void loadUsers()}
             className="shrink-0 rounded-lg border border-red-300 bg-white px-4 py-2 text-xs font-bold text-red-900 shadow-sm transition-colors hover:bg-red-100"
           >
             Retry
@@ -670,8 +736,8 @@ export default function OrganisersPage() {
       ) : (
         <div className="animate-in fade-in duration-300">
            
-           <div className="relative mb-4 sm:mb-5">
-              <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+           <div className="relative mb-3 sm:mb-5">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 sm:left-3.5 sm:h-5 sm:w-5" />
               <input 
                 type="search"
                 enterKeyHint="search"
@@ -679,28 +745,28 @@ export default function OrganisersPage() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search name or phone" 
-                className="w-full bg-gray-100/90 border border-gray-200/90 rounded-xl pl-10 sm:pl-11 pr-3 py-2.5 sm:py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                className="w-full rounded-xl border border-gray-200/90 bg-gray-100/90 py-2 pl-9 pr-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 sm:py-2.5 sm:pl-11 sm:text-sm"
               />
            </div>
 
            {loading ? (
-              <div className="flex justify-center py-10 sm:py-12"><Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin" /></div>
+              <div className="flex justify-center py-8 sm:py-12"><Loader2 className="h-7 w-7 animate-spin text-primary sm:h-8 sm:w-8" /></div>
            ) : loadError ? (
               <p className="py-6 text-center text-sm text-gray-600">
                 Fix the issue above, then tap Retry to load the directory.
               </p>
-           ) : filteredOrganisers.length === 0 ? (
+           ) : filteredUsers.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-10 text-center">
                  <p className="text-sm font-semibold text-gray-700">
-                    {organisers.length === 0 ? "No users yet" : "No matches"}
+                    {users.length === 0 ? "No users yet" : "No matches"}
                  </p>
                  <p className="text-xs text-gray-500 mt-1">
-                    {organisers.length === 0 ? "Add your first user with the button above" : "Try a different name or phone"}
+                    {users.length === 0 ? "Add your first user with the button above" : "Try a different name or phone"}
                  </p>
               </div>
            ) : (
-              <ul className="space-y-3 sm:space-y-4 list-none p-0 m-0">
-                {filteredOrganisers.map((org) => {
+              <ul className="m-0 list-none space-y-2 p-0 sm:space-y-4">
+                {filteredUsers.map((org) => {
                    const totalTgt = org.targets.reduce((acc: number, t: any) => acc + t.target, 0);
                    const totalSld = org.targets.reduce((acc: number, t: any) => acc + t.sold, 0);
                    const overallPercNum = totalTgt > 0 ? Math.min(100, (totalSld / totalTgt) * 100) : 0;
@@ -709,122 +775,126 @@ export default function OrganisersPage() {
 
                    return (
                    <li key={org.id}>
-                   <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col hover:border-pink-200/80 transition-colors group">
+                   <div className="group flex flex-col overflow-hidden rounded-lg border border-gray-200/90 bg-white shadow-sm transition-colors hover:border-pink-200/80 sm:rounded-2xl">
                       
-                      <div className="p-3.5 sm:p-4 border-b border-gray-100">
-                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="border-b border-gray-100 p-2 sm:p-4">
+                         <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                               <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                  <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-primary transition-colors truncate max-w-full">{org.name}</h3>
-                                  <span className="bg-gray-900 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0">
+                               <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                  <h3 className="truncate text-sm font-bold text-gray-900 transition-colors group-hover:text-primary sm:text-base md:text-lg">
+                                     {org.name}
+                                  </h3>
+                                  <span className="shrink-0 rounded bg-gray-900 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none text-white sm:text-[10px]">
                                      {org.status}
                                   </span>
                                </div>
                                {roleEntries.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1.5 mb-2" aria-label="User roles">
-                                     {roleEntries.map(({ key, label }) => (
-                                        <span
-                                           key={key}
-                                           className="inline-flex items-center rounded-full border border-pink-200/90 bg-pink-50/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary"
-                                        >
-                                           {label}
-                                        </span>
-                                     ))}
-                                  </div>
+                                  <>
+                                     <p className="mt-0.5 truncate text-[10px] font-medium text-secondary/90 sm:hidden">
+                                        {roleEntries.map((e) => e.label).join(" · ")}
+                                     </p>
+                                     <div className="mt-1 hidden flex-wrap gap-1 sm:flex" aria-label="User roles">
+                                        {roleEntries.map(({ key, label }) => (
+                                           <span
+                                              key={key}
+                                              className="inline-flex items-center rounded-full border border-pink-200/90 bg-pink-50/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary"
+                                           >
+                                              {label}
+                                           </span>
+                                        ))}
+                                     </div>
+                                  </>
                                ) : null}
-                               <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-500 font-medium">
-                                  <span className="inline-flex items-center gap-1.5 min-w-0"><Phone className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="truncate">{org.phone}</span></span>
-                                  <span className="inline-flex items-center gap-1.5 text-gray-400"><Clock className="w-3.5 h-3.5 shrink-0 opacity-70" /> <span className="hidden sm:inline">Last login:</span> {org.lastLogin}</span>
-                               </div>
                             </div>
-                            <div className="flex flex-col items-stretch gap-2 pt-1 sm:shrink-0 sm:flex-row sm:items-center sm:justify-end sm:border-0 sm:pt-0 border-t border-gray-50">
-                               <div className="flex items-center justify-between gap-3 sm:block sm:text-right">
-                                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 sm:hidden">Sales</p>
-                                  <div>
-                                     <p className="mb-0.5 hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 sm:block">Sales</p>
-                                     <span className="text-xl font-bold leading-none text-primary tabular-nums sm:text-2xl">{org.totalSales}</span>
-                                  </div>
-                               </div>
-                               <div className="flex flex-wrap justify-end gap-2">
-                                  <button
-                                     type="button"
-                                     onClick={() => {
-                                       setEditingOrg(null);
-                                       setEditingRoles({
-                                         id: org.id,
-                                         name: org.name,
-                                         phone: org.phone,
-                                         rolesDraft: canonicalRoleSlugs(org.roles || []),
-                                       });
-                                     }}
-                                     className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-bold text-gray-800 shadow-sm transition-all hover:border-primary hover:text-primary active:scale-[0.98] sm:text-sm"
-                                  >
-                                     <Shield className="h-4 w-4 shrink-0" />
-                                     Edit roles
-                                  </button>
-                                  <button
-                                     type="button"
-                                     onClick={() => {
-                                       setEditingRoles(null);
-                                       setEditingOrg(org);
-                                     }}
-                                     className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-bold text-gray-800 shadow-sm transition-all hover:border-primary hover:text-primary active:scale-[0.98] sm:text-sm"
-                                  >
-                                     <Edit2 className="h-4 w-4 shrink-0" />
-                                     Edit targets
-                                  </button>
-                                  <button
-                                     type="button"
-                                     disabled={deletingId === org.id}
-                                     onClick={() => void deleteUser(org)}
-                                     className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-bold text-red-700 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 disabled:opacity-60 sm:text-sm"
-                                  >
-                                     {deletingId === org.id ? (
-                                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                                     ) : (
-                                        <Trash2 className="h-4 w-4 shrink-0" />
-                                     )}
-                                     Delete user
-                                  </button>
-                               </div>
+                            <div className="shrink-0 text-right leading-tight">
+                               <p className="text-[9px] font-bold uppercase tracking-wide text-gray-400 sm:text-[10px]">Sales</p>
+                               <span className="text-base font-bold tabular-nums text-primary sm:text-xl md:text-2xl">{org.totalSales}</span>
                             </div>
+                         </div>
+
+                         <div className="mt-2 flex gap-1.5 sm:mt-3 sm:justify-end sm:gap-2">
+                            <button
+                               type="button"
+                               aria-label="Edit roles"
+                               title="Edit roles"
+                               onClick={() => {
+                                  setEditingOrg(null);
+                                  setEditingRoles({
+                                     id: org.id,
+                                     name: org.name,
+                                     phone: org.phone,
+                                     rolesDraft: canonicalRoleSlugs(org.roles || []),
+                                  });
+                               }}
+                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm transition-all active:scale-[0.98] hover:border-primary hover:text-primary sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
+                            >
+                               <Shield className="h-4 w-4 shrink-0" />
+                               <span className="hidden sm:inline">Edit roles</span>
+                            </button>
+                            <button
+                               type="button"
+                               aria-label="Edit pass targets"
+                               title="Edit targets"
+                               onClick={() => {
+                                  setEditingRoles(null);
+                                  setEditingOrg(org);
+                               }}
+                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm transition-all active:scale-[0.98] hover:border-primary hover:text-primary sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
+                            >
+                               <Edit2 className="h-4 w-4 shrink-0" />
+                               <span className="hidden sm:inline">Edit targets</span>
+                            </button>
+                            <button
+                               type="button"
+                               aria-label="Delete user"
+                               title="Delete user"
+                               disabled={deletingId === org.id}
+                               onClick={() => void deleteUser(org)}
+                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-red-200 bg-white text-red-700 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 disabled:opacity-60 sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
+                            >
+                               {deletingId === org.id ? (
+                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                               ) : (
+                                  <Trash2 className="h-4 w-4 shrink-0" />
+                               )}
+                               <span className="hidden sm:inline">Delete user</span>
+                            </button>
+                         </div>
+
+                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-gray-100 pt-2 text-[10px] leading-snug text-gray-500 sm:mt-3 sm:pt-3 sm:text-xs">
+                            <span className="inline-flex min-w-0 max-w-[100%] items-center gap-1">
+                               <Phone className="h-3 w-3 shrink-0 opacity-60" />
+                               <span className="truncate">{org.phone}</span>
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-gray-400">
+                               <Clock className="h-3 w-3 shrink-0 opacity-60" />
+                               {org.lastLogin}
+                            </span>
                          </div>
                       </div>
 
-                      <div className="p-2 sm:p-3 bg-[#fafafa]">
-                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                         {org.targets.map((tgt: any) => {
-                            const perc = tgt.target > 0 ? Math.min(100, Math.floor((tgt.sold / tgt.target) * 100)) : 0;
-                            return (
-                               <div key={tgt.name} className="rounded-lg bg-white border border-gray-100 p-2.5 sm:p-3">
-                                  <div className="flex justify-between items-start gap-1 mb-1.5">
-                                     <h4 className="text-[11px] sm:text-xs font-bold text-gray-800 leading-tight line-clamp-2">{tgt.name}</h4>
-                                     <span className="shrink-0 bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded tabular-nums">{perc}%</span>
-                                  </div>
-                                  <div className="flex items-baseline gap-1 mb-1.5">
-                                    <span className="text-base sm:text-lg font-bold text-gray-900 tabular-nums">{tgt.sold}</span>
-                                    <span className="text-[11px] sm:text-xs font-medium text-gray-400">/ {tgt.target}</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-1 overflow-hidden">
-                                     <div className={`${tgt.color} h-full rounded-full transition-all duration-500`} style={{ width: `${perc}%` }}></div>
-                                  </div>
-                               </div>
-                            );
-                         })}
+                      <details className="border-t border-gray-100 sm:hidden [&[open]_summary_svg:last-child]:rotate-180">
+                         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-[#fafafa] px-2 py-2 text-[11px] font-semibold text-gray-800 [&::-webkit-details-marker]:hidden">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                               <Target className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+                               Pass targets
+                            </span>
+                            <span className="flex shrink-0 items-center gap-1.5 tabular-nums text-primary">
+                               {overallPerc}%
+                               <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200" />
+                            </span>
+                         </summary>
+                         <div className="bg-[#fafafa] px-1.5 pb-2 pt-0">
+                            <TargetQuotaCells targets={org.targets} />
                          </div>
-                      </div>
+                         <OverallProgressFooter overallPerc={overallPerc} overallPercNum={overallPercNum} />
+                      </details>
 
-                      <div className="px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50/90 border-t border-gray-100">
-                         <div className="flex justify-between items-center text-[11px] sm:text-sm mb-1.5">
-                            <span className="font-semibold text-gray-600">Overall</span>
-                            <span className="font-bold text-primary tabular-nums">{overallPerc}%</span>
+                      <div className="hidden sm:block">
+                         <div className="bg-[#fafafa] px-1.5 py-1.5 sm:p-3">
+                            <TargetQuotaCells targets={org.targets} />
                          </div>
-                         <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                               className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-                               style={{ width: `${overallPercNum}%` }}
-                            />
-                         </div>
+                         <OverallProgressFooter overallPerc={overallPerc} overallPercNum={overallPercNum} />
                       </div>
 
                    </div>
