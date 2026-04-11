@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const [filterDate, setFilterDate] = useState('All Time');
   const [filterType, setFilterType] = useState('All Types');
   const [filterOrganiser, setFilterOrganiser] = useState('All Organisers');
-  const [filterPayment, setFilterPayment] = useState('All Modes');
+  const [filterFunds, setFilterFunds] = useState('All Destinations');
 
   const [role, setRole] = useState('organiser');
 
@@ -90,9 +90,11 @@ export default function DashboardPage() {
 
        const typeMatch = filterType === 'All Types' || t.type === filterType;
        const orgMatch = filterOrganiser === 'All Organisers' || t.sold_by === filterOrganiser;
-       const payMatch = filterPayment === 'All Modes' || t.payment_mode === filterPayment;
+       const fundsMatch = filterFunds === 'All Destinations' || 
+         (filterFunds === 'Trust' && t.funds_destination === 'trust') ||
+         (filterFunds === 'Organizer' && t.funds_destination === 'organizer');
        
-       return dateMatch && typeMatch && orgMatch && payMatch;
+       return dateMatch && typeMatch && orgMatch && fundsMatch;
     });
 
     let totalRev = 0;
@@ -103,7 +105,7 @@ export default function DashboardPage() {
     
     const typeCount = { 'Platinum': 0, 'Donor': 0, 'Student': 0 };
     const revCount = { 'Platinum': 0, 'Donor': 0, 'Student': 0 };
-    const statusCount = { 'pending': 0, 'checked_in': 0, 'cancelled': 0 };
+    const statusCount = { 'booked': 0, 'checked_in': 0, 'cancelled': 0 };
 
     filteredTickets.forEach(t => {
       const q = ticketQuantity(t);
@@ -170,7 +172,7 @@ export default function DashboardPage() {
     setChartData(data);
 
     setStatusData([
-      { name: 'Pending', value: statusCount['pending'] },
+      { name: 'Booked', value: statusCount['booked'] },
       { name: 'Checked-in', value: statusCount['checked_in'] },
       { name: 'Cancelled', value: statusCount['cancelled'] },
     ]);
@@ -201,7 +203,7 @@ export default function DashboardPage() {
        };
     }).sort((a,b) => b.total - a.total));
 
-  }, [allTickets, allOrganisers, filterDate, filterType, filterOrganiser, filterPayment]);
+  }, [allTickets, allOrganisers, filterDate, filterType, filterOrganiser, filterFunds]);
 
   const checkInRate = metrics.scannableTickets > 0 ? ((metrics.checkedIn / metrics.scannableTickets) * 100).toFixed(1) : "0.0";
   const formattedRevenue = new Intl.NumberFormat('en-IN').format(metrics.totalRevenue);
@@ -297,18 +299,17 @@ export default function DashboardPage() {
                   <ChevronDown className="w-4 h-4 text-primary absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
-
-              <div className="min-w-0">
-                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-violet-300 mb-1">Payment</label>
+               <div className="min-w-0">
+                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-violet-300 mb-1">Paid To</label>
                 <div className="relative">
                    <select 
-                     value={filterPayment} 
-                     onChange={(e) => setFilterPayment(e.target.value)}
+                     value={filterFunds} 
+                     onChange={(e) => setFilterFunds(e.target.value)}
                      className="w-full min-h-[44px] bg-[#fdfaff] dark:bg-violet-950/35 border border-pink-100 dark:border-violet-500/25 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-violet-100 font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                    >
-                     <option>All Modes</option>
-                     <option value="Online">Online</option>
-                     <option value="Cash">Cash</option>
+                     <option>All Destinations</option>
+                     <option>Trust</option>
+                     <option>Organizer</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-primary absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -560,19 +561,19 @@ export default function DashboardPage() {
 
              {/* 3. Ticket Status */}
              {activeTab === 'Ticket Status' && (
-                <div className="animate-in fade-in duration-500 pt-1 sm:pt-4">
+                <div className="animate-in fade-in duration-500">
                   <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-10">
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
                           <span className="text-2xl sm:text-4xl font-bold text-[#10B981] mb-1 sm:mb-2 block tabular-nums">
-                             {(statusData.find(s=>s.name==='Checked-in')?.value || 0) + (statusData.find(s=>s.name==='Pending')?.value || 0)}
+                             {(statusData.find(s=>s.name==='Checked-in')?.value || 0) + (statusData.find(s=>s.name==='Booked')?.value || 0)}
                           </span>
                           <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Booked</h4>
                       </div>
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
                           <span className="text-2xl sm:text-4xl font-bold text-[#F59E0B] mb-1 sm:mb-2 block tabular-nums">
-                             {statusData.find(s=>s.name==='Pending')?.value || 0}
+                             {statusData.find(s=>s.name==='Booked')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Pending</h4>
+                          <h4 className="text-[10px] sm:text-sm text-gray-700 dark:text-violet-300 leading-tight">Booked</h4>
                       </div>
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
                           <span className="text-2xl sm:text-4xl font-bold text-[#8B5CF6] mb-1 sm:mb-2 block tabular-nums">
@@ -587,7 +588,7 @@ export default function DashboardPage() {
                       <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 rounded-xl sm:rounded-2xl p-4 sm:p-8 flex items-center justify-between text-center shadow-sm gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
                          <div className="relative z-10 w-24">
                             <div className="w-12 h-12 bg-gray-100 border border-gray-200 dark:border-violet-500/22 rounded-full mx-auto mb-3 flex items-center justify-center font-bold text-gray-500 dark:text-violet-300/70 shadow-sm">1</div>
-                            <span className="text-xs font-bold text-gray-700 dark:text-violet-300">Pending</span>
+                            <span className="text-xs font-bold text-gray-700 dark:text-violet-300">Issued</span>
                          </div>
                          <div className="flex-1 h-0.5 bg-gray-200 mx-2 relative z-0 min-w-[30px]">
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-t-2 border-r-2 border-gray-300 rotate-45 transform translate-x-1/2"></div>

@@ -37,7 +37,7 @@ export default function SalesReport() {
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
   const [ticketTypeFilter, setTicketTypeFilter] = useState('All Types');
-  const [paymentModeFilter, setPaymentModeFilter] = useState('All Modes');
+  const [fundsFilter, setFundsFilter] = useState('All Destinations');
   const [pocFilter, setPocFilter] = useState('All Organisers');
   const [sellerOptions, setSellerOptions] = useState<string[]>([]);
 
@@ -83,17 +83,20 @@ export default function SalesReport() {
         t.id.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchType = ticketTypeFilter === 'All Types' || t.type === ticketTypeFilter;
-      // Note: Payment mode not yet in schema, defaulting to match all
-      const matchPayment = paymentModeFilter === 'All Modes' || true; 
+      
+      const matchFunds = fundsFilter === 'All Destinations' || 
+        (fundsFilter === 'Trust' && t.funds_destination === 'trust') ||
+        (fundsFilter === 'Organizer' && t.funds_destination === 'organizer');
+
       const matchPoc =
         pocFilter === 'All Organisers' ||
         (Boolean(t.sold_by) &&
           Boolean(pocFilter) &&
           t.sold_by!.trim().toLowerCase() === pocFilter.trim().toLowerCase());
 
-      return matchSearch && matchType && matchPayment && matchPoc;
+      return matchSearch && matchType && matchFunds && matchPoc;
     });
-  }, [tickets, searchQuery, ticketTypeFilter, paymentModeFilter, pocFilter]);
+  }, [tickets, searchQuery, ticketTypeFilter, fundsFilter, pocFilter]);
 
   const metrics = useMemo(() => {
     let revenue = 0;
@@ -128,7 +131,7 @@ export default function SalesReport() {
   const clearFilters = () => {
     setSearchQuery('');
     setTicketTypeFilter('All Types');
-    setPaymentModeFilter('All Modes');
+    setFundsFilter('All Destinations');
     if (userRole === 'admin') setPocFilter('All Organisers');
   };
 
@@ -144,6 +147,7 @@ export default function SalesReport() {
       "Unit INR",
       "Line INR",
       "Status",
+      "Paid To",
       "Sold By",
       "Date",
     ];
@@ -156,6 +160,7 @@ export default function SalesReport() {
       ticketUnitPrice(t),
       ticketLineTotal(t),
       t.status,
+      t.funds_destination === 'trust' ? 'Trust' : 'Organizer',
       t.sold_by || "N/A",
       new Date(t.created_at).toLocaleString(),
     ]);
@@ -229,14 +234,13 @@ export default function SalesReport() {
 
            <div className="relative min-w-0">
               <select 
-                value={paymentModeFilter}
-                onChange={e => setPaymentModeFilter(e.target.value)}
+                value={fundsFilter}
+                onChange={e => setFundsFilter(e.target.value)}
                 className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30"
               >
-                <option>All Modes</option>
-                <option>Cash</option>
-                <option>Online</option>
-                <option>Complimentary</option>
+                <option>All Destinations</option>
+                <option>Trust</option>
+                <option>Organizer</option>
               </select>
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>
@@ -320,6 +324,7 @@ export default function SalesReport() {
                      let statusBadge = "bg-yellow-50 text-yellow-700 border-yellow-200";
                      if (t.status === 'checked_in') statusBadge = "bg-green-50 text-green-700 border-green-200";
                      else if (t.status === 'cancelled') statusBadge = "bg-red-50 text-red-700 border-red-200";
+                     else if (t.status === 'booked' || t.status === 'pending' || t.status === 'ticket_issued') statusBadge = "bg-blue-50 text-blue-700 border-blue-100";
                      return (
                         <li key={t.id} className="px-4 py-3 active:bg-gray-50/80">
                            <div className="flex justify-between items-start gap-2 mb-1">
@@ -339,6 +344,13 @@ export default function SalesReport() {
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
                                  {t.status.replace('_', ' ')}
                               </span>
+                              <span className={`font-bold px-1.5 py-0.5 rounded border ${
+                                 t.funds_destination === 'trust' 
+                                   ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                                   : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                               }`}>
+                                 {t.funds_destination === 'trust' ? 'TRUST' : 'ORG'}
+                               </span>
                               <span className="text-gray-400 dark:text-violet-400/60 ml-auto">{formattedDate} · {formattedTime}</span>
                            </div>
                         </li>
@@ -356,6 +368,7 @@ export default function SalesReport() {
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Ticket Type</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Qty</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Amount</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Paid To</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Status</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Date</th>
                      </tr>
@@ -363,7 +376,7 @@ export default function SalesReport() {
                   <tbody className="divide-y divide-gray-50">
                      {filteredTickets.length === 0 ? (
                         <tr>
-                           <td colSpan={7} className="px-6 py-12 text-center">
+                           <td colSpan={8} className="px-6 py-12 text-center">
                               <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                               <h3 className="text-base font-bold text-gray-900 dark:text-violet-100">No transactions found</h3>
                               <p className="text-sm text-gray-500 dark:text-violet-300/70 mt-1">Adjust your filters to see more results.</p>
@@ -378,6 +391,7 @@ export default function SalesReport() {
                            let statusBadge = "bg-yellow-50 text-yellow-700 border-yellow-200";
                            if (t.status === 'checked_in') statusBadge = "bg-green-50 text-green-700 border-green-200";
                            else if (t.status === 'cancelled') statusBadge = "bg-red-50 text-red-700 border-red-200";
+                           else if (t.status === 'booked' || t.status === 'pending' || t.status === 'ticket_issued') statusBadge = "bg-blue-50 text-blue-700 border-blue-100";
 
                            return (
                               <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
@@ -397,6 +411,15 @@ export default function SalesReport() {
                                  <td className="px-6 py-4 text-right">
                                     <span className="text-sm font-bold text-gray-900 dark:text-violet-100">₹{new Intl.NumberFormat('en-IN').format(ticketLineTotal(t))}</span>
                                  </td>
+                                 <td className="px-6 py-4 text-center">
+                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                       t.funds_destination === 'trust' 
+                                         ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                                         : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                     }`}>
+                                       {t.funds_destination === 'trust' ? 'TRUST' : 'ORGANIZER'}
+                                     </span>
+                                  </td>
                                  <td className="px-6 py-4 text-center">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
                                        {t.status.replace('_', ' ').toUpperCase()}

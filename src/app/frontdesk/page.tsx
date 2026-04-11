@@ -208,7 +208,7 @@ export default function FrontdeskCheckInPage() {
   const canCheckIn =
     result &&
     !result.mismatch &&
-    (statusStr === "pending" || statusStr === "booked");
+    (statusStr === "pending" || statusStr === "booked" || statusStr === "ticket issued" || statusStr === "ticket_issued");
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 sm:py-8">
