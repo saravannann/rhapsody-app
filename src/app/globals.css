@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (html.dark) for Tailwind dark: variants */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-primary: #ec4899;      /* Pink */
   --color-primary-dark: #db2777;
@@ -9,9 +12,32 @@
   --font-sans: 'Inter', sans-serif;
 }
 
+/* Semantic tokens — light */
 :root {
+  color-scheme: light;
   --background: #faf5f9;
   --foreground: #1e293b;
+  --app-bg: #faf5f9;
+  --card-bg: #ffffff;
+  --muted: #64748b;
+  --muted-bg: rgba(250, 245, 249, 0.95);
+  --border-subtle: rgba(236, 72, 153, 0.18);
+  --border-strong: rgba(15, 23, 42, 0.08);
+  --shadow-header: 0 1px 15px rgba(236, 72, 153, 0.06);
+}
+
+/* Semantic tokens — dark (WCAG-friendly contrast on body text) */
+html.dark {
+  color-scheme: dark;
+  --background: #0a060d;
+  --foreground: #f1f5f9;
+  --app-bg: #0a060d;
+  --card-bg: #15101c;
+  --muted: #94a3b8;
+  --muted-bg: rgba(30, 22, 40, 0.92);
+  --border-subtle: rgba(236, 72, 153, 0.22);
+  --border-strong: rgba(248, 250, 252, 0.12);
+  --shadow-header: 0 1px 20px rgba(0, 0, 0, 0.35);
 }
 
 body {
@@ -19,6 +45,7 @@ body {
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Hide scrollbars where overflow is intentional (tabs, horizontal lists) */
@@ -30,10 +57,17 @@ body {
   display: none;
 }
 
-/* Custom Utilities */
+/* Autofill matches card/surface in both themes */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
-input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px #fdfaff inset !important;
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--card-bg) inset !important;
+}
+
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus,
+html.dark input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground) !important;
 }

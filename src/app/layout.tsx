@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { THEME_INLINE_SCRIPT } from "@/lib/theme-inline-script";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,9 +17,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} min-h-screen flex flex-col`}>
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen flex flex-col antialiased`}>
+        {/* Runs before paint to prevent theme flash; keep in sync with src/lib/theme.ts */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }} />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
