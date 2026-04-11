@@ -2,20 +2,29 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { Music, User, LogOut } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Users, Ticket, BarChart2, Bell } from "lucide-react";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUserName(localStorage.getItem('rhapsody_user') || 'Admin');
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const handleSignOut = () => {
@@ -26,72 +35,100 @@ export default function DashboardLayout({
   };
 
   const navLinks = [
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Organisers", href: "/dashboard/organisers" },
-    { name: "Sell Tickets", href: "/dashboard/sell" },
-    { name: "Bulk Upload", href: "#" },
-    { name: "Sales Report", href: "/dashboard/sales" },
-    { name: "Settings", href: "/dashboard/settings" },
-    { name: "Push Notifications", href: "#" },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Organisers", href: "/dashboard/organisers", icon: Users },
+    { name: "Sell Tickets", href: "/dashboard/sell", icon: Ticket },
+    { name: "Sales Report", href: "/dashboard/sales", icon: BarChart2 },
+    { name: "Notifications", href: "#", icon: Bell, disabled: true },
   ];
 
   return (
     <div className="min-h-screen bg-[#faf5f9] flex flex-col">
-      {/* Top Navigation Bar */}
-      <header className="bg-white border-b border-pink-100 shadow-[0_1px_15px_rgba(236,72,153,0.03)]">
+      <header className="bg-white border-b border-pink-100 shadow-[0_1px_15px_rgba(236,72,153,0.03)] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* Logo area */}
-            <div className="flex items-center gap-3 pr-8 border-r border-gray-100">
-              <div className="w-10 h-10 overflow-hidden flex items-center justify-center">
+          <div className="flex items-center h-16 gap-6">
+
+            {/* Logo */}
+            <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
+              <div className="w-9 h-9 overflow-hidden flex items-center justify-center">
                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-tight">Rhapsody</span>
-                <span className="text-[10px] text-accent font-bold uppercase tracking-wider leading-tight">Admin Portal</span>
+              <div className="flex flex-col leading-none">
+                <span className="text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Rhapsody</span>
+                <span className="text-[9px] text-accent font-bold uppercase tracking-widest">Admin Portal</span>
               </div>
-            </div>
+            </Link>
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-gray-100 shrink-0" />
 
             {/* Main Nav */}
-            <nav className="flex ml-4 md:ml-8 space-x-4 md:space-x-8 flex-1 overflow-x-auto scrollbar-hide">
+            <nav className="flex items-center gap-1 flex-1 overflow-x-auto scrollbar-hide">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
+                const Icon = link.icon;
                 return (
                   <Link
                     key={link.name}
-                    href={link.href}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold transition-colors ${
-                      isActive
-                        ? "border-accent text-secondary"
-                        : "border-transparent text-gray-500 hover:text-secondary hover:border-pink-200"
+                    href={link.disabled ? '#' : link.href}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+                      link.disabled
+                        ? "text-gray-300 cursor-not-allowed"
+                        : isActive
+                        ? "bg-pink-50 text-primary"
+                        : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
                     }`}
+                    onClick={e => link.disabled && e.preventDefault()}
                   >
+                    <Icon className="w-4 h-4" />
                     {link.name}
                   </Link>
                 );
               })}
             </nav>
 
-            {/* Profile + Sign Out */}
-            <div className="flex items-center gap-3">
-              {userName && <span className="hidden md:block text-sm font-bold text-gray-700">Welcome, {userName}</span>}
-              <button className="p-2 border border-pink-100 bg-pink-50 rounded-full text-primary hover:bg-pink-100 transition-colors shadow-sm">
-                <User className="h-5 w-5" />
-              </button>
+            {/* User Dropdown */}
+            <div className="relative shrink-0" ref={dropdownRef}>
               <button
-                onClick={handleSignOut}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-100 hover:border-red-100 rounded-xl transition-all"
+                onClick={() => setDropdownOpen(prev => !prev)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 hover:border-pink-200 hover:bg-pink-50/50 transition-all"
               >
-                <LogOut className="w-3.5 h-3.5" /> Sign Out
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-sm">
+                  <User className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span className="text-sm font-bold text-gray-700 hidden md:block">{userName}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-4 py-3 border-b border-gray-50">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Signed in as</p>
+                    <p className="text-sm font-bold text-gray-900 mt-0.5 truncate">{userName}</p>
+                  </div>
+                  <div className="p-1.5">
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                    >
+                      <Settings className="w-4 h-4" /> Settings
+                    </Link>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            
+
           </div>
         </div>
       </header>
 
-      {/* Main Content Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
