@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight } from "lucide-react";
+import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 
 const CATEGORIES = [
@@ -14,7 +14,15 @@ const CATEGORIES = [
 export default function SellTicketsPage() {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', poc: '', qty: 1 });
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    poc: '',
+    qty: 1,
+    /** Where purchaser funds are directed for this sale */
+    fundsDestination: 'organizer' as 'trust' | 'organizer',
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [organisers, setOrganisers] = useState<any[]>([]);
@@ -46,22 +54,28 @@ export default function SellTicketsPage() {
              status: 'pending',
              purchaser_name: formData.name,
              purchaser_phone: formData.phone,
-             sold_by: formData.poc
+             sold_by: formData.poc,
+             funds_destination: formData.fundsDestination,
        }));
        
        const { error } = await supabase.from('tickets').insert(mappedPayload);
        if (error) throw error;
        
        setSuccess(true);
-       setFormData({ name: '', phone: '', email: '', poc: formData.poc, qty: 1 });
+       setFormData({ name: '', phone: '', email: '', poc: formData.poc, qty: 1, fundsDestination: 'organizer' });
        setTimeout(() => {
           setSuccess(false);
           setSelectedCategory(null);
        }, 2000);
        
-     } catch (err) {
+     } catch (err: unknown) {
        console.error("Error selling ticket:", err);
-       alert("Failed to confirm ticket sale.");
+       const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: string }).message) : '';
+       if (msg.includes('funds_destination') || msg.includes('column')) {
+          alert("Database needs column funds_destination on tickets. Run the SQL in supabase/migrations/add_funds_destination_to_tickets.sql");
+       } else {
+          alert("Failed to confirm ticket sale.");
+       }
      } finally {
        setIsSubmitting(false);
      }
@@ -69,20 +83,16 @@ export default function SellTicketsPage() {
 
   const totalAmount = selectedCategory?.price * formData.qty;
 
+  const clampQty = (n: number) => Math.min(50, Math.max(1, Math.floor(Number.isFinite(n) ? n : 1)));
+
   return (
     <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5 pb-4">
       
       {!selectedCategory ? (
         <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4 sm:mb-6">
-              <div className="min-w-0">
-                 <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Quick Sell</h1>
-                 <p className="text-gray-500 text-xs sm:text-sm font-medium mt-0.5">Tap a pass type to continue</p>
-              </div>
-              <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-100 shrink-0">
-                 <button type="button" className="min-h-[40px] px-3 sm:px-4 py-2 text-xs font-bold text-primary bg-purple-50 rounded-lg">Single</button>
-                 <button type="button" className="min-h-[40px] px-3 sm:px-4 py-2 text-xs font-bold text-gray-400" disabled>Bulk</button>
-              </div>
+           <div className="mb-4 sm:mb-6">
+              <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Quick Sell</h1>
+              <p className="text-gray-500 text-xs sm:text-sm font-medium mt-0.5">Tap a pass type to continue</p>
            </div>
 
            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -144,7 +154,7 @@ export default function SellTicketsPage() {
                              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Purchaser name</label>
                              <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="ex: Ramesh" autoComplete="name" enterKeyHint="next" className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+                                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="ex: Sara" autoComplete="name" enterKeyHint="next" className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                              </div>
                           </div>
                           <div>
@@ -156,32 +166,98 @@ export default function SellTicketsPage() {
                           </div>
                        </div>
 
-                       <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Organiser (POC)</label>
-                          <div className="relative">
-                             <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                             {currentUser.role === 'admin' ? (
-                                <select required value={formData.poc} onChange={e=>setFormData({...formData, poc: e.target.value})} className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none">
-                                   <option value="">Choose organiser…</option>
-                                   {organisers.map(org => <option key={org.id} value={org.name}>{org.name}</option>)}
-                                </select>
-                             ) : (
-                                <input disabled value={currentUser.name} className="w-full min-h-[44px] bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-400" />
-                             )}
-                             {currentUser.role === 'admin' && <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />}
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                          <div className="min-w-0">
+                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Organiser (POC)</label>
+                             <div className="relative">
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                {currentUser.role === 'admin' ? (
+                                   <select required value={formData.poc} onChange={e=>setFormData({...formData, poc: e.target.value})} className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none">
+                                      <option value="">Choose organiser…</option>
+                                      {organisers.map(org => <option key={org.id} value={org.name}>{org.name}</option>)}
+                                   </select>
+                                ) : (
+                                   <input disabled value={currentUser.name} className="w-full min-h-[44px] bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-400" />
+                                )}
+                                {currentUser.role === 'admin' && <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />}
+                             </div>
+                          </div>
+                          <div className="min-w-0">
+                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Quantity</label>
+                             <div className="flex items-stretch gap-1.5 sm:gap-2 touch-manipulation">
+                                <button
+                                   type="button"
+                                   aria-label="Decrease quantity"
+                                   onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty - 1) }))}
+                                   disabled={formData.qty <= 1}
+                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:bg-slate-800"
+                                >
+                                   <Minus className="w-5 h-5 stroke-[2.25]" aria-hidden />
+                                </button>
+                                <input
+                                   type="number"
+                                   inputMode="numeric"
+                                   required
+                                   min={1}
+                                   max={50}
+                                   value={formData.qty}
+                                   onChange={e => {
+                                      const raw = parseInt(e.target.value, 10);
+                                      setFormData({ ...formData, qty: clampQty(Number.isNaN(raw) ? 1 : raw) });
+                                   }}
+                                   className="min-h-[44px] min-w-0 flex-1 bg-[#f8fafc] border border-gray-100 rounded-xl px-2 py-2.5 text-center text-sm font-bold text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none dark:bg-slate-900/50 dark:border-slate-600 dark:text-slate-100"
+                                />
+                                <button
+                                   type="button"
+                                   aria-label="Increase quantity"
+                                   onClick={() => setFormData(prev => ({ ...prev, qty: clampQty(prev.qty + 1) }))}
+                                   disabled={formData.qty >= 50}
+                                   className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-gray-100 bg-[#f8fafc] text-gray-800 hover:bg-pink-50/80 hover:border-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:bg-slate-800"
+                                >
+                                   <Plus className="w-5 h-5 stroke-[2.25]" aria-hidden />
+                                </button>
+                             </div>
                           </div>
                        </div>
 
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          <div>
-                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Quantity</label>
-                             <input type="number" required min="1" max="50" value={formData.qty} onChange={e=>setFormData({...formData, qty: Number(e.target.value)})} className="w-full min-h-[44px] bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+                       <fieldset className="border-0 p-0 m-0 min-w-0">
+                          <legend className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Payment settlement</legend>
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3" role="radiogroup" aria-label="Payment settlement">
+                             {(
+                                [
+                                   { value: 'organizer' as const, label: 'Organizer' },
+                                   { value: 'trust' as const, label: 'Trust' },
+                                ] as const
+                             ).map(({ value, label }) => {
+                                const selected = formData.fundsDestination === value;
+                                return (
+                                   <label
+                                      key={value}
+                                      className={`relative flex min-h-[44px] cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-bold transition-colors focus-within:ring-2 focus-within:ring-primary/25 ${
+                                         selected
+                                            ? 'border-primary/35 bg-pink-50/80 text-primary shadow-sm dark:bg-primary/15 dark:border-primary/40 dark:text-pink-200'
+                                            : 'border-gray-100 bg-[#f8fafc] text-gray-800 hover:border-gray-200 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-500'
+                                      }`}
+                                   >
+                                      <input
+                                         type="radio"
+                                         name="fundsDestination"
+                                         value={value}
+                                         checked={selected}
+                                         onChange={() => setFormData({ ...formData, fundsDestination: value })}
+                                         className="sr-only"
+                                      />
+                                      {label}
+                                   </label>
+                                );
+                             })}
                           </div>
-                          <div className="flex flex-col justify-end">
-                             <button type="submit" disabled={isSubmitting || !formData.name || !formData.phone || !formData.poc} className={`w-full min-h-[48px] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center text-sm ${selectedCategory.btn}`}>
-                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm sale"}
-                             </button>
-                          </div>
+                       </fieldset>
+
+                       <div className="pt-5 sm:pt-6">
+                          <button type="submit" disabled={isSubmitting || !formData.name || !formData.phone || !formData.poc} className={`w-full min-h-[48px] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center text-sm ${selectedCategory.btn}`}>
+                             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm sale"}
+                          </button>
                        </div>
                     </form>
                  </div>
@@ -204,6 +280,12 @@ export default function SellTicketsPage() {
                        <div className="flex justify-between items-center text-xs gap-2">
                           <span className="font-bold text-gray-500 truncate">{selectedCategory.name} × {formData.qty}</span>
                           <span className="font-bold text-gray-900 shrink-0 tabular-nums">₹{selectedCategory.price * formData.qty}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[11px] gap-2">
+                          <span className="font-bold text-gray-500">Settlement</span>
+                          <span className="font-bold text-gray-800 text-right">
+                             {formData.fundsDestination === 'trust' ? 'Trust' : 'Organizer'}
+                          </span>
                        </div>
                        <div className="flex justify-between items-center text-[11px]">
                           <span className="font-bold text-gray-500">Fee</span>

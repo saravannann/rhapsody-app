@@ -64,8 +64,21 @@ export default function SettingsPage() {
         .eq('phone', userPhone)
         .select();
 
-      if (updateError || !data || data.length === 0) {
-         throw new Error("Update failed or user not found");
+      if (updateError) {
+         setError(
+            `Could not save new password: ${updateError.message}${updateError.code ? ` (${updateError.code})` : ""}. ` +
+               "If you use Row Level Security on `profiles`, run the SQL in `supabase/migrations/profiles_rls_policies.sql` in the Supabase SQL editor."
+         );
+         setLoading(false);
+         return;
+      }
+
+      if (!data || data.length === 0) {
+         setError(
+            "No profile row was updated. Check that your phone in this session matches your account, or ask an admin to verify your `profiles` row."
+         );
+         setLoading(false);
+         return;
       }
 
       setSuccess(true);
@@ -73,7 +86,7 @@ export default function SettingsPage() {
       
     } catch (err: any) {
       console.error(err);
-      setError(`Update failed: ${err.message || "Unknown error"}. Check if RLS is enabled on your 'profiles' table.`);
+      setError(err?.message || "Something went wrong while updating your password.");
     } finally {
       setLoading(false);
     }
