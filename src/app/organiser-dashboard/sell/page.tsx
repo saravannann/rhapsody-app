@@ -13,7 +13,6 @@ const CATEGORIES = [
 
 export default function SellTicketsPage() {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
-  const [registrationMode, setRegistrationMode] = useState(false);
   
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', poc: '', qty: 1 });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +42,7 @@ export default function SellTicketsPage() {
      try {
        const mappedPayload = Array.from({ length: formData.qty }).map(() => ({
              type: selectedCategory.id,
-             price: registrationMode ? 0 : selectedCategory.price,
+             price: selectedCategory.price,
              status: 'pending',
              purchaser_name: formData.name,
              purchaser_phone: formData.phone,
@@ -58,7 +57,6 @@ export default function SellTicketsPage() {
        setTimeout(() => {
           setSuccess(false);
           setSelectedCategory(null);
-          setRegistrationMode(false);
        }, 2000);
        
      } catch (err) {
@@ -69,7 +67,7 @@ export default function SellTicketsPage() {
      }
   };
 
-  const totalAmount = (registrationMode ? 0 : selectedCategory?.price) * formData.qty;
+  const totalAmount = selectedCategory?.price * formData.qty;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -89,7 +87,7 @@ export default function SellTicketsPage() {
 
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {CATEGORIES.map(cat => (
-                 <div key={cat.id} onClick={() => { setSelectedCategory(cat); setRegistrationMode(false); }} className={`group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden`}>
+                 <div key={cat.id} onClick={() => setSelectedCategory(cat)} className={`group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden`}>
                     <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                        <cat.icon className="w-16 h-16" />
                     </div>
@@ -103,12 +101,6 @@ export default function SellTicketsPage() {
                        <span className="text-xl font-bold text-gray-900">₹{cat.price}</span>
                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Per Pass</span>
                     </div>
-
-                    {cat.id === 'Donor' && (
-                       <button onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setRegistrationMode(true); }} className="mt-4 w-full py-2 text-[10px] font-bold text-primary border border-primary/20 bg-purple-50/50 rounded-lg hover:bg-primary hover:text-white transition-all">
-                          Donor Registration
-                       </button>
-                    )}
                  </div>
               ))}
            </div>
@@ -144,9 +136,6 @@ export default function SellTicketsPage() {
                           <h2 className={`text-xl font-bold ${selectedCategory.color}`}>{selectedCategory.name}</h2>
                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Transaction Details</p>
                        </div>
-                       {registrationMode && (
-                          <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1.5 rounded-full border border-blue-200 shadow-sm">Registration Only</span>
-                       )}
                     </div>
 
                     <form onSubmit={handleCheckout} className="p-6 space-y-5">
