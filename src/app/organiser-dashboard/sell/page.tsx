@@ -222,98 +222,122 @@ export default function SellTicketsPage() {
            </button>
 
            {saleReceipt ? (
-              <div className="rounded-xl sm:rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-white p-5 sm:p-8 text-center shadow-sm dark:border-emerald-500/25 dark:from-emerald-950/40 dark:to-[var(--card-bg)]">
-                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
-                    <CheckCircle2 className="h-7 w-7" aria-hidden />
-                 </div>
-                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100">Sale recorded</h2>
-                 <p className="mt-1 text-sm text-gray-600 dark:text-violet-300/80">
-                    {saleReceipt.passLabel} × {saleReceipt.quantity} · ₹{saleReceipt.totalInr.toLocaleString("en-IN")}
-                 </p>
+               <div className="flex flex-col items-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
+                     <CheckCircle2 className="h-7 w-7" aria-hidden />
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 mb-6">Sale recorded successfully!</h2>
 
-                 {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
-                    <>
-                       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-violet-400/70">
-                          Check-in QR
-                       </p>
-                       <p className="mx-auto mt-2 max-w-sm text-[11px] leading-snug text-gray-500 dark:text-violet-400/65">
-                          The guest can show this code at the entrance. One scan covers this transaction ({saleReceipt.quantity}{" "}
-                          {saleReceipt.quantity === 1 ? "pass" : "passes"}).
-                       </p>
-                       <div className="mx-auto mt-4 inline-block rounded-2xl bg-white p-4 shadow-inner ring-1 ring-gray-100 dark:bg-white dark:ring-gray-200">
-                          <QRCode
-                             value={saleReceipt.qrPayload}
-                             size={220}
-                             level="M"
-                             className="h-auto max-w-full"
-                          />
-                       </div>
-                       <p className="mt-3 font-mono text-xs font-bold text-gray-700 dark:text-violet-200">
-                          Ref {shortTicketRef(saleReceipt.ticketId)}
-                       </p>
-      
-                       <p className="mx-auto mt-5 max-w-md text-[11px] leading-snug text-gray-600 dark:text-violet-400/75">
-                          Purchases can be days before the event. Send the ticket link on WhatsApp so the guest can open their QR anytime.
-                       </p>
-      
-                       <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
-                          {whatsappSendUrl ? (
-                             <a
-                                href={whatsappSendUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
-                             >
-                                <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
-                                WhatsApp to purchaser
-                             </a>
-                          ) : null}
-                          {ticketPageUrl ? (
-                             <button
-                                type="button"
-                                onClick={async () => {
-                                   try {
-                                      await navigator.clipboard.writeText(ticketPageUrl);
-                                      setLinkCopied(true);
-                                      setTimeout(() => setLinkCopied(false), 2000);
-                                   } catch {
-                                      alert("Could not copy. Copy manually: " + ticketPageUrl);
-                                   }
-                                }}
-                                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
-                             >
-                                <Link2 className="h-4 w-4 shrink-0" aria-hidden />
-                                {linkCopied ? "Link copied" : "Copy ticket link"}
-                             </button>
-                          ) : null}
-                       </div>
-                       <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60">
-                          WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
-                       </p>
-                    </>
-                 ) : (
-                    <div className="mt-8 mb-6">
-                       <div className="inline-flex items-center justify-center p-3 bg-pink-50 rounded-full mb-3 shadow-inner ring-1 ring-pink-100">
-                          <Gift className="w-8 h-8 text-primary" />
-                       </div>
-                       <p className="mx-auto mt-2 max-w-md text-xs sm:text-sm font-medium leading-snug text-gray-700 dark:text-violet-300">
-                          Donation purchase directly goes to the general fund. 
-                          <span className="block mt-1 font-bold text-primary">No check-in QR code is necessary for this transaction.</span>
-                       </p>
+                  {/* Render exact Ticket UI inline */}
+                  <div className="w-full max-w-md bg-white shadow-xl relative overflow-hidden rounded-2xl border border-gray-200">
+                    <div className="p-6 sm:p-8 flex flex-col items-center text-center bg-[#f3f4f6]">
+                      <img src="/logo.png" alt="Rhapsody Logo" className="h-20 sm:h-24 w-auto object-contain mb-4" />
+                      
+                      <p className="italic text-gray-900 font-medium text-sm sm:text-[15px] leading-snug mb-6 max-w-[280px]">
+                        Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer
+                      </p>
+
+                      <h2 className="text-2xl sm:text-3xl text-gray-900 mb-4 font-normal tracking-wide">
+                        May 9th | 4:30 PM Onwards
+                      </h2>
+
+                      <p className="text-gray-800 text-[15px] sm:text-lg font-normal tracking-wide mb-2 sm:mb-4 leading-relaxed">
+                        Sri Mutha Venkata Subba Rao Concert Hall<br />
+                        Chennai
+                      </p>
                     </div>
-                 )}
 
-                 <button
-                    type="button"
-                    onClick={() => {
-                       setSaleReceipt(null);
-                       setSelectedCategory(null);
-                    }}
-                    className="mt-6 w-full max-w-xs rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
-                 >
-                    Done — new sale
-                 </button>
-              </div>
+                    <div className="w-full px-6 sm:px-8 bg-[#f3f4f6]">
+                       <hr className="border-t-2 border-black mb-8" />
+                    </div>
+
+                    <div className="bg-[#f3f4f6]">
+                    {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
+                      <div className="px-6 sm:px-8 pb-8 flex flex-row items-center justify-center gap-4 sm:gap-6">
+                        <div className="flex flex-col items-center shrink-0 w-[120px]">
+                          <div className="bg-white p-1 border border-gray-200 rounded">
+                            <QRCode value={saleReceipt.qrPayload} size={110} level="M" className="h-auto max-w-full" />
+                          </div>
+                          <p className="mt-2 text-center text-[9px] sm:text-[10px] text-gray-700 leading-snug">
+                            Show this QR at entrance
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-start justify-center flex-1 min-w-0">
+                          <p className="text-gray-900 font-medium text-[15px] sm:text-[16px] mb-2 tracking-wide whitespace-nowrap">{saleReceipt.quantity} Ticket(s)</p>
+                          <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] mb-2 tracking-wide whitespace-nowrap">Ticket Type : {saleReceipt.passLabel.replace(' Pass', '')}</p>
+                          <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] mb-2 tracking-wide whitespace-nowrap">Booking ID : {shortTicketRef(saleReceipt.ticketId).toUpperCase()}</p>
+                          <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] tracking-wide whitespace-nowrap">Total Cost : Rs.{saleReceipt.totalInr}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-6 sm:px-8 pb-8 flex flex-col items-center text-center">
+                         <div className="mb-4">
+                            <p className="text-gray-900 font-normal text-lg sm:text-xl mb-3 tracking-wide">{saleReceipt.quantity} Ticket(s)</p>
+                            <p className="text-gray-900 font-normal text-base sm:text-lg mb-3 tracking-wide">Ticket Type : {saleReceipt.passLabel}</p>
+                            <p className="text-gray-900 font-normal text-base sm:text-lg mb-3 tracking-wide">Booking ID : {shortTicketRef(saleReceipt.ticketId).toUpperCase()}</p>
+                            <p className="text-gray-900 font-normal text-base sm:text-lg tracking-wide">Total Cost : Rs.{saleReceipt.totalInr}</p>
+                         </div>
+                         <p className="text-xs text-pink-600 font-medium mt-2">Thank you for your donation. No validation QR is required.</p>
+                      </div>
+                    )}
+                    </div>
+
+                    <div className="bg-[#e5e7eb]/80 py-2.5 text-center relative border-t-4 border-gray-300 border-dotted">
+                       <p className="text-gray-800 text-xs sm:text-[13px] font-medium tracking-wide">Cancelation is not allowed for this event</p>
+                    </div>
+                  </div>
+
+                  {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' && (
+                     <>
+                        <div className="mx-auto mt-6 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
+                           {whatsappSendUrl ? (
+                              <a
+                                 href={whatsappSendUrl}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-95"
+                              >
+                                 <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
+                                 WhatsApp to purchaser
+                              </a>
+                           ) : null}
+                           {ticketPageUrl ? (
+                              <button
+                                 type="button"
+                                 onClick={async () => {
+                                    try {
+                                       await navigator.clipboard.writeText(ticketPageUrl);
+                                       setLinkCopied(true);
+                                       setTimeout(() => setLinkCopied(false), 2000);
+                                    } catch {
+                                       alert("Could not copy. Copy manually: " + ticketPageUrl);
+                                    }
+                                 }}
+                                 className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                              >
+                                 <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                                 {linkCopied ? "Link copied" : "Copy ticket link"}
+                              </button>
+                           ) : null}
+                        </div>
+                        <p className="mx-auto mt-2 max-w-md text-[10px] text-gray-500 dark:text-violet-400/60 text-center">
+                           WhatsApp opens a chat with the purchaser&apos;s number and a ready message — tap <strong>Send</strong> on your phone. Works best on the device where WhatsApp is logged in.
+                        </p>
+                     </>
+                  )}
+
+                  <button
+                     type="button"
+                     onClick={() => {
+                        setSaleReceipt(null);
+                        setSelectedCategory(null);
+                     }}
+                     className="mt-6 w-full max-w-xs rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 dark:border-violet-500/25 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                  >
+                     Done — new sale
+                  </button>
+               </div>
            ) : (
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
               
