@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.broadcasts (
     target_type TEXT NOT NULL, -- 'buyers', 'organisers', 'custom'
     target_categories JSONB DEFAULT '[]'::jsonb, -- ['Platinum Pass', 'Donor Pass'] etc.
     target_organisers JSONB DEFAULT '[]'::jsonb, -- ['Org A', 'Org B']
+    exclude_checked_in BOOLEAN DEFAULT TRUE, -- If TRUE, don't send to guests who already checked in
     
     -- Execution
     scheduled_at TIMESTAMPTZ, -- If NULL, send immediately
