@@ -615,7 +615,7 @@ export default function DashboardPage() {
               <div className="animate-in fade-in duration-500 pt-2 sm:pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 items-center min-h-0 md:h-[280px]">
                   <div className="h-[200px] sm:h-[240px] md:h-full w-full min-h-0">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                       <PieChart>
                         <Pie
                           data={[
@@ -649,6 +649,8 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+
           </div>
         </>
       )}

@@ -11,13 +11,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState('');
+  const [userRole, setUserRole] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setUserName(localStorage.getItem('rhapsody_user') || 'Admin');
+    setUserRole(localStorage.getItem('rhapsody_role') || '');
   }, []);
 
   useEffect(() => {
@@ -56,8 +57,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Sell Tickets", href: "/dashboard/sell", icon: Ticket },
     { name: "Check-in", href: "/frontdesk", icon: Camera },
     { name: "Sales Report", href: "/dashboard/sales", icon: BarChart2 },
-    { name: "Notifications", href: "#", icon: Bell, disabled: true },
-  ];
+    { name: "Notifications", href: "/dashboard/notifications", icon: Bell, adminOnly: true },
+  ].filter(link => !link.adminOnly || userRole === 'admin');
 
   const renderNavLink = (link: (typeof navLinks)[0], opts?: { onNavigate?: () => void }) => {
     const isActive = pathname === link.href;
@@ -65,18 +66,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <Link
         key={link.name}
-        href={link.disabled ? "#" : link.href}
+        href={link.href}
         className={`flex items-center gap-3 px-3 py-3 md:py-2 rounded-xl md:rounded-lg text-sm font-semibold transition-all ${
-          link.disabled
-            ? "text-gray-300 cursor-not-allowed opacity-70"
-            : isActive
-              ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
-              : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
+          isActive
+            ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
+            : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
         }`}
-        onClick={(e) => {
-          if (link.disabled) e.preventDefault();
-          else opts?.onNavigate?.();
-        }}
+        onClick={() => opts?.onNavigate?.()}
       >
         <Icon className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
         <span>{link.name}</span>
