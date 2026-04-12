@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle, Calendar } from "lucide-react";
+import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle, Calendar, CheckCircle2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
@@ -579,29 +579,44 @@ export default function DashboardPage() {
 
              {/* 3. Ticket Status */}
              {activeTab === 'Ticket Status' && (
-                <div className="animate-in fade-in duration-500">
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-10">
-                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
-                          <span className="text-2xl sm:text-4xl font-bold text-primary mb-1 sm:mb-2 block tabular-nums">
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
+                      <div className="glass-card bg-white dark:bg-violet-950/20 border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm text-center group hover:shadow-lg transition-all">
+                          <div className="mx-auto w-12 h-12 bg-pink-50 dark:bg-pink-900/20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                             <Users className="w-6 h-6 text-primary" />
+                          </div>
+                          <span className="text-3xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-primary to-secondary mb-2 block tabular-nums">
                              {statusData.find(s=>s.name==='TotalVisitors')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-500 dark:text-violet-300 leading-tight font-bold uppercase tracking-wider">Total Visitors</h4>
+                          <h4 className="text-xs sm:text-sm text-gray-400 dark:text-violet-300 font-bold uppercase tracking-[0.2em]">Total Visitors</h4>
+                          <p className="text-[10px] text-gray-400 mt-2 font-medium uppercase tracking-wider italic">Scannable Guest List</p>
                       </div>
-                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
-                          <span className="text-2xl sm:text-4xl font-bold text-accent mb-1 sm:mb-2 block tabular-nums">
+
+                      <div className="glass-card bg-white dark:bg-violet-950/20 border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm text-center group hover:shadow-lg transition-all">
+                          <div className="mx-auto w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                             <CheckCircle2 className="w-6 h-6 text-accent" />
+                          </div>
+                          <span className="text-3xl sm:text-5xl font-extrabold text-accent mb-2 block tabular-nums">
                              {statusData.find(s=>s.name==='CheckedIn')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-500 dark:text-violet-300 leading-tight font-bold uppercase tracking-wider">Checked-in</h4>
+                          <h4 className="text-xs sm:text-sm text-gray-400 dark:text-violet-300 font-bold uppercase tracking-[0.2em]">Checked-in</h4>
+                          <p className="text-[10px] text-accent/70 mt-2 font-bold uppercase tracking-wider animate-pulse">Live Progress</p>
                       </div>
-                      <div className="bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm text-center font-bold">
-                          <span className="text-2xl sm:text-4xl font-bold text-gray-400 mb-1 sm:mb-2 block tabular-nums">
+
+                      <div className="glass-card bg-white dark:bg-violet-950/20 border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm text-center group hover:shadow-lg transition-all">
+                          <div className="mx-auto w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                             <Ticket className="w-6 h-6 text-gray-400" />
+                          </div>
+                          <span className="text-3xl sm:text-5xl font-extrabold text-gray-300 dark:text-gray-600 mb-2 block tabular-nums">
                              {statusData.find(s=>s.name==='Remaining')?.value || 0}
                           </span>
-                          <h4 className="text-[10px] sm:text-sm text-gray-500 dark:text-violet-300 leading-tight font-bold uppercase tracking-wider">Remaining</h4>
+                          <h4 className="text-xs sm:text-sm text-gray-400 dark:text-violet-300 font-bold uppercase tracking-[0.2em]">Remaining</h4>
+                          <p className="text-[10px] text-gray-400 mt-2 font-medium uppercase tracking-wider italic">To be verified</p>
                       </div>
                   </div>
                 </div>
              )}
+
 
              {/* 4. Check-in Stats */}
              {activeTab === 'Check-in Stats' && (

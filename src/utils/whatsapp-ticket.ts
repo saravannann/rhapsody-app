@@ -43,13 +43,13 @@ export function buildTicketWhatsAppMessage(params: {
       `Reference: ${params.ref.toUpperCase()}`,
       `Contribution: ₹${total}`,
       "",
-      `Your contribution is truly meaningful — this pass will be offered to two cancer survivors, giving them the opportunity to experience an evening of music, hope, and joy.`,
+      `Your Contribution is truly Meaningful — Each Donor Pass will be offered to Two Cancer Survivors, giving them the opportunity to experience an evening of Music, Hope, and Joy.`,
       "",
       `Because of you, this evening reaches beyond the stage and touches lives in a deeply personal way.`,
       "",
-      `With sincere appreciation, we thank you for being a part of this cause.`,
+      `With Sincere Appreciation, We thank you for being a part of this cause.`,
       "",
-      `With gratitude,`,
+      `With Gratitude,`,
       `Team Rhapsody`,
       `Thenmozhi Memorial Trust`
     ].join("\n");
