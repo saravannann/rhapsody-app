@@ -170,22 +170,37 @@ export default function SalesReport() {
     setCurrentQueueIndex(0);
   };
 
-  const sendCurrentFromQueue = () => {
+  const sendCurrentFromQueue = async () => {
     if (!resendQueue) return;
     const t = resendQueue[currentQueueIndex];
     if (!t) return;
 
-    const url = buildWhatsAppSendUrl(
-      t.purchaser_phone || "",
-      buildTicketWhatsAppMessage({
-        purchaserName: t.purchaser_name || "Guest",
-        passLabel: t.type,
-        quantity: ticketQuantity(t),
-        totalInr: ticketLineTotal(t),
-        ref: shortTicketRef(t.id),
-        ticketPageUrl: `${appOrigin}/ticket/${t.id}`,
-      })
-    );
+    const ticketLink = `${appOrigin}/ticket/${t.id}`;
+    const message = buildTicketWhatsAppMessage({
+      purchaserName: t.purchaser_name || "Guest",
+      passLabel: t.type,
+      quantity: ticketQuantity(t),
+      totalInr: ticketLineTotal(t),
+      ref: shortTicketRef(t.id),
+      ticketPageUrl: ticketLink,
+    });
+
+    // Automated WhatsApp trigger
+    try {
+      void fetch('/api/send-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone: t.purchaser_phone || "", 
+          ticketContent: message 
+        })
+      }).catch(e => console.error("Resend WhatsApp Fail:", e));
+    } catch (waErr) {
+      console.error("WA Resend Prep Fail:", waErr);
+    }
+
+    // Manual fallback
+    const url = buildWhatsAppSendUrl(t.purchaser_phone || "", message);
     window.open(url, '_blank');
 
     if (currentQueueIndex < resendQueue.length - 1) {
