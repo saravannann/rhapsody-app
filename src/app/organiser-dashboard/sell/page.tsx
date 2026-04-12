@@ -162,12 +162,21 @@ export default function SellTicketsPage() {
                 body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg })
              })
              .then(res => res.json())
-             .then(data => {
+             .then(async data => {
                 if (!data.success) {
                    console.error("WhatsApp Error:", data.error);
+                   await supabase.from("tickets").update({ 
+                      whatsapp_status: 'failed', 
+                      whatsapp_error: data.error 
+                   }).eq('id', row.id);
                    alert(`WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`);
                 } else {
                    console.log("WhatsApp sent!", data.message_id);
+                   await supabase.from("tickets").update({ 
+                      whatsapp_status: 'sent', 
+                      whatsapp_error: null,
+                      last_whatsapp_at: new Date().toISOString()
+                   }).eq('id', row.id);
                 }
              })
              .catch(e => console.error("Auto WhatsApp Fail:", e));
@@ -329,9 +338,21 @@ export default function SellTicketsPage() {
                   body: JSON.stringify({ phone, ticketContent: message })
                })
                .then(res => res.json())
-               .then(d => {
-                  if (!d.success) console.error("Mass WhatsApp Fail:", d.error);
-                  else console.log("Mass WhatsApp Sent:", d.message_id);
+               .then(async d => {
+                  if (!d.success) {
+                     console.error("Mass WhatsApp Fail:", d.error);
+                     await supabase.from("tickets").update({ 
+                        whatsapp_status: 'failed', 
+                        whatsapp_error: d.error 
+                     }).eq('id', massRow?.id);
+                  } else {
+                     console.log("Mass WhatsApp Sent:", d.message_id);
+                     await supabase.from("tickets").update({ 
+                        whatsapp_status: 'sent', 
+                        whatsapp_error: null,
+                        last_whatsapp_at: new Date().toISOString()
+                     }).eq('id', massRow?.id);
+                  }
                })
                .catch(e => console.error("WhatsApp Mass Network Fail:", e));
             } catch (waErr) {

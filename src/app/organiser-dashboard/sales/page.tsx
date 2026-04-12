@@ -194,7 +194,23 @@ export default function SalesReport() {
           phone: t.purchaser_phone || "", 
           ticketContent: message 
         })
-      }).catch(e => console.error("Resend WhatsApp Fail:", e));
+      })
+      .then(res => res.json())
+      .then(async data => {
+         if (!data.success) {
+            await supabase.from("tickets").update({ 
+               whatsapp_status: 'failed', 
+               whatsapp_error: data.error 
+            }).eq('id', t.id);
+         } else {
+            await supabase.from("tickets").update({ 
+               whatsapp_status: 'sent', 
+               whatsapp_error: null,
+               last_whatsapp_at: new Date().toISOString()
+            }).eq('id', t.id);
+         }
+      })
+      .catch(e => console.error("Resend WhatsApp Fail:", e));
     } catch (waErr) {
       console.error("WA Resend Prep Fail:", waErr);
     }
@@ -461,6 +477,13 @@ export default function SalesReport() {
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
                                        {t.status.replace('_', ' ')}
                                     </span>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                       t.whatsapp_status === 'sent' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                       t.whatsapp_status === 'failed' ? 'bg-red-100 text-red-700 border-red-200' :
+                                       'bg-gray-100 text-gray-400 border-gray-200 text-[9px]'
+                                    }`}>
+                                       WA: {t.whatsapp_status?.replace('_', ' ') || 'not sent'}
+                                    </span>
                                     <span className={`font-bold px-1.5 py-0.5 rounded border ${
                                        t.funds_destination === 'trust' 
                                          ? 'bg-blue-50 text-blue-700 border-blue-100' 
@@ -507,6 +530,7 @@ export default function SalesReport() {
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Paid To</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Txn ID</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Status</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">WA Status</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Date</th>
                       </tr>
                   </thead>
@@ -579,6 +603,22 @@ export default function SalesReport() {
                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}>
                                         {t.status.replace('_', ' ').toUpperCase()}
                                      </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                     <div className="flex flex-col items-center gap-0.5">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                          t.whatsapp_status === 'sent' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                          t.whatsapp_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
+                                          'bg-gray-50 text-gray-400 border-gray-200'
+                                        }`}>
+                                           {t.whatsapp_status?.replace('_', ' ').toUpperCase() || 'NOT SENT'}
+                                         </span>
+                                         {t.whatsapp_status === 'failed' && t.whatsapp_error && (
+                                            <span className="text-[9px] text-red-500 font-medium max-w-[100px] truncate" title={t.whatsapp_error}>
+                                               {t.whatsapp_error}
+                                            </span>
+                                         )}
+                                      </div>
                                   </td>
                                   <td className="px-6 py-4 text-right">
                                      <div className="text-sm font-bold text-gray-700 dark:text-violet-300">{formattedDate}</div>
