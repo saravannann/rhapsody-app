@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [organiserList, setOrganiserList] = useState<any[]>([]);
+  const [leaderboardSort, setLeaderboardSort] = useState<'count' | 'revenue'>('count');
   const [allTickets, setAllTickets] = useState<any[]>([]);
   const [allOrganisers, setAllOrganisers] = useState<any[]>([]);
 
@@ -42,6 +43,14 @@ export default function DashboardPage() {
   };
 
   const [role, setRole] = useState('organiser');
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+    const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     setRole(localStorage.getItem('rhapsody_role') || 'organiser');
@@ -203,32 +212,42 @@ export default function DashboardPage() {
     ]);
 
     // LeaderBoard ranking aggregated by person
-    const orgSales: Record<string, { count: number, categories: Record<string, number> }> = {};
+    const orgSales: Record<string, { count: number, revenue: number, categories: Record<string, number> }> = {};
     
     allOrganisers.forEach(org => {
-       orgSales[org.name] = { count: 0, categories: {} };
+       orgSales[org.name] = { count: 0, revenue: 0, categories: {} };
     });
 
     filteredTickets.forEach(t => {
        const q = ticketQuantity(t);
+       const rev = ticketLineTotal(t);
        if (t.sold_by && orgSales[t.sold_by]) {
           orgSales[t.sold_by].count += q;
+          orgSales[t.sold_by].revenue += rev;
           orgSales[t.sold_by].categories[t.type] = (orgSales[t.sold_by].categories[t.type] || 0) + q;
        }
     });
 
-    setOrganiserList(allOrganisers.map((org) => {
+    const unsortedList = allOrganisers.map((org) => {
        const sales = orgSales[org.name];
        return {
           name: org.name,
           platinum: sales?.categories['Platinum'] || 0,
           donor: sales?.categories['Donor'] || 0,
           student: sales?.categories['Student'] || 0,
-          total: sales?.count || 0
+          total: sales?.count || 0,
+          revenue: sales?.revenue || 0
        };
-    }).sort((a,b) => b.total - a.total));
+    });
 
-  }, [allTickets, allOrganisers, filterDate, filterType, filterOrganiser, filterFunds]);
+    const sortedList = [...unsortedList].sort((a, b) => {
+       if (leaderboardSort === 'revenue') return b.revenue - a.revenue;
+       return b.total - a.total;
+    });
+
+    setOrganiserList(sortedList);
+
+  }, [allTickets, allOrganisers, filterDate, filterType, filterOrganiser, filterFunds, leaderboardSort]);
 
   const checkInRate = metrics.scannableTickets > 0 ? ((metrics.checkedIn / metrics.scannableTickets) * 100).toFixed(1) : "0.0";
   const formattedRevenue = new Intl.NumberFormat('en-IN').format(metrics.totalRevenue);
@@ -378,7 +397,7 @@ export default function DashboardPage() {
 
             <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-violet-500/15 flex flex-col justify-between hover:border-primary transition-colors cursor-default min-h-[7.5rem] sm:min-h-0">
               <div className="flex justify-between items-start gap-1 mb-2 sm:mb-4">
-                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-violet-100 leading-tight">Tickets sold</h3>
+                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-violet-100 leading-tight">Tickets Sold</h3>
                 <div className="p-1 sm:p-1.5 rounded-full bg-purple-100 text-secondary shrink-0">
                   <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
@@ -453,14 +472,14 @@ export default function DashboardPage() {
                              <stop offset="100%" stopColor="#A16207" stopOpacity={1}/>
                            </linearGradient>
                          </defs>
-                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11, fontWeight: 500}} dy={6} interval={0} />
-                         <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11, fontWeight: 500}} width={45} />
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(139, 92, 246, 0.15)" : "#E5E7EB"} />
+                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: isDark ? '#A78BFA' : '#6B7280', fontSize: 11, fontWeight: 500}} dy={6} interval={0} />
+                         <YAxis axisLine={false} tickLine={false} tick={{fill: isDark ? '#A78BFA' : '#6B7280', fontSize: 11, fontWeight: 500}} width={45} />
                          <Tooltip 
-                           cursor={{fill: '#F3F4F6'}}
-                           contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                           cursor={{fill: isDark ? 'rgba(139, 92, 246, 0.05)' : '#F3F4F6'}}
+                           contentStyle={{ borderRadius: '12px', border: isDark ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid #E5E7EB', backgroundColor: isDark ? '#0F172A' : '#FFFFFF', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                          />
-                         <Legend verticalAlign="top" align="right" height={40} iconType="circle" wrapperStyle={{ fontSize: '14px', fontWeight: 600, color: '#4B5563' }} />
+                         <Legend verticalAlign="top" align="right" height={40} iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#A78BFA' : '#4B5563' }} />
                          <Bar dataKey="Sold" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={40}>
                            <LabelList dataKey="Sold" position="top" style={{ fill: '#8B5CF6', fontSize: 12, fontWeight: 'bold' }} />
                          </Bar>
@@ -504,9 +523,29 @@ export default function DashboardPage() {
              {/* 2. LeaderBoard */}
              {activeTab === 'LeaderBoard' && (
                 <div className="animate-in fade-in duration-500">
-                   <div className="mb-3 sm:mb-4">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-violet-100 border-b border-gray-100 dark:border-violet-500/15 pb-1.5">LeaderBoard</h3>
-                      <p className="text-xs sm:text-sm text-gray-400 dark:text-violet-400/60 font-medium">Sales by category</p>
+                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                      <div>
+                         <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-violet-100 pb-1.5 flex items-center gap-2">
+                            Performance Leaderboard
+                            {leaderboardSort === 'revenue' && <IndianRupee className="w-4 h-4 text-green-500" />}
+                         </h3>
+                         <p className="text-xs sm:text-sm text-gray-400 dark:text-violet-400/60 font-medium italic">Ranking by {leaderboardSort === 'revenue' ? 'Total Revenue' : 'Ticket Count'}</p>
+                      </div>
+                      
+                      <div className="flex bg-[#fdfaff] dark:bg-violet-950/40 p-1 rounded-xl border border-pink-100 dark:border-violet-500/20">
+                         <button 
+                            onClick={() => setLeaderboardSort('count')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${leaderboardSort === 'count' ? 'bg-white dark:bg-violet-800 text-primary shadow-sm' : 'text-gray-500 dark:text-violet-400 hover:text-gray-700'}`}
+                         >
+                            Count
+                         </button>
+                         <button 
+                            onClick={() => setLeaderboardSort('revenue')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${leaderboardSort === 'revenue' ? 'bg-white dark:bg-violet-800 text-primary shadow-sm' : 'text-gray-500 dark:text-violet-400 hover:text-gray-700'}`}
+                         >
+                            Revenue
+                         </button>
+                      </div>
                    </div>
 
                    {/* Mobile: compact cards */}
@@ -524,7 +563,11 @@ export default function DashboardPage() {
                                  <span className={`inline-flex items-center justify-center min-w-[2rem] h-6 ${rBadge} text-white text-[10px] font-bold rounded-full`}>{rLabel}</span>
                                  <span className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{org.name}</span>
                                </div>
-                               <span className="shrink-0 text-xs font-bold bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 px-2 py-1 rounded-md text-gray-700 dark:text-violet-300">{org.total} total</span>
+                               <div className="flex items-center gap-2 shrink-0">
+                                 <span className="text-xs font-bold bg-white dark:bg-[var(--card-bg)] border border-gray-200 dark:border-violet-500/22 px-2 py-1 rounded-md text-gray-700 dark:text-violet-300">
+                                    {leaderboardSort === 'revenue' ? `₹${new Intl.NumberFormat('en-IN').format(org.revenue)}` : `${org.total} tix`}
+                                 </span>
+                               </div>
                              </div>
                              <div className="grid grid-cols-3 gap-x-2 gap-y-1.5 text-[10px] sm:text-xs">
                                <div className="flex flex-col items-center justify-center rounded-lg bg-white/70 px-1 py-1.5 dark:bg-violet-950/35">
@@ -557,11 +600,12 @@ export default function DashboardPage() {
                              <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
                              <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
                              <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total</th>
+                             <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Amount (₹)</th>
                           </tr>
                        </thead>
                        <tbody>
                           {organiserList.length === 0 ? (
-                             <tr><td colSpan={6} className="py-12 text-center text-gray-500 dark:text-violet-300/70 font-medium italic">No performance data recorded yet</td></tr>
+                             <tr><td colSpan={7} className="py-12 text-center text-gray-500 dark:text-violet-300/70 font-medium italic">No performance data recorded yet</td></tr>
                           ) : (
                              organiserList.map((org, idx) => {
                                 let rLabel = (idx + 1) + (idx === 0 ? "st" : idx === 1 ? "nd" : idx === 2 ? "rd" : "th");
@@ -577,8 +621,13 @@ export default function DashboardPage() {
                                       <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.donor}</td>
                                       <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.student}</td>
                                       <td className="py-5 px-4 text-center">
-                                         <span className="inline-block bg-[#F8FAFC] text-gray-600 dark:text-violet-300/85 text-xs font-bold px-3 py-1 rounded-md border border-gray-100 dark:border-violet-500/15">
+                                         <span className={`inline-block text-xs font-bold px-3 py-1 rounded-md border ${leaderboardSort === 'count' ? 'bg-primary/5 text-primary border-primary/20' : 'bg-gray-50 dark:bg-violet-950/25 text-gray-500 dark:text-violet-400/70 border-gray-100 dark:border-violet-500/15'}`}>
                                             {org.total}
+                                         </span>
+                                      </td>
+                                      <td className="py-5 px-4 text-center">
+                                         <span className={`inline-block text-xs font-mono font-bold px-3 py-1 rounded-md border ${leaderboardSort === 'revenue' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20' : 'bg-gray-50 dark:bg-violet-950/25 text-gray-500 dark:text-violet-400/70 border-gray-100 dark:border-violet-500/15'}`}>
+                                            ₹{new Intl.NumberFormat('en-IN').format(org.revenue)}
                                          </span>
                                       </td>
                                    </tr>
@@ -649,7 +698,7 @@ export default function DashboardPage() {
                               <Cell fill="#10B981" />
                               <Cell fill="#E5E7EB" />
                             </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                            <Tooltip contentStyle={{ borderRadius: '12px', border: isDark ? '1px solid rgba(139, 92, 246, 0.2)' : 'none', backgroundColor: isDark ? '#0F172A' : '#FFFFFF', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                           </PieChart>
                         </ResponsiveContainer>
                      </div>

@@ -160,7 +160,7 @@ export default function OrganiserDashboard() {
                   <Target className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0" />
                   <h3 className="text-sm font-bold text-gray-900 dark:text-violet-100">Sales progress</h3>
                 </div>
-                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-violet-300/70 font-medium mb-3 line-clamp-2">Tickets sold vs your target</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-violet-300/70 font-medium mb-3 line-clamp-2">Tickets Sold vs your target</p>
 
                 <div className="flex items-end gap-2 mb-2">
                   <span className="text-2xl sm:text-4xl font-bold text-primary tabular-nums">{overall.sold}</span>

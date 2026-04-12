@@ -10,17 +10,26 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState('');
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUserName(localStorage.getItem('rhapsody_user') || 'Organiser');
+    
+    // Retrieve all roles for granular access control
+    const storedRoles = localStorage.getItem('rhapsody_all_roles');
+    if (storedRoles) {
+      try {
+        setUserRoles(JSON.parse(storedRoles));
+      } catch (e) {
+        setUserRoles([localStorage.getItem('rhapsody_role') || 'organiser']);
+      }
+    } else {
+      setUserRoles([localStorage.getItem('rhapsody_role') || 'organiser']);
+    }
   }, []);
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     document.body.style.overflow = mobileNavOpen ? "hidden" : "";
@@ -42,6 +51,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
   const handleSignOut = () => {
     localStorage.removeItem('rhapsody_user');
     localStorage.removeItem('rhapsody_role');
+    localStorage.removeItem('rhapsody_all_roles');
     localStorage.removeItem('rhapsody_phone');
     router.replace('/');
   };
@@ -49,9 +59,14 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
   const navLinks = [
     { name: "Dashboard", href: "/organiser-dashboard", icon: LayoutDashboard },
     { name: "Sell Tickets", href: "/organiser-dashboard/sell", icon: Ticket },
-    { name: "Check-in", href: "/frontdesk", icon: Camera },
+    { name: "Check-in", href: "/frontdesk", icon: Camera, roleLimit: ['front_desk', 'admin'] },
     { name: "Sales Report", href: "/organiser-dashboard/sales", icon: BarChart2 },
   ];
+
+  const filteredLinks = navLinks.filter(link => {
+    if (!link.roleLimit) return true;
+    return link.roleLimit.some(r => userRoles.includes(r));
+  });
 
   const renderNavLink = (link: (typeof navLinks)[0], opts?: { onNavigate?: () => void }) => {
     const isActive = pathname === link.href;
@@ -103,7 +118,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
             <div className="hidden md:block h-6 w-px bg-[var(--border-subtle)] shrink-0" />
 
             <nav className="hidden md:flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide">
-              {navLinks.map((link) => renderNavLink(link))}
+              {filteredLinks.map((link) => renderNavLink(link))}
             </nav>
 
             <div className="flex-1 md:hidden" aria-hidden />
@@ -179,7 +194,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto p-3 flex flex-col gap-0.5" aria-label="Main navigation">
-              {navLinks.map((link) => renderNavLink(link, { onNavigate: () => setMobileNavOpen(false) }))}
+              {filteredLinks.map((link) => renderNavLink(link, { onNavigate: () => setMobileNavOpen(false) }))}
             </nav>
             <div className="p-4 border-t border-[var(--border-subtle)] text-xs text-[var(--muted)]">
               Signed in as <span className="font-semibold text-[var(--foreground)]">{userName}</span>

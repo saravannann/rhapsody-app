@@ -78,6 +78,7 @@ export default function LoginPage() {
               ? 'front_desk'
               : 'organiser';
         localStorage.setItem('rhapsody_role', resolvedRole);
+        localStorage.setItem('rhapsody_all_roles', JSON.stringify(roles));
 
         if (roles.includes('admin')) {
           router.push('/dashboard');
