@@ -37,6 +37,7 @@ export default function SellTicketsPage() {
       qty: 1,
       /** Where purchaser funds are directed for this sale */
       fundsDestination: 'organizer' as 'trust' | 'organizer',
+      txnId: '',
    });
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [showErrors, setShowErrors] = useState(false);
@@ -118,6 +119,7 @@ export default function SellTicketsPage() {
                purchaser_phone: purchaserPhone,
                sold_by: formData.poc,
                funds_destination: formData.fundsDestination,
+               bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
             })
             .select("id")
             .single();
@@ -131,7 +133,7 @@ export default function SellTicketsPage() {
             typeId,
          });
 
-         setSaleReceipt({
+         const receipt = {
             ticketId: row.id,
             passLabel,
             quantity: qty,
@@ -139,9 +141,42 @@ export default function SellTicketsPage() {
             qrPayload,
             purchaserName: formData.name.trim(),
             purchaserPhoneE164: purchaserPhone,
-         });
+         };
 
-         setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer" });
+          setSaleReceipt(receipt);
+
+          // Automated WhatsApp background trigger
+          try {
+             const ticketUrl = `${window.location.origin}/ticket/${row.id}`;
+             const msg = buildTicketWhatsAppMessage({
+                purchaserName: formData.name.trim(),
+                passLabel,
+                quantity: qty,
+                totalInr: lineTotal,
+                ref: shortTicketRef(row.id),
+                ticketPageUrl: ticketUrl,
+             });
+             void fetch('/api/send-ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg })
+             })
+             .then(res => res.json())
+             .then(data => {
+                if (!data.success) {
+                   console.error("WhatsApp Error:", data.error);
+                   alert(`WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`);
+                } else {
+                   console.log("WhatsApp sent!", data.message_id);
+                }
+             })
+             .catch(e => console.error("Auto WhatsApp Fail:", e));
+          } catch (waErr) {
+             console.error("WA Prep Fail:", waErr);
+          }
+
+
+         setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "" });
 
       } catch (err: unknown) {
          console.error("Error selling ticket:", err);
@@ -238,7 +273,9 @@ export default function SellTicketsPage() {
       const totalQty = massData.reduce((sum, item) => sum + item.qty, 0);
       const isVolumeValid = totalQty >= 30;
 
-      if (!isFileValid || !isPocValid || !isVolumeValid) {
+      const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
+      
+      if (!isFileValid || !isPocValid || !isVolumeValid || !isTxnValid) {
          setShowErrors(true);
          return;
       }
@@ -261,7 +298,7 @@ export default function SellTicketsPage() {
                continue;
             }
 
-            const { error } = await supabase.from("tickets").insert({
+            const { data: massRow, error } = await supabase.from("tickets").insert({
                type: person.type,
                price: person.price,
                quantity: person.qty,
@@ -270,9 +307,37 @@ export default function SellTicketsPage() {
                purchaser_phone: phone,
                sold_by: formData.poc,
                funds_destination: formData.fundsDestination,
-            });
+               bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
+            }).select("id").single();
 
             if (error) throw error;
+
+            // Trigger WhatsApp for mass issuance
+            try {
+               const ticketUrl = `${window.location.origin}/ticket/${massRow?.id}`;
+               const message = buildTicketWhatsAppMessage({
+                  purchaserName: person.name,
+                  passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
+                  quantity: person.qty,
+                  totalInr: person.price * person.qty,
+                  ref: shortTicketRef(massRow?.id || ""),
+                  ticketPageUrl: ticketUrl
+               });
+               void fetch('/api/send-ticket', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ phone, ticketContent: message })
+               })
+               .then(res => res.json())
+               .then(d => {
+                  if (!d.success) console.error("Mass WhatsApp Fail:", d.error);
+                  else console.log("Mass WhatsApp Sent:", d.message_id);
+               })
+               .catch(e => console.error("WhatsApp Mass Network Fail:", e));
+            } catch (waErr) {
+               console.error("WA Mass Prep Fail:", waErr);
+            }
+
             setMassStatus(prev => prev ? { ...prev, sent: prev.sent + 1 } : null);
          } catch (err) {
             setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Failed to insert`] } : null);
@@ -287,6 +352,7 @@ export default function SellTicketsPage() {
          setMassData([]);
          setMassStatus(null);
          setSellMode('individual');
+         setFormData(prev => ({ ...prev, txnId: '' }));
       }
    };
 
@@ -744,6 +810,27 @@ export default function SellTicketsPage() {
                                     })}
                                  </div>
                               </fieldset>
+
+                              {formData.fundsDestination === 'trust' && (
+                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Bank Transaction ID</label>
+                                    <div className="relative">
+                                       <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors pointer-events-none ${showErrors && !formData.txnId ? 'text-red-500' : 'text-gray-400'}`}>
+                                          <CheckCircle2 className="w-4 h-4" />
+                                       </div>
+                                       <input
+                                          value={formData.txnId}
+                                          onChange={e => setFormData({ ...formData, txnId: e.target.value })}
+                                          placeholder="UTR / Ref Number"
+                                          className={`w-full min-h-[44px] bg-[#f8fafc] dark:bg-violet-950/35 border rounded-xl pl-10 pr-3 py-2.5 text-sm font-bold text-gray-900 dark:text-violet-100 focus:outline-none focus:ring-2 transition-all ${showErrors && !formData.txnId
+                                             ? 'border-red-500 ring-red-500/20 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]'
+                                             : 'border-gray-100 dark:border-violet-500/20 focus:ring-primary/20'
+                                             }`}
+                                       />
+                                    </div>
+                                    {showErrors && !formData.txnId && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Transaction ID required for Trust settlement</p>}
+                                 </div>
+                              )}
 
                               <div className="pt-5 sm:pt-6">
                                  <button

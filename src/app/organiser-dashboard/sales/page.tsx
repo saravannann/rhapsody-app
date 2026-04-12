@@ -210,6 +210,7 @@ export default function SalesReport() {
       "Line INR",
       "Status",
       "Paid To",
+      "Bank Txn ID",
       "Sold By",
       "Date",
     ];
@@ -223,6 +224,7 @@ export default function SalesReport() {
       ticketLineTotal(t),
       t.status,
       t.funds_destination === 'trust' ? 'Trust' : 'Organizer',
+      t.bank_txn_id || "N/A",
       t.sold_by || "N/A",
       new Date(t.created_at).toLocaleString(),
     ]);
@@ -451,7 +453,12 @@ export default function SalesReport() {
                                      }`}>
                                        {t.funds_destination === 'trust' ? 'TRUST' : 'ORG'}
                                      </span>
-                                    <span className="text-gray-400 dark:text-violet-400/60 ml-auto">{formattedDate} · {formattedTime}</span>
+                                     {t.bank_txn_id && (
+                                       <span className="font-mono text-[9px] text-primary bg-primary/5 px-1 rounded border border-primary/10">
+                                          Txn: {t.bank_txn_id}
+                                       </span>
+                                     )}
+                                     <span className="text-gray-400 dark:text-violet-400/60 ml-auto">{formattedDate} · {formattedTime}</span>
                                  </div>
                               </div>
                            </div>
@@ -483,6 +490,7 @@ export default function SalesReport() {
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Qty</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Amount</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Paid To</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Txn ID</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Status</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Date</th>
                       </tr>
@@ -490,7 +498,7 @@ export default function SalesReport() {
                   <tbody className="divide-y divide-gray-50">
                      {filteredTickets.length === 0 ? (
                         <tr>
-                           <td colSpan={9} className="px-6 py-12 text-center">
+                           <td colSpan={10} className="px-6 py-12 text-center">
                               <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                               <h3 className="text-base font-bold text-gray-900 dark:text-violet-100">No transactions found</h3>
                               <p className="text-sm text-gray-500 dark:text-violet-300/70 mt-1">Adjust your filters to see more results.</p>
@@ -545,6 +553,11 @@ export default function SalesReport() {
                                           : 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                       }`}>
                                         {t.funds_destination === 'trust' ? 'TRUST' : 'ORGANIZER'}
+                                      </span>
+                                   </td>
+                                   <td className="px-6 py-4 text-center">
+                                      <span className="text-[10px] font-mono font-bold text-gray-400 dark:text-violet-400/60">
+                                         {t.bank_txn_id || "—"}
                                       </span>
                                    </td>
                                   <td className="px-6 py-4 text-center">

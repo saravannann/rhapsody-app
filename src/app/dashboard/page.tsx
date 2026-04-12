@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle, Calendar, CheckCircle2 } from "lucide-react";
+import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, AlertCircle, Calendar, CheckCircle2, Filter } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
@@ -33,6 +33,13 @@ export default function DashboardPage() {
   const [filterType, setFilterType] = useState('All Types');
   const [filterOrganiser, setFilterOrganiser] = useState('All Organisers');
   const [filterFunds, setFilterFunds] = useState('All Destinations');
+  
+  const clearFilters = () => {
+    setFilterDate('All Time');
+    setFilterType('All Types');
+    setFilterOrganiser('All Organisers');
+    setFilterFunds('All Destinations');
+  };
 
   const [role, setRole] = useState('organiser');
 
@@ -264,7 +271,14 @@ export default function DashboardPage() {
         <>
           {/* Filters Card */}
           <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm border border-pink-50 dark:border-violet-500/18">
-            <h3 className="text-xs font-bold text-secondary mb-3 uppercase tracking-wider">Filters</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center">
+                <Filter className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Filters
+              </h3>
+              {(filterDate !== 'All Time' || filterType !== 'All Types' || filterOrganiser !== 'All Organisers' || filterFunds !== 'All Destinations') && (
+                <button type="button" onClick={clearFilters} className="text-xs font-bold text-primary hover:underline px-1">Clear</button>
+              )}
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               
               <div className="min-w-0">

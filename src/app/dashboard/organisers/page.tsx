@@ -90,7 +90,7 @@ function RoleChecklist({
     <div className="flex flex-col gap-3">
       <label className="flex cursor-pointer items-center gap-3 group">
         <div
-          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${selected.includes("admin") ? "border-primary bg-primary" : "border-pink-200 bg-[#fdfaff] group-hover:border-primary"}`}
+          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${selected.includes("admin") ? "border-primary bg-primary" : "border-pink-200 bg-[#fdfaff] dark:bg-violet-900/10 dark:border-violet-500/30 group-hover:border-primary"}`}
         >
           {selected.includes("admin") && <CheckCircle2 className="h-3 w-3 text-white" />}
         </div>
@@ -100,8 +100,8 @@ function RoleChecklist({
           checked={selected.includes("admin")}
           onChange={() => onToggle("admin")}
         />
-        <span className="text-sm font-bold text-gray-700">
-          Administrator <span className="font-normal text-gray-500">(Full Access)</span>
+        <span className="text-sm font-bold text-gray-700 dark:text-violet-200">
+          Administrator <span className="font-normal text-gray-500 dark:text-violet-400/70">(Full Access)</span>
         </span>
       </label>
       <label className="flex cursor-pointer items-center gap-3 group">
@@ -116,8 +116,8 @@ function RoleChecklist({
           checked={selected.includes("organiser")}
           onChange={() => onToggle("organiser")}
         />
-        <span className="text-sm font-bold text-gray-700">
-          Organiser <span className="font-normal text-gray-500">(Dashboard Access)</span>
+        <span className="text-sm font-bold text-gray-700 dark:text-violet-200">
+          Organiser <span className="font-normal text-gray-500 dark:text-violet-400/70">(Dashboard Access)</span>
         </span>
       </label>
       <label className="flex cursor-pointer items-center gap-3 group">
@@ -132,8 +132,8 @@ function RoleChecklist({
           checked={selected.includes("front_desk")}
           onChange={() => onToggle("front_desk")}
         />
-        <span className="text-sm font-bold text-gray-700">
-          Front Desk <span className="font-normal text-gray-500">(Scanner Only)</span>
+        <span className="text-sm font-bold text-gray-700 dark:text-violet-200">
+          Front Desk <span className="font-normal text-gray-500 dark:text-violet-400/70">(Scanner Only)</span>
         </span>
       </label>
     </div>
@@ -149,21 +149,21 @@ function TargetQuotaCells({ targets }: { targets: any[] }) {
         return (
           <div
             key={tgt.name}
-            className="w-[calc((100%-0.375rem)/2)] min-w-[7rem] shrink-0 snap-start rounded-md border border-gray-100 bg-white p-1.5 sm:w-auto sm:min-w-0 sm:rounded-lg sm:p-3"
+            className="w-[calc((100%-0.375rem)/2)] min-w-[7rem] shrink-0 snap-start rounded-md border border-gray-100 dark:border-violet-500/20 bg-white dark:bg-violet-950/30 p-1.5 sm:w-auto sm:min-w-0 sm:rounded-lg sm:p-3"
           >
             <div className="mb-0.5 flex items-start justify-between gap-1">
-              <h4 className="line-clamp-2 text-[9px] font-bold leading-tight text-gray-800 sm:text-[11px] md:text-xs">
+              <h4 className="line-clamp-2 text-[9px] font-bold leading-tight text-gray-800 dark:text-violet-200 sm:text-[11px] md:text-xs">
                 {tgt.name}
               </h4>
-              <span className="shrink-0 rounded bg-gray-100 px-1 py-px text-[9px] font-bold tabular-nums text-gray-600 sm:px-1.5 sm:py-0.5 sm:text-[10px] md:text-xs">
+              <span className="shrink-0 rounded bg-gray-100 dark:bg-violet-900/30 px-1 py-px text-[9px] font-bold tabular-nums text-gray-600 dark:text-violet-400 sm:px-1.5 sm:py-0.5 sm:text-[10px] md:text-xs">
                 {perc}%
               </span>
             </div>
             <div className="mb-0.5 flex items-baseline gap-0.5">
-              <span className="text-sm font-bold tabular-nums text-gray-900 sm:text-base md:text-lg">{tgt.sold}</span>
-              <span className="text-[10px] font-medium text-gray-400 sm:text-[11px] md:text-xs">/{tgt.target}</span>
+              <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-violet-100 sm:text-base md:text-lg">{tgt.sold}</span>
+              <span className="text-[10px] font-medium text-gray-400 dark:text-violet-400/60 sm:text-[11px] md:text-xs">/{tgt.target}</span>
             </div>
-            <div className="h-0.5 w-full overflow-hidden rounded-full bg-gray-200 sm:h-1">
+            <div className="h-0.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-violet-900/20 sm:h-1">
               <div
                 className={`${tgt.color} h-full rounded-full transition-all duration-500`}
                 style={{ width: `${perc}%` }}
@@ -184,12 +184,12 @@ function OverallProgressFooter({
   overallPercNum: number;
 }) {
   return (
-    <div className="border-t border-gray-100 bg-gray-50/90 px-2.5 py-1.5 sm:px-4 sm:py-3">
+    <div className="border-t border-gray-100 dark:border-violet-500/15 bg-gray-50/90 dark:bg-violet-950/40 px-2.5 py-1.5 sm:px-4 sm:py-3">
       <div className="mb-1 flex items-center justify-between text-[10px] sm:mb-1.5 sm:text-sm">
-        <span className="font-semibold text-gray-600">Overall</span>
+        <span className="font-semibold text-gray-600 dark:text-violet-400/80">Overall</span>
         <span className="font-bold tabular-nums text-primary">{overallPerc}%</span>
       </div>
-      <div className="h-1 overflow-hidden rounded-full bg-gray-200 sm:h-1.5">
+      <div className="h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-violet-900/30 sm:h-1.5">
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
           style={{ width: `${overallPercNum}%` }}
@@ -529,12 +529,12 @@ export default function OrganisersPage() {
         headerIcon={<Target className="h-5 w-5 shrink-0 text-primary" />}
         footer={
           <div className="flex gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={closeTargetEditor}
-              disabled={savingTargets}
-              className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 transition-colors hover:bg-gray-100 disabled:opacity-50 sm:text-base"
-            >
+              <button
+                type="button"
+                onClick={closeTargetEditor}
+                disabled={savingTargets}
+                className="flex-1 rounded-xl border border-gray-200 dark:border-violet-500/20 bg-white dark:bg-violet-900/10 py-3 text-sm font-bold text-gray-800 dark:text-violet-200 transition-colors hover:bg-gray-100 dark:hover:bg-violet-900/20 disabled:opacity-50 sm:text-base"
+              >
               Cancel
             </button>
             <button
@@ -554,16 +554,16 @@ export default function OrganisersPage() {
       >
         {editingOrg ? (
           <>
-            <p className="mb-3 text-xs text-gray-500 sm:text-sm">
-              Quotas for <span className="font-bold text-gray-900">{editingOrg.name}</span>
+            <p className="mb-3 text-xs text-gray-500 dark:text-violet-400/70 sm:text-sm">
+              Quotas for <span className="font-bold text-gray-900 dark:text-violet-100">{editingOrg.name}</span>
             </p>
             <div className="space-y-2">
               {editingOrg.targets.map((tgt: any, i: number) => (
                 <div
                   key={tgt.name}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-[#fdfaff] p-3"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 dark:border-violet-500/20 bg-[#fdfaff] dark:bg-violet-950/40 p-3"
                 >
-                  <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-gray-700 sm:text-sm">
+                  <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-gray-700 dark:text-violet-200 sm:text-sm">
                     <span className={`h-2 w-2 shrink-0 rounded-full ${tgt.color}`} />
                     <span className="truncate">{tgt.name}</span>
                   </span>
@@ -577,7 +577,7 @@ export default function OrganisersPage() {
                       newTargets[i].target = Number(e.target.value);
                       setEditingOrg({ ...editingOrg, targets: newTargets });
                     }}
-                    className="w-[4.5rem] rounded-lg border border-gray-200 bg-white py-2 text-center text-sm font-bold text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:w-20"
+                    className="w-[4.5rem] rounded-lg border border-gray-200 dark:border-violet-500/30 bg-white dark:bg-violet-950/50 py-2 text-center text-sm font-bold text-gray-900 dark:text-violet-100 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:w-20"
                   />
                 </div>
               ))}
@@ -595,12 +595,12 @@ export default function OrganisersPage() {
         headerIcon={<Shield className="h-5 w-5 shrink-0 text-primary" />}
         footer={
           <div className="flex gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={closeRolesEditor}
-              disabled={savingRoles}
-              className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-800 transition-colors hover:bg-gray-100 disabled:opacity-50 sm:text-base"
-            >
+              <button
+                type="button"
+                onClick={closeRolesEditor}
+                disabled={savingRoles}
+                className="flex-1 rounded-xl border border-gray-200 dark:border-violet-500/20 bg-white dark:bg-violet-900/10 py-3 text-sm font-bold text-gray-800 dark:text-violet-200 transition-colors hover:bg-gray-100 dark:hover:bg-violet-900/20 disabled:opacity-50 sm:text-base"
+              >
               Cancel
             </button>
             <button
@@ -620,10 +620,10 @@ export default function OrganisersPage() {
       >
         {editingRoles ? (
           <>
-            <p className="mb-3 text-xs text-gray-500 sm:text-sm">
-              Access for <span className="font-bold text-gray-900">{editingRoles.name}</span>
+            <p className="mb-3 text-xs text-gray-500 dark:text-violet-400/70 sm:text-sm">
+              Access for <span className="font-bold text-gray-900 dark:text-violet-100">{editingRoles.name}</span>
             </p>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500">
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-violet-400/60">
               System roles
             </label>
             <RoleChecklist selected={editingRoles.rolesDraft} onToggle={toggleDraftRole} />
@@ -635,7 +635,7 @@ export default function OrganisersPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0">
           {view === 'add' ? (
-             <button type="button" onClick={() => setView('list')} className="mb-1 flex items-center text-xs font-bold text-gray-500 transition-colors hover:text-primary sm:text-sm">
+             <button type="button" onClick={() => setView('list')} className="mb-1 flex items-center text-xs font-bold text-gray-500 dark:text-violet-400/70 transition-colors hover:text-primary sm:text-sm">
                 <ArrowLeft className="mr-1 h-4 w-4 shrink-0" /> Back to Directory
              </button>
           ) : null}
@@ -643,14 +643,23 @@ export default function OrganisersPage() {
              User Management
           </h1>
           {view === 'add' ? (
-             <p className="mt-0.5 text-xs font-medium leading-snug text-gray-500 sm:mt-1 sm:text-sm">
+             <p className="mt-0.5 text-xs font-medium leading-snug text-gray-500 dark:text-violet-400/60 sm:mt-1 sm:text-sm">
                 Provision access by role
              </p>
           ) : null}
         </div>
         
         {view === 'list' && (
-           <button type="button" onClick={() => setView('add')} className="inline-flex min-h-[40px] shrink-0 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-2 text-xs font-bold text-white shadow-lg shadow-pink-500/25 transition-all hover:from-primary-dark hover:to-primary active:scale-[0.98] sm:w-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
+           <button 
+             type="button" 
+             onClick={() => {
+               setFormData({ name: "", phone: "", roles: ["organiser"], password: "" });
+               setSuccess(false);
+               setShowPassword(false);
+               setView('add');
+             }} 
+             className="inline-flex min-h-[40px] shrink-0 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-2 text-xs font-bold text-white shadow-lg shadow-pink-500/25 transition-all hover:from-primary-dark hover:to-primary active:scale-[0.98] sm:w-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm"
+           >
              <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Add user
            </button>
         )}
@@ -673,29 +682,29 @@ export default function OrganisersPage() {
       ) : null}
 
       {view === 'add' ? (
-        <div className="w-full max-w-2xl bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 shadow-sm border border-pink-100/80 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="w-full max-w-2xl bg-white dark:bg-violet-950/20 rounded-xl sm:rounded-2xl p-5 sm:p-6 shadow-sm border border-pink-100/80 dark:border-violet-500/15 animate-in fade-in slide-in-from-right-4 duration-300">
           <form onSubmit={handleAddSubmit} className="space-y-5 sm:space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div>
-                <label className="block text-sm font-bold text-secondary mb-2">Full Name</label>
-                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="Sara" className="w-full bg-[#fdfaff] border border-pink-100 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
+                <label className="block text-sm font-bold text-secondary dark:text-violet-300 mb-2">Full Name</label>
+                <input required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="Sara" className="w-full bg-[#fdfaff] dark:bg-violet-950/40 border border-pink-100 dark:border-violet-500/20 rounded-xl px-4 py-3 text-sm font-medium dark:text-violet-100 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-secondary mb-2">Phone Number</label>
+                <label className="block text-sm font-bold text-secondary dark:text-violet-300 mb-2">Phone Number</label>
                 <IndianMobileInput
                   required
                   value={formData.phone}
                   onChange={(d) => setFormData({ ...formData, phone: d })}
-                  className="border border-pink-100 bg-[#fdfaff]"
+                  className="border border-pink-100 dark:border-violet-500/20 bg-[#fdfaff] dark:bg-violet-950/40"
                   prefixClassName="bg-pink-50/90 border-pink-100 text-secondary dark:bg-violet-950/55 dark:border-violet-500/30 dark:text-violet-200"
-                  inputClassName="font-medium text-gray-900 dark:text-violet-100"
+                  inputClassName="font-medium text-gray-900 dark:text-violet-100 shadow-none border-none focus:ring-0"
                 />
                 <p className="text-[10px] text-gray-400 mt-1 font-medium">India (+91)</p>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Login Password</label>
+              <label className="block text-sm font-bold text-secondary dark:text-violet-300 mb-2">Login Password</label>
               <div className="relative">
                 <input
                   required
@@ -703,12 +712,12 @@ export default function OrganisersPage() {
                   value={formData.password}
                   onChange={e=>setFormData({...formData, password: e.target.value})}
                   placeholder="Assign a password"
-                  className="w-full bg-[#fdfaff] border border-pink-100 rounded-xl pl-4 pr-11 py-3 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                  className="w-full bg-[#fdfaff] dark:bg-violet-950/40 border border-pink-100 dark:border-violet-500/20 rounded-xl pl-4 pr-11 py-3 text-sm font-medium dark:text-violet-100 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-pink-50 transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:text-violet-400 dark:hover:text-violet-200 hover:bg-pink-50 dark:hover:bg-violet-800/20 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   tabIndex={-1}
                 >
@@ -719,7 +728,7 @@ export default function OrganisersPage() {
             </div>
 
             <div>
-              <label className="mb-3 block text-sm font-bold text-secondary">System Roles / Access Types</label>
+              <label className="mb-3 block text-sm font-bold text-secondary dark:text-violet-300">System Roles / Access Types</label>
               <RoleChecklist selected={formData.roles} onToggle={toggleRole} />
             </div>
 
@@ -737,7 +746,7 @@ export default function OrganisersPage() {
         <div className="animate-in fade-in duration-300">
            
            <div className="relative mb-3 sm:mb-5">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 sm:left-3.5 sm:h-5 sm:w-5" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 sm:left-3.5 sm:h-5 sm:w-5" />
               <input 
                 type="search"
                 enterKeyHint="search"
@@ -745,7 +754,7 @@ export default function OrganisersPage() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search name or phone" 
-                className="w-full rounded-xl border border-gray-200/90 bg-gray-100/90 py-2 pl-9 pr-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 sm:py-2.5 sm:pl-11 sm:text-sm"
+                className="w-full rounded-xl border border-gray-200/90 dark:border-violet-500/20 bg-gray-100/90 dark:bg-violet-950/40 py-2 pl-9 pr-3 text-sm font-medium text-gray-900 dark:text-violet-100 placeholder:text-gray-400 dark:placeholder:text-violet-400/50 transition-all focus:bg-white dark:focus:bg-violet-950/60 focus:outline-none focus:ring-2 focus:ring-primary/20 sm:py-2.5 sm:pl-11 sm:text-sm"
               />
            </div>
 
@@ -756,8 +765,8 @@ export default function OrganisersPage() {
                 Fix the issue above, then tap Retry to load the directory.
               </p>
            ) : filteredUsers.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-10 text-center">
-                 <p className="text-sm font-semibold text-gray-700">
+              <div className="rounded-xl border border-dashed border-gray-200 dark:border-violet-500/25 bg-white/60 dark:bg-violet-950/10 px-4 py-10 text-center">
+                 <p className="text-sm font-semibold text-gray-700 dark:text-violet-200">
                     {users.length === 0 ? "No users yet" : "No matches"}
                  </p>
                  <p className="text-xs text-gray-500 mt-1">
@@ -775,13 +784,13 @@ export default function OrganisersPage() {
 
                    return (
                    <li key={org.id}>
-                   <div className="group flex flex-col overflow-hidden rounded-lg border border-gray-200/90 bg-white shadow-sm transition-colors hover:border-pink-200/80 sm:rounded-2xl">
+                   <div className="group flex flex-col overflow-hidden rounded-lg border border-gray-200/90 dark:border-violet-500/15 bg-white dark:bg-violet-950/25 shadow-sm transition-colors hover:border-pink-200/80 dark:hover:border-violet-500/30 sm:rounded-2xl">
                       
-                      <div className="border-b border-gray-100 p-2 sm:p-4">
+                      <div className="border-b border-gray-100 dark:border-violet-500/10 p-2 sm:p-4">
                          <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                                  <h3 className="truncate text-sm font-bold text-gray-900 transition-colors group-hover:text-primary sm:text-base md:text-lg">
+                                  <h3 className="truncate text-sm font-bold text-gray-900 dark:text-violet-100 transition-colors group-hover:text-primary sm:text-base md:text-lg">
                                      {org.name}
                                   </h3>
                                   <span className="shrink-0 rounded bg-gray-900 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none text-white sm:text-[10px]">
@@ -790,14 +799,14 @@ export default function OrganisersPage() {
                                </div>
                                {roleEntries.length > 0 ? (
                                   <>
-                                     <p className="mt-0.5 truncate text-[10px] font-medium text-secondary/90 sm:hidden">
+                                     <p className="mt-0.5 truncate text-[10px] font-medium text-secondary/90 dark:text-violet-300/80 sm:hidden">
                                         {roleEntries.map((e) => e.label).join(" · ")}
                                      </p>
                                      <div className="mt-1 hidden flex-wrap gap-1 sm:flex" aria-label="User roles">
                                         {roleEntries.map(({ key, label }) => (
                                            <span
                                               key={key}
-                                              className="inline-flex items-center rounded-full border border-pink-200/90 bg-pink-50/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary"
+                                              className="inline-flex items-center rounded-full border border-pink-200/90 dark:border-violet-500/30 bg-pink-50/90 dark:bg-violet-900/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary dark:text-violet-300"
                                            >
                                               {label}
                                            </span>
@@ -826,7 +835,7 @@ export default function OrganisersPage() {
                                      rolesDraft: canonicalRoleSlugs(org.roles || []),
                                   });
                                }}
-                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm transition-all active:scale-[0.98] hover:border-primary hover:text-primary sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
+                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-gray-200 dark:border-violet-500/20 bg-white dark:bg-violet-900/20 text-gray-800 dark:text-violet-200 shadow-sm transition-all active:scale-[0.98] hover:border-primary hover:text-primary sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
                             >
                                <Shield className="h-4 w-4 shrink-0" />
                                <span className="hidden sm:inline">Edit roles</span>
@@ -839,7 +848,7 @@ export default function OrganisersPage() {
                                   setEditingRoles(null);
                                   setEditingOrg(org);
                                }}
-                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm transition-all active:scale-[0.98] hover:border-primary hover:text-primary sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
+                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-gray-200 dark:border-violet-500/20 bg-white dark:bg-violet-900/20 text-gray-800 dark:text-violet-200 shadow-sm transition-all active:scale-[0.98] hover:border-primary hover:text-primary sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
                             >
                                <Edit2 className="h-4 w-4 shrink-0" />
                                <span className="hidden sm:inline">Edit targets</span>
@@ -850,7 +859,7 @@ export default function OrganisersPage() {
                                title="Delete user"
                                disabled={deletingId === org.id}
                                onClick={() => void deleteUser(org)}
-                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-red-200 bg-white text-red-700 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 disabled:opacity-60 sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
+                               className="inline-flex h-9 flex-1 touch-manipulation items-center justify-center rounded-lg border border-red-200 dark:border-red-900/30 bg-white dark:bg-red-950/20 text-red-700 dark:text-red-400 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 sm:h-auto sm:min-h-[40px] sm:flex-initial sm:gap-2 sm:px-4 sm:py-2 sm:text-[11px] sm:font-bold md:text-sm"
                             >
                                {deletingId === org.id ? (
                                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
@@ -861,20 +870,20 @@ export default function OrganisersPage() {
                             </button>
                          </div>
 
-                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-gray-100 pt-2 text-[10px] leading-snug text-gray-500 sm:mt-3 sm:pt-3 sm:text-xs">
+                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-gray-100 dark:border-violet-500/10 pt-2 text-[10px] leading-snug text-gray-500 dark:text-violet-400/60 sm:mt-3 sm:pt-3 sm:text-xs">
                             <span className="inline-flex min-w-0 max-w-[100%] items-center gap-1">
                                <Phone className="h-3 w-3 shrink-0 opacity-60" />
                                <span className="truncate">{org.phone}</span>
                             </span>
-                            <span className="inline-flex items-center gap-1 text-gray-400">
+                            <span className="inline-flex items-center gap-1 text-gray-400 dark:text-violet-500/60">
                                <Clock className="h-3 w-3 shrink-0 opacity-60" />
                                {org.lastLogin}
                             </span>
                          </div>
                       </div>
 
-                      <details className="border-t border-gray-100 sm:hidden [&[open]_summary_svg:last-child]:rotate-180">
-                         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-[#fafafa] px-2 py-2 text-[11px] font-semibold text-gray-800 [&::-webkit-details-marker]:hidden">
+                      <details className="border-t border-gray-100 dark:border-violet-500/10 sm:hidden [&[open]_summary_svg:last-child]:rotate-180">
+                         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-[#fafafa] dark:bg-violet-900/10 px-2 py-2 text-[11px] font-semibold text-gray-800 dark:text-violet-200 [&::-webkit-details-marker]:hidden">
                             <span className="flex min-w-0 items-center gap-1.5">
                                <Target className="h-3.5 w-3.5 shrink-0 text-gray-500" />
                                Pass targets
@@ -884,14 +893,14 @@ export default function OrganisersPage() {
                                <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200" />
                             </span>
                          </summary>
-                         <div className="bg-[#fafafa] px-1.5 pb-2 pt-0">
+                         <div className="bg-[#fafafa] dark:bg-violet-900/10 px-1.5 pb-2 pt-0">
                             <TargetQuotaCells targets={org.targets} />
                          </div>
                          <OverallProgressFooter overallPerc={overallPerc} overallPercNum={overallPercNum} />
                       </details>
 
                       <div className="hidden sm:block">
-                         <div className="bg-[#fafafa] px-1.5 py-1.5 sm:p-3">
+                         <div className="bg-[#fafafa] dark:bg-violet-900/10 px-1.5 py-1.5 sm:p-3">
                             <TargetQuotaCells targets={org.targets} />
                          </div>
                          <OverallProgressFooter overallPerc={overallPerc} overallPercNum={overallPercNum} />
