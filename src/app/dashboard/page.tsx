@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, CheckCircle2, Filter, Bell, Send, Image as ImageIcon, Calendar as CalendarIcon, ClipboardList, Target, Plus, Trash2, Info, Check, X, AlertCircle } from "lucide-react";
+import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, CheckCircle2, Filter } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
@@ -64,25 +64,7 @@ export default function DashboardPage() {
     setFilterFunds('All Destinations');
   };
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isDark, setIsDark] = useState(false);
-
-  // Notifications State
-  const [broadcasts, setBroadcasts] = useState<any[]>([]);
-  const [isComposing, setIsComposing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newBroadcast, setNewBroadcast] = useState({
-    title: '',
-    message: '',
-    type: 'text' as 'text'|'image'|'survey',
-    targetType: 'buyers' as 'buyers'|'organisers',
-    targetCategories: [] as string[],
-    targetOrganisers: [] as string[],
-    excludeCheckedIn: true, // User requested: "I dont want notifications after check-in"
-    imageUrl: '',
-    surveyUrl: '',
-    scheduledAt: ''
-  });
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'));
@@ -107,66 +89,7 @@ export default function DashboardPage() {
     }
 
     loadInitial();
-
-    // Check admin role
-    const role = localStorage.getItem('rhapsody_role');
-    const allRoles = JSON.parse(localStorage.getItem('rhapsody_all_roles') || '[]');
-    setIsAdmin(role === 'admin' || allRoles.includes('admin'));
   }, []);
-
-  // Fetch broadcasts
-  useEffect(() => {
-    if (activeTab === 'Notifications' && isAdmin) {
-      fetchBroadcasts();
-    }
-  }, [activeTab, isAdmin]);
-
-  const fetchBroadcasts = async () => {
-    try {
-      const { data } = await supabase
-        .from('broadcasts')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setBroadcasts(data || []);
-    } catch (e) {
-      console.error("Error fetching broadcasts:", e);
-    }
-  };
-
-  const handleCreateBroadcast = async () => {
-    if (!newBroadcast.title || !newBroadcast.message) return;
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase.from('broadcasts').insert([{
-        title: newBroadcast.title,
-        message: newBroadcast.message,
-        broadcast_type: newBroadcast.type,
-        target_type: newBroadcast.targetType,
-        target_categories: newBroadcast.targetCategories,
-        target_organisers: newBroadcast.targetOrganisers,
-        exclude_checked_in: newBroadcast.excludeCheckedIn,
-        image_url: newBroadcast.imageUrl,
-        survey_url: newBroadcast.surveyUrl,
-        scheduled_at: newBroadcast.scheduledAt || null,
-        status: newBroadcast.scheduledAt ? 'scheduled' : 'sent',
-        total_recipients: Math.floor(Math.random() * 500) + 100
-      }]);
-      
-      if (error) throw error;
-      
-      setIsComposing(false);
-      setNewBroadcast({
-        title: '', message: '', type: 'text', targetType: 'buyers',
-        targetCategories: [], targetOrganisers: [], excludeCheckedIn: true,
-        imageUrl: '', surveyUrl: '', scheduledAt: ''
-      });
-      fetchBroadcasts();
-    } catch (e) {
-      console.error("Broadcast failed:", e);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   useEffect(() => {
     async function refreshData() {
@@ -446,17 +369,16 @@ export default function DashboardPage() {
           {/* Nav Tabs */}
           <div className="-mx-1 px-1 sm:mx-0">
             <div className="flex gap-1 sm:gap-2 bg-[#fdfaff] dark:bg-violet-950/25 p-1.5 sm:p-2 rounded-xl border border-pink-50 dark:border-violet-500/18 overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full max-w-full">
-              {['Sales Overview', 'LeaderBoard', 'Ticket Status', 'Check-in Stats', (isAdmin ? 'Notifications' : null)].filter(Boolean).map((tab) => (
+              {['Sales Overview', 'LeaderBoard', 'Ticket Status', 'Check-in Stats'].map((tab) => (
                 <button
                   type="button"
-                  key={tab!}
-                  onClick={() => setActiveTab(tab!)}
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
                   className={`shrink-0 snap-start min-h-[44px] px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab
                     ? "bg-white dark:bg-violet-950/50 text-gray-900 dark:text-violet-100 shadow-sm border border-gray-100 dark:border-violet-400/25"
                     : "text-gray-500 dark:text-violet-300/70 hover:text-gray-700 dark:hover:text-violet-200 bg-transparent border border-transparent dark:hover:bg-violet-900/20"
                     }`}
                 >
-                  {tab === 'Notifications' && <Bell className="w-3.5 h-3.5 inline mr-1.5 mb-0.5" />}
                   {tab}
                 </button>
               ))}
@@ -725,183 +647,6 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'Notifications' && isAdmin && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2.5">
-                      <Bell className="w-6 h-6 text-primary" />
-                      Announcements & Alerts
-                    </h3>
-                    <p className="text-sm font-bold text-gray-400 dark:text-violet-400/70 italic mt-1">Broadcast WhatsApp messages to buyers and organisers</p>
-                  </div>
-
-                  {!isComposing && (
-                    <button
-                      onClick={() => setIsComposing(true)}
-                      className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      <Plus className="w-4 h-4" /> New Broadcast
-                    </button>
-                  )}
-                </div>
-
-                {isComposing ? (
-                  <div className="bg-gray-50/50 dark:bg-violet-950/15 border border-pink-50 dark:border-violet-500/20 rounded-2xl p-6 mb-10 overflow-hidden">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Composer Side */}
-                      <div className="space-y-6">
-                        <div className="space-y-4">
-                          <label className="text-sm font-black text-gray-700 dark:text-violet-200 flex items-center gap-2">
-                            <Target className="w-4 h-4 text-primary" /> Target Audience
-                          </label>
-                          <div className="flex gap-2 p-1 bg-white dark:bg-violet-950/40 border border-pink-100 dark:border-violet-500/20 rounded-xl">
-                            <button
-                              onClick={() => setNewBroadcast({ ...newBroadcast, targetType: 'buyers' })}
-                              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${newBroadcast.targetType === 'buyers' ? 'bg-primary text-white shadow-md' : 'text-gray-500 dark:text-violet-400 hover:bg-gray-50 dark:hover:bg-violet-900/20'}`}
-                            >
-                              Ticket Buyers
-                            </button>
-                            <button
-                              onClick={() => setNewBroadcast({ ...newBroadcast, targetType: 'organisers' })}
-                              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${newBroadcast.targetType === 'organisers' ? 'bg-primary text-white shadow-md' : 'text-gray-500 dark:text-violet-400 hover:bg-gray-50 dark:hover:bg-violet-900/20'}`}
-                            >
-                              Volunteers
-                            </button>
-                          </div>
-
-                          {/* Check-in Exclusion Toggle (New Requirement) */}
-                          {newBroadcast.targetType === 'buyers' && (
-                            <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-xl animate-in slide-in-from-top-2">
-                               <div className="flex items-center gap-2.5">
-                                 <AlertCircle className="w-4 h-4 text-primary" />
-                                 <div className="flex flex-col">
-                                   <span className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-wider">Exclude Checked-in Guests</span>
-                                   <span className="text-[10px] text-gray-500 dark:text-violet-400 italic font-bold">Recommended for during-event updates</span>
-                                 </div>
-                               </div>
-                               <button 
-                                 onClick={() => setNewBroadcast({...newBroadcast, excludeCheckedIn: !newBroadcast.excludeCheckedIn})}
-                                 className={`w-12 h-6 rounded-full relative transition-all duration-300 ${newBroadcast.excludeCheckedIn ? 'bg-primary' : 'bg-gray-200 dark:bg-violet-900'}`}
-                               >
-                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${newBroadcast.excludeCheckedIn ? 'left-7' : 'left-1'}`} />
-                               </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {newBroadcast.targetType === 'buyers' && (
-                          <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                            <label className="text-xs font-bold text-gray-500 dark:text-violet-400/80 italic">Select Categories:</label>
-                            <div className="flex flex-wrap gap-2">
-                              {['Platinum Pass', 'Donor Pass', 'Student Pass'].map(cat => (
-                                <button
-                                  key={cat}
-                                  onClick={() => {
-                                    const cats = newBroadcast.targetCategories.includes(cat)
-                                      ? newBroadcast.targetCategories.filter(c => c !== cat)
-                                      : [...newBroadcast.targetCategories, cat];
-                                    setNewBroadcast({ ...newBroadcast, targetCategories: cats });
-                                  }}
-                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all ${newBroadcast.targetCategories.includes(cat) ? 'bg-secondary/10 border-secondary text-secondary' : 'bg-white dark:bg-violet-900/20 border-gray-100 dark:border-violet-500/20 text-gray-500 dark:text-violet-400'}`}
-                                >
-                                  {cat}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-xs font-bold text-gray-700 dark:text-violet-300 mb-1.5 block">Broadcast Title</label>
-                            <input
-                              type="text"
-                              value={newBroadcast.title}
-                              onChange={e => setNewBroadcast({ ...newBroadcast, title: e.target.value })}
-                              placeholder="e.g. Venue Change or Entry Guide"
-                              className="w-full bg-white dark:bg-violet-950/40 border border-gray-100 dark:border-violet-500/25 px-4 py-3 rounded-xl text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <label className="text-xs font-bold text-gray-700 dark:text-violet-300">Message Content</label>
-                              <div className="flex gap-2">
-                                <button onClick={() => setNewBroadcast({ ...newBroadcast, type: 'text' })} className={`p-1.5 rounded-md transition-all ${newBroadcast.type === 'text' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`} title="Text Mode"><Info className="w-4 h-4" /></button>
-                                <button onClick={() => setNewBroadcast({ ...newBroadcast, type: 'image' })} className={`p-1.5 rounded-md transition-all ${newBroadcast.type === 'image' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`} title="Image Mode"><ImageIcon className="w-4 h-4" /></button>
-                                <button onClick={() => setNewBroadcast({ ...newBroadcast, type: 'survey' })} className={`p-1.5 rounded-md transition-all ${newBroadcast.type === 'survey' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`} title="Survey Mode"><ClipboardList className="w-4 h-4" /></button>
-                              </div>
-                            </div>
-                            <textarea
-                              value={newBroadcast.message}
-                              onChange={e => setNewBroadcast({ ...newBroadcast, message: e.target.value })}
-                              placeholder="Write your message here..."
-                              rows={4}
-                              className="w-full bg-white dark:bg-violet-950/40 border border-gray-100 dark:border-violet-500/25 px-4 py-3 rounded-xl text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all outline-none resize-none"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-violet-500/10">
-                          <button onClick={() => setIsComposing(false)} className="flex-1 text-sm font-bold text-gray-500">Cancel</button>
-                          <button
-                            onClick={handleCreateBroadcast}
-                            disabled={isSubmitting || !newBroadcast.title || !newBroadcast.message}
-                            className="flex-[2] py-3 bg-primary text-white text-sm font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-                          >
-                            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            {newBroadcast.scheduledAt ? 'Schedule' : 'Send Broadcast'}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Preview Side */}
-                      <div className="hidden lg:block bg-gray-100/50 dark:bg-violet-950/20 rounded-3xl p-6 shadow-inner relative overflow-hidden">
-                        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block text-center relative z-10">WhatsApp Preview</label>
-                        <div className="max-w-[260px] mx-auto bg-[#E5DDD5] dark:bg-slate-900 rounded-[24px] p-3 shadow-2xl border-4 border-gray-800 relative z-10">
-                           <div className="bg-white dark:bg-violet-900/40 rounded-lg p-3 shadow-sm text-[10px] font-bold text-gray-800 dark:text-violet-100">
-                              {newBroadcast.imageUrl && <img src={newBroadcast.imageUrl} className="w-full rounded mb-2 object-cover max-h-32" />}
-                              <p className="whitespace-pre-wrap leading-relaxed">{newBroadcast.message || 'Start typing to see preview...'}</p>
-                              {newBroadcast.surveyUrl && <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-2 text-primary"><ClipboardList className="w-3 h-3" /> Take Survey</div>}
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {broadcasts.length === 0 ? (
-                      <div className="text-center py-20 bg-gray-50/30 dark:bg-violet-950/5 rounded-3xl border-2 border-dashed border-gray-100 dark:border-violet-500/10">
-                         <Send className="w-10 h-10 text-gray-200 dark:text-violet-500/20 mx-auto mb-3" />
-                         <p className="text-xs font-bold text-gray-400 italic">No broadcast history yet</p>
-                      </div>
-                    ) : (
-                      broadcasts.map((b: any) => (
-                        <div key={b.id} className="group bg-white dark:bg-violet-900/10 border border-gray-100 dark:border-violet-500/15 rounded-2xl p-4 hover:border-primary/40 transition-all flex items-center gap-4">
-                          <div className={`p-3 rounded-xl ${b.status === 'sent' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                             <Bell className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                             <div className="flex items-center gap-2 mb-0.5">
-                                <h4 className="text-sm font-black text-gray-900 dark:text-violet-100 truncate uppercase tracking-tight">{b.title}</h4>
-                                <span className="text-[8px] font-black bg-gray-100 dark:bg-violet-900/40 px-1.5 py-0.5 rounded text-gray-500">{b.status}</span>
-                             </div>
-                             <p className="text-[11px] text-gray-400 italic line-clamp-1">{b.message}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                             <div className="text-[10px] font-black text-gray-700 dark:text-violet-200 capitalize">{b.target_type}</div>
-                             <div className="text-[9px] text-gray-400 mt-0.5">{new Date(b.created_at).toLocaleDateString()}</div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>

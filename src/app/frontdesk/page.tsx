@@ -52,7 +52,7 @@ type LookupState =
   | { kind: "error"; message: string }
   | {
       kind: "result";
-      ticket: Record<string, unknown>;
+      ticket: TicketMinimal;
       parsed?: ParsedTicketQr | null;
       mismatch?: string;
     };
@@ -213,7 +213,7 @@ export default function FrontdeskCheckInPage() {
 
     setLookup({
       kind: "result",
-      ticket: row as Record<string, unknown>,
+      ticket: row as TicketMinimal,
       parsed: parsed ?? null,
       mismatch,
     });
@@ -302,7 +302,7 @@ export default function FrontdeskCheckInPage() {
 
       setLookup({
         kind: "result",
-        ticket: (fresh || row) as Record<string, unknown>,
+        ticket: (fresh || row) as TicketMinimal,
         parsed: lookup.parsed,
         mismatch: lookup.mismatch,
       });
@@ -485,7 +485,7 @@ export default function FrontdeskCheckInPage() {
                               <p className="mt-1 text-sm font-bold text-primary">
                                  {TYPE_LABELS[String(result.ticket.type)] || String(result.ticket.type)} {" "}
                                  <span className="text-gray-300 mx-1">/</span> {" "}
-                                 Qty {ticketQuantity(result.ticket as TicketMinimal)}
+                                 Qty {ticketQuantity(result.ticket)}
                               </p>
                            </div>
                            <div className="text-right">
