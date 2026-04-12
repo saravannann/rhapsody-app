@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Download, Search, Loader2, FileSpreadsheet, Filter, X, ChevronDown, MessageCircle, CheckSquare, Square, Check, RefreshCcw } from "lucide-react";
+import { Download, Search, Loader2, FileSpreadsheet, Filter, X, ChevronDown, MessageCircle, CheckSquare, Square, Check, RefreshCcw, RefreshCw, Link2 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 import { shortTicketRef } from "@/utils/ticket-qr";
@@ -41,6 +41,7 @@ export default function SalesReport() {
   const [ticketTypeFilter, setTicketTypeFilter] = useState('All Types');
   const [fundsFilter, setFundsFilter] = useState('All Destinations');
   const [pocFilter, setPocFilter] = useState('All Organisers');
+  const [waFilter, setWaFilter] = useState('All WA Status');
   const [sellerOptions, setSellerOptions] = useState<string[]>([]);
 
   // Selection & Actions
@@ -106,9 +107,15 @@ export default function SalesReport() {
           Boolean(pocFilter) &&
           t.sold_by!.trim().toLowerCase() === pocFilter.trim().toLowerCase());
 
-      return matchSearch && matchType && matchFunds && matchPoc;
+      const matchWa = 
+        waFilter === 'All WA Status' ||
+        (waFilter === 'sent' && t.whatsapp_status === 'sent') ||
+        (waFilter === 'failed' && t.whatsapp_status === 'failed') ||
+        (waFilter === 'not_sent' && (!t.whatsapp_status || t.whatsapp_status === 'not_sent'));
+
+      return matchSearch && matchType && matchFunds && matchPoc && matchWa;
     });
-  }, [tickets, searchQuery, ticketTypeFilter, fundsFilter, pocFilter]);
+  }, [tickets, searchQuery, ticketTypeFilter, fundsFilter, pocFilter, waFilter]);
 
   const metrics = useMemo(() => {
     let revenue = 0;
@@ -144,6 +151,7 @@ export default function SalesReport() {
     setSearchQuery('');
     setTicketTypeFilter('All Types');
     setFundsFilter('All Destinations');
+    setWaFilter('All WA Status');
     if (userRole === 'admin') setPocFilter('All Organisers');
     setSelectedIds(new Set());
   };
@@ -170,7 +178,7 @@ export default function SalesReport() {
     setCurrentQueueIndex(0);
   };
 
-  const sendCurrentFromQueue = async () => {
+  const sendCurrentFromQueue = async (mode: 'auto' | 'manual') => {
     if (!resendQueue) return;
     const t = resendQueue[currentQueueIndex];
     if (!t) return;
@@ -185,44 +193,52 @@ export default function SalesReport() {
       ticketPageUrl: ticketLink,
     });
 
-    // Automated WhatsApp trigger
-    try {
-      void fetch('/api/send-ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          phone: t.purchaser_phone || "", 
-          ticketContent: message 
-        })
-      })
-      .then(res => res.json())
-      .then(async data => {
-         if (!data.success) {
-            await supabase.from("tickets").update({ 
-               whatsapp_status: 'failed', 
-               whatsapp_error: data.error 
-            }).eq('id', t.id);
-         } else {
-            await supabase.from("tickets").update({ 
-               whatsapp_status: 'sent', 
-               whatsapp_error: null,
-               last_whatsapp_at: new Date().toISOString()
-            }).eq('id', t.id);
-         }
-      })
-      .catch(e => console.error("Resend WhatsApp Fail:", e));
-    } catch (waErr) {
-      console.error("WA Resend Prep Fail:", waErr);
+    if (mode === 'auto') {
+      try {
+        const res = await fetch('/api/send-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            phone: t.purchaser_phone || "", 
+            ticketContent: message 
+          })
+        });
+        const data = await res.json();
+        
+        if (!data.success) {
+          await supabase.from("tickets").update({ 
+            whatsapp_status: 'failed', 
+            whatsapp_error: data.error 
+          }).eq('id', t.id);
+          alert(`Automated Send Failed: ${data.error}`);
+        } else {
+          await supabase.from("tickets").update({ 
+            whatsapp_status: 'sent', 
+            whatsapp_error: null,
+            last_whatsapp_at: new Date().toISOString()
+          }).eq('id', t.id);
+        }
+      } catch (waErr) {
+        console.error("WA Resend Prep Fail:", waErr);
+      }
+    } else {
+      const url = buildWhatsAppSendUrl(t.purchaser_phone || "", message);
+      window.open(url, '_blank');
+      
+      if (currentQueueIndex < resendQueue.length - 1) {
+        setCurrentQueueIndex(prev => prev + 1);
+      } else {
+        setResendQueue(null);
+        setSelectedIds(new Set());
+      }
     }
+  };
 
-    // Manual fallback
-    const url = buildWhatsAppSendUrl(t.purchaser_phone || "", message);
-    window.open(url, '_blank');
-
+  const advanceQueue = () => {
+    if (!resendQueue) return;
     if (currentQueueIndex < resendQueue.length - 1) {
       setCurrentQueueIndex(prev => prev + 1);
     } else {
-      // Done
       setResendQueue(null);
       setSelectedIds(new Set());
     }
@@ -312,7 +328,7 @@ export default function SalesReport() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-           <div className="relative col-span-2 lg:col-span-1">
+           <div className="relative col-span-2 lg:col-span-2">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
               <input 
                  type="search"
@@ -324,7 +340,7 @@ export default function SalesReport() {
               />
            </div>
 
-           <div className="relative min-w-0">
+           <div className="relative col-span-1">
               <select 
                 value={ticketTypeFilter}
                 onChange={e => setTicketTypeFilter(e.target.value)}
@@ -338,7 +354,7 @@ export default function SalesReport() {
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>
 
-           <div className="relative min-w-0">
+           <div className="relative col-span-1">
               <select 
                 value={fundsFilter}
                 onChange={e => setFundsFilter(e.target.value)}
@@ -351,7 +367,21 @@ export default function SalesReport() {
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
            </div>
 
-           <div className="relative col-span-2 lg:col-span-1 min-w-0">
+           <div className="relative col-span-2 lg:col-span-2">
+              <select 
+                value={waFilter}
+                onChange={e => setWaFilter(e.target.value)}
+                className="w-full min-h-[44px] bg-gray-50 dark:bg-violet-950/30 border border-transparent rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-300 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/45 focus:border-primary/30"
+              >
+                <option>All WA Status</option>
+                <option value="sent">Sent Successfully</option>
+                <option value="failed">Delivery Failed</option>
+                <option value="not_sent">Not Sent</option>
+              </select>
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-violet-400/60 pointer-events-none" />
+           </div>
+
+           <div className="relative col-span-2 lg:col-span-2 min-w-0">
               <select 
                 value={pocFilter}
                 disabled={userRole !== 'admin'}
@@ -649,32 +679,67 @@ export default function SalesReport() {
               
               <div className="mt-6 p-4 bg-gray-50 dark:bg-violet-900/40 rounded-xl border border-gray-100 dark:border-violet-500/15 text-left">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Recipient</p>
-                <p className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">
-                  {resendQueue[currentQueueIndex]?.purchaser_name || "Unknown"}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-violet-300/70 font-mono mt-0.5">
-                  {resendQueue[currentQueueIndex]?.purchaser_phone || "No phone"}
-                </p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">
+                      {resendQueue[currentQueueIndex]?.purchaser_name || "Unknown"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-violet-300/70 font-mono mt-0.5">
+                      {resendQueue[currentQueueIndex]?.purchaser_phone || "No phone"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                    {resendQueue[currentQueueIndex]?.status?.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-violet-500/10">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 dark:text-violet-400 font-medium">
+                      {resendQueue[currentQueueIndex]?.type} × {ticketQuantity(resendQueue[currentQueueIndex])}
+                    </span>
+                    <span className="text-gray-900 dark:text-violet-100 font-bold">
+                      ₹{new Intl.NumberFormat('en-IN').format(ticketLineTotal(resendQueue[currentQueueIndex]))}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-8 flex flex-col gap-2">
                 <button
-                  onClick={sendCurrentFromQueue}
+                  onClick={() => sendCurrentFromQueue('auto')}
                   className="w-full min-h-[48px] bg-primary hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  <MessageCircle className="w-5 h-5" />
+                  <RefreshCw className="w-5 h-5" />
+                  Resend Ticket
+                </button>
+                
+                <button
+                  onClick={() => sendCurrentFromQueue('manual')}
+                  className="w-full min-h-[44px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2 rounded-xl transition-all border border-emerald-100 flex items-center justify-center gap-2 text-xs"
+                >
+                  <MessageCircle className="w-4 h-4" />
                   Send on WhatsApp
                 </button>
-                <button
-                  onClick={() => setResendQueue(null)}
-                  className="w-full min-h-[48px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-all text-sm"
-                >
-                  Cancel Queue
-                </button>
+
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={advanceQueue}
+                    className="flex-1 min-h-[44px] bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-xl border border-gray-100 text-xs"
+                  >
+                    Skip / Next
+                  </button>
+                  <button
+                    onClick={() => setResendQueue(null)}
+                    className="flex-1 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-xl transition-all text-xs"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
               
               <p className="mt-4 text-[10px] text-gray-400 text-center uppercase tracking-tight">
-                Tap Send to open WhatsApp. Once sent, come back here for the next one.
+                Try "Resend Ticket" for background delivery. Use "Send on WhatsApp" for manual fallback.
               </p>
             </div>
             
