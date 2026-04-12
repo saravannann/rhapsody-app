@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRouter } from "next/navigation";
@@ -107,7 +108,7 @@ export default function LoginPage() {
       <div className="z-10 flex w-full max-w-xl flex-col items-center px-3 sm:px-4">
         {/* Logo — two copy lines only: tagline + initiative (wider column avoids awkward wrap) */}
         <div className="mb-6 flex w-full flex-col items-center">
-          <img src="/logo.png" alt="Rhapsody Logo" className="h-32 sm:h-36 w-auto object-contain block" />
+          <Image src="/logo.png" alt="Rhapsody Logo" width={144} height={144} className="h-32 sm:h-36 w-auto object-contain block" priority />
           <p className="mt-3 text-center text-sm font-semibold leading-snug text-slate-700 text-balance sm:text-base">
             Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer
           </p>

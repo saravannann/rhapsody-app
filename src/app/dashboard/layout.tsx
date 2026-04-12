@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Users, Ticket, BarChart2, Bell, Menu, X, Camera } from "lucide-react";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -15,10 +16,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setUserName(localStorage.getItem('rhapsody_user') || 'Admin');
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setMobileNavOpen(false);
   }, [pathname]);
 
@@ -101,7 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Logo */}
             <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0 max-w-[min(100%,22rem)]">
               <div className="w-10 h-10 sm:w-11 sm:h-11 overflow-hidden flex items-center justify-center shrink-0">
-                <img src="/logo.png" alt="" className="w-full h-full object-contain" />
+                <Image src="/logo.png" alt="" width={44} height={44} className="w-full h-full object-contain" priority />
               </div>
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary truncate">Rhapsody</span>

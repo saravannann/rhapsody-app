@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Users, Ticket, BarChart2, Bell, Menu, X, Camera, ScanLine } from "lucide-react";
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Users, Ticket, BarChart2, Bell, Menu, X, Camera } from "lucide-react";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function FrontdeskLayout({ children }: { children: React.ReactNode }) {
@@ -28,12 +29,15 @@ export default function FrontdeskLayout({ children }: { children: React.ReactNod
       router.replace("/");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserName(user);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserRole(role);
     setReady(true);
   }, [router]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileNavOpen(false);
   }, [pathname]);
 
@@ -140,7 +144,7 @@ export default function FrontdeskLayout({ children }: { children: React.ReactNod
             {/* Logo */}
             <Link href={userRole === "admin" ? "/dashboard" : userRole === "organiser" ? "/organiser-dashboard" : "/frontdesk"} className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0 max-w-[min(100%,22rem)]">
               <div className="w-10 h-10 sm:w-11 sm:h-11 overflow-hidden flex items-center justify-center shrink-0">
-                <img src="/logo.png" alt="" className="w-full h-full object-contain" />
+                <Image src="/logo.png" alt="" width={44} height={44} className="w-full h-full object-contain" priority />
               </div>
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary truncate">Rhapsody</span>

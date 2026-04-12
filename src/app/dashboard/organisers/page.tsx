@@ -42,6 +42,25 @@ function normalizeProfileRoles(p: { roles?: unknown; role?: unknown }): string[]
   return [];
 }
 
+interface Target {
+  name: string;
+  target: number;
+  sold: number;
+  color: string;
+}
+
+interface OrgUser {
+  id: string;
+  name: string;
+  phone: string;
+  roles: string[];
+  status: string;
+  lastLogin: string;
+  totalSales: number;
+  pass_targets: Record<string, number> | null;
+  targets: Target[];
+}
+
 const ROLE_DISPLAY_ORDER = ["admin", "organiser", "front_desk"] as const;
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -140,10 +159,10 @@ function RoleChecklist({
   );
 }
 
-function TargetQuotaCells({ targets }: { targets: any[] }) {
+function TargetQuotaCells({ targets }: { targets: Target[] }) {
   return (
     <div className="-mx-0.5 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-0.5 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-2 sm:overflow-visible lg:grid-cols-4">
-      {targets.map((tgt: any) => {
+      {targets.map((tgt) => {
         const perc =
           tgt.target > 0 ? Math.min(100, Math.floor((tgt.sold / tgt.target) * 100)) : 0;
         return (
@@ -205,11 +224,11 @@ export default function OrganisersPage() {
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<OrgUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Target Editing State
-  const [editingOrg, setEditingOrg] = useState<any>(null);
+  const [editingOrg, setEditingOrg] = useState<OrgUser | null>(null);
   const [savingTargets, setSavingTargets] = useState(false);
 
   const [editingRoles, setEditingRoles] = useState<{
@@ -558,7 +577,7 @@ export default function OrganisersPage() {
               Quotas for <span className="font-bold text-gray-900 dark:text-violet-100">{editingOrg.name}</span>
             </p>
             <div className="space-y-2">
-              {editingOrg.targets.map((tgt: any, i: number) => (
+              {editingOrg.targets.map((tgt, i) => (
                 <div
                   key={tgt.name}
                   className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 dark:border-violet-500/20 bg-[#fdfaff] dark:bg-violet-950/40 p-3"
@@ -776,8 +795,8 @@ export default function OrganisersPage() {
            ) : (
               <ul className="m-0 list-none space-y-2 p-0 sm:space-y-4">
                 {filteredUsers.map((org) => {
-                   const totalTgt = org.targets.reduce((acc: number, t: any) => acc + t.target, 0);
-                   const totalSld = org.targets.reduce((acc: number, t: any) => acc + t.sold, 0);
+                   const totalTgt = org.targets.reduce((acc, t) => acc + t.target, 0);
+                   const totalSld = org.targets.reduce((acc, t) => acc + t.sold, 0);
                    const overallPercNum = totalTgt > 0 ? Math.min(100, (totalSld / totalTgt) * 100) : 0;
                    const overallPerc = totalTgt > 0 ? overallPercNum.toFixed(1) : "0";
                    const roleEntries = sortedRoleEntries(org.roles || []);

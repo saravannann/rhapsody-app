@@ -1,11 +1,38 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Download, Search, Loader2, FileSpreadsheet, Filter, X, ChevronDown, MessageCircle, CheckSquare, Square, Check, RefreshCcw, RefreshCw, Link2 } from "lucide-react";
+import React, { useEffect, useState, useMemo, useRef, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Download, Search, Loader2, FileSpreadsheet, Filter, ChevronDown, MessageCircle, CheckSquare, Square, Check, RefreshCw, Calendar, Ticket, CreditCard, MessageSquare, User } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 import { shortTicketRef } from "@/utils/ticket-qr";
 import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl } from "@/utils/whatsapp-ticket";
+
+interface Ticket {
+  id: string;
+  created_at: string;
+  purchaser_name: string | null;
+  purchaser_phone: string | null;
+  type: string;
+  price: number;
+  quantity: number;
+  status: string;
+  funds_destination: string;
+  bank_txn_id: string | null;
+  sold_by: string | null;
+  whatsapp_status: string | null;
+  whatsapp_error: string | null;
+  last_whatsapp_at: string | null;
+}
+
+interface TotalMetrics {
+  totalEntries: number;
+  totalTickets: number;
+  totalRevenue: number;
+  trustRevenue: number;
+  organizerRevenue: number;
+  bookedTickets: number;
+}
 
 /** One display name per seller (lower-case key → canonical string from DB). */
 function buildSellerOptions(
@@ -28,18 +55,19 @@ function buildSellerOptions(
   return [...map.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
-export default function SalesReport() {
-  const [tickets, setTickets] = useState<any[]>([]);
+function SalesReportContent() {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const PAGE_SIZE = 50;
-  const [totalMetrics, setTotalMetrics] = useState({
+  const [totalMetrics, setTotalMetrics] = useState<TotalMetrics>({
     totalEntries: 0, totalTickets: 0, totalRevenue: 0, trustRevenue: 0, organizerRevenue: 0, bookedTickets: 0
   });
   const [fetchError, setFetchError] = useState<string | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
+  const pageRef = useRef(0);
 
   // Role Context
   const [userRole, setUserRole] = useState('organiser');
@@ -51,12 +79,13 @@ export default function SalesReport() {
   const [fundsFilter, setFundsFilter] = useState('All Destinations');
   const [pocFilter, setPocFilter] = useState('All Organisers');
   const [waFilter, setWaFilter] = useState('All WA Status');
+  const [dateFilter, setDateFilter] = useState('All Time');
   const [sellerOptions, setSellerOptions] = useState<string[]>([]);
 
   // Selection & Actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [appOrigin, setAppOrigin] = useState("");
-  const [resendQueue, setResendQueue] = useState<any[] | null>(null);
+  const [resendQueue, setResendQueue] = useState<Ticket[] | null>(null);
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const [isBulkResending, setIsBulkResending] = useState(false);
   const [bulkResendProgress, setBulkResendProgress] = useState(0);
@@ -77,11 +106,24 @@ export default function SalesReport() {
     }
   }, []);
 
-  const fetchSales = async (isInitial = true) => {
+  // Handle URL parameters
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const wa = searchParams.get('waFilter');
+    if (wa) setWaFilter(wa);
+
+    const poc = searchParams.get('poc');
+    if (poc) setPocFilter(poc);
+  }, [searchParams]);
+
+  const fetchSales = useCallback(async (isInitial = true) => {
     try {
       setFetchError(null);
       if (isInitial) {
         setLoading(true);
+        // Reset page to 0 immediately to avoid stale pagination calls
+        setPage(0);
+        pageRef.current = 0;
       } else {
         setIsFetchingMore(true);
       }
@@ -89,11 +131,13 @@ export default function SalesReport() {
       const savedName = localStorage.getItem('rhapsody_user') || '';
       const savedRole = localStorage.getItem('rhapsody_role') || 'organiser';
 
-      const currentPage = isInitial ? 0 : page + 1;
-      const start = currentPage * PAGE_SIZE;
+      // Use pageRef for reliable pagination
+      const targetPage = isInitial ? 0 : pageRef.current + 1;
+
+      const start = targetPage * PAGE_SIZE;
       const end = start + PAGE_SIZE - 1;
 
-      console.log(`[SalesFetch] Initial: ${isInitial}, CurrentPage: ${page}, TargetPage: ${currentPage}, Range: ${start}-${end}`);
+      console.log(`[SalesFetch] Initial: ${isInitial}, TargetPage: ${targetPage}, Range: ${start}-${end}`);
 
       // Base query with exact count
       let query = supabase.from('tickets').select('*', { count: 'exact' });
@@ -101,40 +145,56 @@ export default function SalesReport() {
       // Metrics query (for totals across all pages)
       let mQuery = supabase.from('tickets').select('type, funds_destination, status, price, quantity');
 
-      const applyFilters = (q: any) => {
+      const applyFilters = <T,>(q: T): T => {
+        let res = q as any;
         if (savedRole === 'organiser' && savedName) {
-          q = q.ilike('sold_by', savedName);
+          res = res.ilike('sold_by', savedName);
         } else if (pocFilter !== 'All Organisers') {
-          q = q.ilike('sold_by', pocFilter);
+          res = res.ilike('sold_by', pocFilter);
         }
 
         if (searchQuery) {
           const s = `%${searchQuery}%`;
           // Try to handle ID search safely
           if (searchQuery.length > 20) {
-            q = q.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s},id.eq.${searchQuery}`);
+            res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s},id.eq.${searchQuery}`);
           } else {
-            q = q.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`);
+            res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`);
           }
         }
 
         if (ticketTypeFilter !== 'All Types') {
-          q = q.eq('type', ticketTypeFilter);
+          res = res.eq('type', ticketTypeFilter);
         }
 
         if (fundsFilter !== 'All Destinations') {
           const dest = fundsFilter.toLowerCase();
-          q = q.eq('funds_destination', dest);
+          res = res.eq('funds_destination', dest);
         }
 
         if (waFilter !== 'All WA Status') {
           if (waFilter === 'not_sent') {
-            q = q.or('whatsapp_status.is.null,whatsapp_status.eq.not_sent');
+            res = res.or('whatsapp_status.is.null,whatsapp_status.eq.not_sent');
           } else {
-            q = q.eq('whatsapp_status', waFilter);
+            res = res.eq('whatsapp_status', waFilter);
           }
         }
-        return q;
+
+        if (dateFilter !== 'All Time') {
+          const now = new Date();
+          let startDate = new Date();
+          if (dateFilter === 'Today') {
+            startDate.setHours(0, 0, 0, 0);
+          } else if (dateFilter === 'Last 7 Days') {
+            startDate.setDate(now.getDate() - 7);
+          } else if (dateFilter === 'This Month') {
+            startDate.setMonth(now.getMonth(), 1);
+            startDate.setHours(0, 0, 0, 0);
+          }
+          res = res.gte('created_at', startDate.toISOString());
+        }
+
+        return res;
       };
 
       query = applyFilters(query);
@@ -142,13 +202,13 @@ export default function SalesReport() {
 
       const [dataRes, metricsRes] = await Promise.all([
         query.order('created_at', { ascending: false }).order('id', { ascending: false }).range(start, end),
-        isInitial ? mQuery : Promise.resolve({ data: null, error: null })
+        isInitial ? mQuery : Promise.resolve({ data: null, error: null }) as Promise<{ data: Ticket[] | null; error: any | null }>
       ]);
 
       if (dataRes.error) throw dataRes.error;
       if (metricsRes.error) throw metricsRes.error;
 
-      const data = dataRes.data || [];
+      const data = (dataRes.data || []) as Ticket[];
       const mData = metricsRes.data;
       const totalCount = dataRes.count || 0;
 
@@ -157,6 +217,7 @@ export default function SalesReport() {
       if (isInitial) {
         setTickets(data);
         setPage(0);
+        setHasMore(totalCount > data.length);
 
         if (savedRole === 'admin' && sellerOptions.length === 0) {
           const { data: profiles } = await supabase.from('profiles').select('name');
@@ -164,18 +225,20 @@ export default function SalesReport() {
         }
       } else {
         if (data.length > 0) {
-          setTickets(prev => [...prev, ...data]);
-          setPage(currentPage);
+          setTickets(prev => {
+            const existingIds = new Set(prev.map(t => t.id));
+            const uniqueNew = data.filter(t => !existingIds.has(t.id));
+            const merged = [...prev, ...uniqueNew];
+            setHasMore(merged.length < totalCount);
+            return merged;
+          });
+          setPage(targetPage);
+          pageRef.current = targetPage;
         } else {
+          setHasMore(false);
           console.log("[SalesFetch] No more data returned for subsequent page.");
         }
       }
-
-      // Determine if there are more records based on precise count
-      const loadedSoFar = isInitial ? data.length : tickets.length + data.length;
-      const more = loadedSoFar < totalCount;
-      console.log(`[SalesFetch] hasMore: ${more} (${loadedSoFar}/${totalCount})`);
-      setHasMore(more);
 
       if (isInitial && mData) {
         let rev = 0, tRev = 0, oRev = 0, bPasses = 0, totalPasses = 0;
@@ -198,19 +261,19 @@ export default function SalesReport() {
         });
       }
 
-    } catch (err: any) {
-      const errMsg = err.message || (typeof err === 'string' ? err : JSON.stringify(err));
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : (typeof err === 'string' ? err : JSON.stringify(err));
       console.error("Sales Fetch Error:", errMsg);
       setFetchError(errMsg);
     } finally {
       setLoading(false);
       setIsFetchingMore(false);
     }
-  };
+  }, [PAGE_SIZE, pocFilter, searchQuery, ticketTypeFilter, fundsFilter, waFilter, dateFilter, sellerOptions.length]);
 
   useEffect(() => {
     fetchSales(true);
-  }, [ticketTypeFilter, fundsFilter, pocFilter, waFilter]);
+  }, [fetchSales]);
 
   // Debounced search
   useEffect(() => {
@@ -218,58 +281,34 @@ export default function SalesReport() {
       fetchSales(true);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, fetchSales]);
 
   // Infinite Scroll Observer
   useEffect(() => {
     if (!hasMore || isFetchingMore || loading) return;
 
+    const currentTarget = observerTarget.current;
     const observer = new IntersectionObserver(
-      entries => {
+      (entries: IntersectionObserverEntry[]) => {
         if (entries[0].isIntersecting) {
-          console.log("Observer triggered: Fetching page", page + 1);
+          console.log("Observer triggered: Fetching page", pageRef.current + 1);
           fetchSales(false);
         }
       },
       { threshold: 0, rootMargin: '200px' }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+    if (currentTarget) {
+      observer.observe(currentTarget);
     }
 
-    return () => observer.disconnect();
-  }, [hasMore, isFetchingMore, loading, page]);
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+      observer.disconnect();
+    };
+  }, [hasMore, isFetchingMore, loading, page, fetchSales]);
 
-  const filteredTickets = useMemo(() => {
-    return tickets.filter(t => {
-      const matchSearch = !searchQuery ||
-        (t.purchaser_name && t.purchaser_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (t.purchaser_phone && t.purchaser_phone.includes(searchQuery)) ||
-        t.id.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchType = ticketTypeFilter === 'All Types' || t.type === ticketTypeFilter;
-
-      const matchFunds = fundsFilter === 'All Destinations' ||
-        (fundsFilter === 'Trust' && t.funds_destination === 'trust') ||
-        (fundsFilter === 'Organizer' && t.funds_destination === 'organizer');
-
-      const matchPoc =
-        userRole === 'organiser'
-          ? (Boolean(t.sold_by) && Boolean(userName) && t.sold_by!.trim().toLowerCase() === userName.trim().toLowerCase())
-          : (pocFilter === 'All Organisers' || (Boolean(t.sold_by) && t.sold_by!.trim().toLowerCase() === pocFilter.trim().toLowerCase()));
-
-      const matchStatus = true; // Status filter removed
-
-      const matchWa =
-        waFilter === 'All WA Status' ||
-        (waFilter === 'sent' && t.whatsapp_status === 'sent') ||
-        (waFilter === 'failed' && t.whatsapp_status === 'failed') ||
-        (waFilter === 'not_sent' && (!t.whatsapp_status || t.whatsapp_status === 'not_sent'));
-
-      return matchSearch && matchType && matchFunds && matchPoc && matchWa;
-    });
-  }, [tickets, searchQuery, ticketTypeFilter, fundsFilter, pocFilter, waFilter]);
+  const filteredTickets = tickets;
 
   const metrics = totalMetrics;
 
@@ -278,16 +317,17 @@ export default function SalesReport() {
     setTicketTypeFilter('All Types');
     setFundsFilter('All Destinations');
     setWaFilter('All WA Status');
+    setDateFilter('All Time');
     if (userRole === 'admin') setPocFilter('All Organisers');
     else setPocFilter(userName);
     setSelectedIds(new Set());
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === tickets.length && tickets.length > 0) {
+    if (selectedIds.size === filteredTickets.length && filteredTickets.length > 0) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(tickets.map(t => t.id)));
+      setSelectedIds(new Set(filteredTickets.map(t => t.id)));
     }
   };
 
@@ -433,8 +473,9 @@ export default function SalesReport() {
 
       setIsEditingPhone(false);
       fetchSales(true);
-    } catch (e) {
-      alert("Failed to update phone: " + (e as any).message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert("Failed to update phone: " + msg);
     }
   };
 
@@ -510,15 +551,6 @@ export default function SalesReport() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          {selectedIds.size > 0 && (
-            <button
-              type="button"
-              onClick={startResendQueue}
-              className="inline-flex items-center justify-center min-h-[44px] bg-primary hover:bg-purple-700 text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-primary/20 active:scale-[0.98] text-sm"
-            >
-              <MessageCircle className="w-4 h-4 mr-2" /> Resend Ticket ({selectedIds.size})
-            </button>
-          )}
           <button
             type="button"
             onClick={handleExport}
@@ -529,97 +561,115 @@ export default function SalesReport() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white/80 dark:bg-violet-950/20 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-violet-500/20 shadow-sm sticky top-16 z-30 transition-all duration-300">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
-              <Filter className="w-4 h-4 text-primary" />
+      {/* Filters & Search Section */}
+      <div className="bg-white/95 dark:bg-violet-950/20 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-violet-500/20 shadow-xl shadow-purple-500/5 sticky top-16 z-30 transition-all duration-300">
+        <div className="flex flex-col gap-6">
+          {/* Top Row: Search & Date */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1 group">
+              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none" />
+              <input
+                type="search"
+                enterKeyHint="search"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by name, phone, or order ID..."
+                className="w-full h-14 bg-gray-50/50 dark:bg-violet-950/40 border border-gray-100 dark:border-violet-500/10 focus:bg-white dark:focus:bg-violet-950/60 focus:border-primary/30 rounded-2xl pl-12 pr-4 py-2 text-sm sm:text-base font-medium transition-all outline-none shadow-sm"
+              />
             </div>
-            <h3 className="text-xs font-bold text-gray-900 dark:text-violet-100 uppercase tracking-widest">
-              Quick Filters
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="text-xs font-bold text-primary hover:text-primary-dark hover:bg-primary/5 px-3 py-1.5 rounded-lg transition-all active:scale-95"
-          >
-            Reset All
-          </button>
-        </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="relative col-span-2 lg:col-span-2 group">
-            <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none" />
-            <input
-              type="search"
-              enterKeyHint="search"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search by name, phone, or order ID..."
-              className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/40 border border-transparent focus:bg-white dark:focus:bg-violet-950/60 focus:border-primary/20 rounded-xl pl-11 pr-4 py-2 text-sm font-medium transition-all outline-none shadow-inner"
-            />
-          </div>
+            <div className="flex gap-3 min-w-0 lg:w-[420px]">
+              <div className="relative flex-1">
+                <Calendar className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-primary/60 pointer-events-none z-10" />
+                <select
+                  value={dateFilter}
+                  onChange={e => setDateFilter(e.target.value)}
+                  className="w-full h-14 bg-white dark:bg-violet-950/40 border border-gray-100 dark:border-violet-500/10 hover:border-primary/20 rounded-2xl pl-10 pr-10 py-2 text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer shadow-sm"
+                >
+                  <option>All Time</option>
+                  <option>Today</option>
+                  <option>Last 7 Days</option>
+                  <option>This Month</option>
+                </select>
+                <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
 
-          <div className="relative">
-            <select
-              value={ticketTypeFilter}
-              onChange={e => setTicketTypeFilter(e.target.value)}
-              className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/40 border border-transparent hover:border-gray-200 dark:hover:border-violet-500/20 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 focus:border-primary/20 transition-all cursor-pointer"
-            >
-              <option>All Types</option>
-              <option>Platinum</option>
-              <option>Donor</option>
-              <option>Student</option>
-            </select>
-            <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-14 px-5 bg-gray-50 dark:bg-violet-900/20 hover:bg-gray-100 dark:hover:bg-violet-900/40 text-gray-500 dark:text-violet-300 font-bold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 border border-transparent hover:border-gray-200"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
+            </div>
           </div>
 
-          <div className="relative">
-            <select
-              value={fundsFilter}
-              onChange={e => setFundsFilter(e.target.value)}
-              className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/40 border border-transparent hover:border-gray-200 dark:hover:border-violet-500/20 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 focus:border-primary/20 transition-all cursor-pointer"
-            >
-              <option>All Destinations</option>
-              <option>Trust</option>
-              <option>Organizer</option>
-            </select>
-            <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
+          {/* Bottom Row: Detailed Filters */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="relative group">
+              <Ticket className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-purple-500/60 pointer-events-none z-10" />
+              <select
+                value={ticketTypeFilter}
+                onChange={e => setTicketTypeFilter(e.target.value)}
+                className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/10 hover:border-purple-300/30 rounded-xl pl-10 pr-10 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 transition-all cursor-pointer"
+              >
+                <option>All Types</option>
+                <option>Platinum</option>
+                <option>Donor</option>
+                <option>Student</option>
+              </select>
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
 
-          <div className="relative col-span-2 lg:col-span-1">
-            <select
-              value={waFilter}
-              onChange={e => setWaFilter(e.target.value)}
-              className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/40 border border-transparent hover:border-gray-200 dark:hover:border-violet-500/20 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 focus:border-primary/20 transition-all cursor-pointer"
-            >
-              <option>All WA Status</option>
-              <option value="sent">Sent Successfully</option>
-              <option value="failed">Delivery Failed</option>
-              <option value="not_sent">Not Sent</option>
-            </select>
-            <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
+            <div className="relative group">
+              <CreditCard className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/60 pointer-events-none z-10" />
+              <select
+                value={fundsFilter}
+                onChange={e => setFundsFilter(e.target.value)}
+                className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/10 hover:border-emerald-300/30 rounded-xl pl-10 pr-10 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 transition-all cursor-pointer"
+              >
+                <option>All Destinations</option>
+                <option>Trust</option>
+                <option>Organizer</option>
+              </select>
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
 
-          <div className="relative col-span-2 lg:col-span-3 min-w-0">
-            <select
-              value={pocFilter}
-              disabled={userRole !== 'admin'}
-              onChange={e => setPocFilter(e.target.value)}
-              className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/40 border border-transparent hover:border-gray-200 dark:hover:border-violet-500/20 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 focus:border-primary/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option>All Organisers</option>
-              {userRole === 'admin'
-                ? sellerOptions.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))
-                : userName && <option value={userName}>{userName}</option>}
-            </select>
-            <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <div className="relative group">
+              <MessageSquare className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-blue-500/60 pointer-events-none z-10" />
+              <select
+                value={waFilter}
+                onChange={e => setWaFilter(e.target.value)}
+                className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/10 hover:border-blue-300/30 rounded-xl pl-10 pr-10 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 transition-all cursor-pointer"
+              >
+                <option>All WA Status</option>
+                <option value="sent">Sent Successfully</option>
+                <option value="failed">Delivery Failed</option>
+                <option value="not_sent">Not Sent</option>
+              </select>
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            <div className="relative group">
+              <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-orange-500/60 pointer-events-none z-10" />
+              <select
+                value={pocFilter}
+                disabled={userRole !== 'admin'}
+                onChange={e => setPocFilter(e.target.value)}
+                className="w-full h-12 bg-gray-50/50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/10 hover:border-orange-300/30 rounded-xl pl-10 pr-10 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-violet-200 appearance-none outline-none focus:bg-white dark:focus:bg-violet-950/60 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option>All Organisers</option>
+                {userRole === 'admin'
+                  ? sellerOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))
+                  : userName && <option value={userName}>{userName}</option>}
+              </select>
+              <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>
@@ -699,10 +749,6 @@ export default function SalesReport() {
                   const d = new Date(t.created_at);
                   const formattedDate = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
                   const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-                  let statusBadge = "bg-yellow-50 text-yellow-700 border-yellow-200";
-                  if (t.status === 'checked_in') statusBadge = "bg-green-50 text-green-700 border-green-200";
-                  else if (t.status === 'cancelled') statusBadge = "bg-red-50 text-red-700 border-red-200";
-                  else if (t.status === 'booked' || t.status === 'pending' || t.status === 'ticket_issued') statusBadge = "bg-blue-50 text-blue-700 border-blue-100";
                   const isSelected = selectedIds.has(t.id);
                   return (
                     <li key={t.id} className={`px-4 py-3 transition-colors ${isSelected ? 'bg-purple-50/50 dark:bg-primary/5' : 'active:bg-gray-50/80'}`}>
@@ -800,11 +846,6 @@ export default function SalesReport() {
                       const d = new Date(t.created_at);
                       const formattedDate = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
                       const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-
-                      let statusBadge = "bg-yellow-50 text-yellow-700 border-yellow-200";
-                      if (t.status === 'checked_in') statusBadge = "bg-green-50 text-green-700 border-green-200";
-                      else if (t.status === 'cancelled') statusBadge = "bg-red-50 text-red-700 border-red-200";
-                      else if (t.status === 'booked' || t.status === 'pending' || t.status === 'ticket_issued') statusBadge = "bg-blue-50 text-blue-700 border-blue-100";
 
                       const isSelected = selectedIds.has(t.id);
                       return (
@@ -1089,6 +1130,53 @@ export default function SalesReport() {
           </div>
         </div>
       )}
+      {/* Floating Action Bar */}
+      {selectedIds.size > 0 && !resendQueue && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-sm animate-in slide-in-from-bottom-8 fade-in duration-500">
+          <div className="bg-white/95 dark:bg-violet-950/95 backdrop-blur-2xl border border-gray-200 dark:border-violet-400/20 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex items-center justify-between gap-1">
+            <div className="flex items-center gap-3 pl-2.5">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest leading-none mb-1">Queue</span>
+                <span className="text-base font-black text-gray-900 dark:text-white tabular-nums leading-none">{selectedIds.size}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
+                title="Clear selection"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+              
+              <button
+                type="button"
+                onClick={startResendQueue}
+                className="inline-flex items-center justify-center min-h-[48px] bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-lg shadow-primary/25 active:scale-[0.96] text-sm group"
+              >
+                <MessageCircle className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" /> 
+                Resend Ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function SalesReport() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-[#0F172A]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+          <p className="text-sm font-bold text-gray-500 animate-pulse italic">Filtering results...</p>
+        </div>
+      </div>
+    }>
+      <SalesReportContent />
+    </Suspense>
   );
 }

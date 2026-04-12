@@ -99,9 +99,10 @@ export default function SettingsPage() {
         localStorage.setItem("rhapsody_phone", String(user.phone));
       }
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.message || "Something went wrong while updating your password.");
+      const msg = err instanceof Error ? err.message : "Something went wrong while updating your password.";
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -3,10 +3,22 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import QRCode from "react-qr-code";
-import { Loader2, Ticket } from "lucide-react";
+import { Loader2, Ticket as TicketIcon } from "lucide-react";
+import Image from "next/image";
 import { supabase } from "@/utils/supabase";
 import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
 import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
+
+interface TicketData {
+  id: string;
+  type: string;
+  price: number;
+  quantity: number;
+  status: string;
+  purchaser_name: string | null;
+  purchaser_phone: string | null;
+  created_at: string;
+}
 
 const TYPE_LABELS: Record<string, string> = {
   Platinum: "Platinum Pass",
@@ -18,7 +30,7 @@ export default function PublicTicketPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
   const [loading, setLoading] = useState(true);
-  const [row, setRow] = useState<any>(null);
+  const [row, setRow] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +81,7 @@ export default function PublicTicketPage() {
   if (error || !row) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#faf8fc] p-6 text-center">
-        <Ticket className="mb-3 h-12 w-12 text-gray-300" aria-hidden />
+        <TicketIcon className="mb-3 h-12 w-12 text-gray-300" aria-hidden />
         <p className="max-w-md text-sm font-medium text-gray-700">{error || "Unavailable."}</p>
       </div>
     );
@@ -92,7 +104,7 @@ export default function PublicTicketPage() {
         
         {/* Header Section */}
         <div className="p-6 sm:p-8 flex flex-col items-center text-center">
-          <img src="/logo.png" alt="Rhapsody Logo" className="h-20 sm:h-24 w-auto object-contain mb-4" />
+          <Image src="/logo.png" alt="Rhapsody Logo" width={96} height={96} className="h-20 sm:h-24 w-auto object-contain mb-4" priority />
           
           <p className="italic text-gray-900 font-medium text-sm sm:text-[15px] leading-snug mb-6 max-w-[280px]">
             Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer

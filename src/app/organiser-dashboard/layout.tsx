@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Ticket, BarChart2, Menu, X, Camera } from "lucide-react";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function OrganiserLayout({ children }: { children: React.ReactNode }) {
@@ -16,8 +17,9 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserName(localStorage.getItem('rhapsody_user') || 'Organiser');
-    
+
     // Retrieve all roles for granular access control
     const storedRoles = localStorage.getItem('rhapsody_all_roles');
     if (storedRoles) {
@@ -76,8 +78,8 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
         key={link.name}
         href={link.href}
         className={`flex items-center gap-3 px-3 py-3 md:py-2 rounded-xl md:rounded-lg text-sm font-semibold transition-all ${isActive
-            ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
-            : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
+          ? "bg-pink-50 text-primary dark:bg-primary/20 dark:text-pink-300 dark:shadow-[inset_0_0_0_1px_rgba(236,72,153,0.25)]"
+          : "text-gray-700 hover:bg-gray-50 dark:text-violet-200/95 dark:hover:bg-violet-500/10 md:text-gray-500 md:dark:text-purple-300/75 md:hover:text-gray-900 md:dark:hover:text-violet-50"
           }`}
         onClick={() => opts?.onNavigate?.()}
       >
@@ -107,7 +109,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
             {/* Logo */}
             <Link href="/organiser-dashboard" className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0 max-w-[min(100%,22rem)]">
               <div className="w-10 h-10 sm:w-11 sm:h-11 overflow-hidden flex items-center justify-center shrink-0">
-                <img src="/logo.png" alt="" className="w-full h-full object-contain" />
+                <Image src="/logo.png" alt="" width={44} height={44} className="w-full h-full object-contain" priority />
               </div>
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary truncate">Rhapsody</span>
@@ -117,7 +119,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
 
             <div className="hidden md:block h-6 w-px bg-[var(--border-subtle)] shrink-0" />
 
-            <nav className="hidden md:flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+            <nav className="hidden md:flex items-center gap-1 fDlex-1 min-w-0 overflow-x-auto scrollbar-hide">
               {filteredLinks.map((link) => renderNavLink(link))}
             </nav>
 

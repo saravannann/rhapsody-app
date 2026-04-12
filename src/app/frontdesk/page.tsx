@@ -6,21 +6,13 @@ import {
   CheckCircle2,
   Loader2,
   AlertTriangle,
-  Ticket,
   Keyboard,
-  Camera,
-  Users,
-  Clock,
-  Zap,
-  ShieldCheck,
-  ShieldX,
-  History,
-  ArrowUpRight,
   Scan,
   AlertOctagon,
   CheckCircle,
   XCircle,
-  QrCode
+  QrCode,
+  History
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import {
@@ -29,6 +21,15 @@ import {
   type ParsedTicketQr,
 } from "@/utils/ticket-qr";
 import { ticketQuantity } from "@/utils/ticket-counts";
+
+interface TicketMinimal {
+  id: string;
+  purchaser_name: string | null;
+  type: string;
+  quantity: number;
+  status: string;
+  created_at: string;
+}
 
 const TYPE_LABELS: Record<string, string> = {
   Platinum: "Platinum Pass",
@@ -72,7 +73,7 @@ export default function FrontdeskCheckInPage() {
     totalScannable: 0,
     thisHour: 0,
     peakTime: "Calculating...",
-    recentCheckIns: [] as any[]
+    recentCheckIns: [] as TicketMinimal[]
   });
 
   const fetchMetrics = useCallback(async () => {
@@ -270,7 +271,7 @@ export default function FrontdeskCheckInPage() {
           scannerRef.current = null;
         });
     };
-  }, [scannerActive, onScanSuccess]);
+  }, [scannerActive, onScanSuccess, scanContainerId]);
 
   function minBox() {
     if (typeof window === "undefined") return 260;
@@ -484,7 +485,7 @@ export default function FrontdeskCheckInPage() {
                               <p className="mt-1 text-sm font-bold text-primary">
                                  {TYPE_LABELS[String(result.ticket.type)] || String(result.ticket.type)} {" "}
                                  <span className="text-gray-300 mx-1">/</span> {" "}
-                                 Qty {ticketQuantity(result.ticket as any)}
+                                 Qty {ticketQuantity(result.ticket as TicketMinimal)}
                               </p>
                            </div>
                            <div className="text-right">

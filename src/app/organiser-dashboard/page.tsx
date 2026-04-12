@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ticket, TrendingUp, Calendar, Target, Loader2, CheckCircle2 } from "lucide-react";
+import { Ticket, TrendingUp, Target, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import {
   buildTargetRowsFromProfile,

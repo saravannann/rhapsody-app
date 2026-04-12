@@ -27,6 +27,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   const [pref, setPref] = useState<ThemePreference>("auto");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPref(readStoredPreference() ?? "auto");
   }, []);
 

@@ -1,14 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import QRCode from "react-qr-code";
-import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2 } from "lucide-react";
+import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
 import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
 import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl } from "@/utils/whatsapp-ticket";
 import * as XLSX from "xlsx";
+
+interface Category {
+   id: string;
+   name: string;
+   price: number;
+   icon: LucideIcon;
+   color: string;
+   bg: string;
+   border: string;
+   btn: string;
+}
 
 type SaleReceipt = {
    ticketId: string;
@@ -20,14 +32,14 @@ type SaleReceipt = {
    purchaserPhoneE164: string;
 };
 
-const CATEGORIES = [
+const CATEGORIES: Category[] = [
    { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
    { id: 'Donor', name: 'Donor Pass', price: 1000, icon: Gift, color: 'text-primary', bg: 'bg-purple-50', border: 'border-purple-200', btn: 'bg-primary hover:bg-purple-700' },
    { id: 'Student', name: 'Student Pass', price: 200, icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' },
 ];
 
 export default function SellTicketsPage() {
-   const [selectedCategory, setSelectedCategory] = useState<any>(null);
+   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
    const [formData, setFormData] = useState({
       name: '',
@@ -42,7 +54,7 @@ export default function SellTicketsPage() {
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [showErrors, setShowErrors] = useState(false);
    const [saleReceipt, setSaleReceipt] = useState<SaleReceipt | null>(null);
-   const [organisers, setOrganisers] = useState<any[]>([]);
+   const [organisers, setOrganisers] = useState<{ id: string; name: string }[]>([]);
    const [currentUser, setCurrentUser] = useState({ name: '', role: '' });
    const [appOrigin, setAppOrigin] = useState("");
    const [sellMode, setSellMode] = useState<'individual' | 'mass'>('individual');
@@ -104,15 +116,16 @@ export default function SellTicketsPage() {
             return;
          }
          const qty = formData.qty;
-         const passLabel = selectedCategory.name as string;
-         const typeId = selectedCategory.id as string;
-         const lineTotal = selectedCategory.price * qty;
+         const passLabel = selectedCategory?.name as string;
+         const typeId = selectedCategory?.id as string;
+         const price = selectedCategory?.price || 0;
+         const lineTotal = price * qty;
 
          const { data: row, error } = await supabase
             .from("tickets")
             .insert({
                type: typeId,
-               price: selectedCategory.price,
+               price: price,
                quantity: qty,
                status: "booked",
                purchaser_name: formData.name,
@@ -179,17 +192,15 @@ export default function SellTicketsPage() {
                    }).eq('id', row.id);
                 }
              })
-             .catch(e => console.error("Auto WhatsApp Fail:", e));
           } catch (waErr) {
              console.error("WA Prep Fail:", waErr);
           }
 
-
-         setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "" });
+          setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "" });
 
       } catch (err: unknown) {
          console.error("Error selling ticket:", err);
-         const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: string }).message) : '';
+         const msg = err instanceof Error ? err.message : String(err);
          if (msg.toLowerCase().includes("quantity")) {
             alert("Database error: Missing quantity column.");
          } else {
@@ -231,12 +242,13 @@ export default function SellTicketsPage() {
       e.target.value = '';
 
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = (evt: ProgressEvent<FileReader>) => {
          const bstr = evt.target?.result;
+         if (typeof bstr !== 'string') return;
          const wb = XLSX.read(bstr, { type: 'binary' });
          const wsname = wb.SheetNames[0];
          const ws = wb.Sheets[wsname];
-         const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+         const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as string[][];
 
          const parsed = data.slice(1).filter(row => row[0] && row[1]).map(row => {
             const catName = String(row[3] || '').trim();
@@ -295,7 +307,8 @@ export default function SellTicketsPage() {
 
       for (const person of massData) {
          if (person.type === 'INVALID') {
-            setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid category ("${(person as any).originalCat}")`] } : null);
+            const originalCat = (person as { originalCat?: string }).originalCat || "Unknown";
+            setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid category ("${originalCat}")`] } : null);
             continue;
          }
          try {
@@ -360,8 +373,9 @@ export default function SellTicketsPage() {
             }
 
             setMassStatus(prev => prev ? { ...prev, sent: prev.sent + 1 } : null);
-         } catch (err) {
-            setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Failed to insert`] } : null);
+         } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : "Failed to insert";
+            setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: ${errMsg}`] } : null);
          }
       }
 
@@ -377,7 +391,6 @@ export default function SellTicketsPage() {
       }
    };
 
-   const totalAmount = selectedCategory?.price * formData.qty;
 
    const ticketPageUrl = useMemo(() => {
       if (!saleReceipt || !appOrigin) return "";
@@ -481,7 +494,9 @@ export default function SellTicketsPage() {
                      {/* Render exact Ticket UI inline */}
                      <div className="w-full max-w-md bg-white shadow-xl relative overflow-hidden rounded-2xl border border-gray-200">
                         <div className="p-6 sm:p-8 flex flex-col items-center text-center bg-[#f3f4f6]">
-                           <img src="/logo.png" alt="Rhapsody Logo" className="h-20 sm:h-24 w-auto object-contain mb-4" />
+                           <div className="relative h-20 sm:h-24 w-40 mb-4">
+                              <Image src="/logo.png" alt="Rhapsody Logo" fill className="object-contain" priority />
+                           </div>
 
                            <p className="italic text-gray-900 font-medium text-sm sm:text-[15px] leading-snug mb-6 max-w-[280px]">
                               Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer

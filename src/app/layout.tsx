@@ -20,7 +20,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Runs before paint to prevent theme flash; keep in sync with src/lib/theme.ts */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }} />
+        <script
+          id="theme-initializer"
+          dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }}
+          suppressHydrationWarning
+        />
       </head>
       <body className={`${inter.className} min-h-screen flex flex-col antialiased`}>
         <ThemeProvider>{children}</ThemeProvider>
