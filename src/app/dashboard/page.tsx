@@ -60,7 +60,7 @@ export default function DashboardPage() {
     async function loadData() {
       try {
         const [ticketsRes, profilesRes] = await Promise.all([
-          supabase.from("tickets").select("*"),
+          supabase.from("tickets").select("type, funds_destination, status, price, quantity, sold_by, created_at"),
           supabase.from("profiles").select("*")
         ]);
 

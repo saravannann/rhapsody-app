@@ -238,7 +238,7 @@ export default function OrganisersPage() {
       // Use select("*") so missing optional columns (e.g. pass_targets before migration) never break the query.
       const [profilesRes, ticketsRes] = await Promise.all([
         supabase.from("profiles").select("*"),
-        supabase.from("tickets").select("*"),
+        supabase.from("tickets").select("sold_by, quantity, type"),
       ]);
 
       if (profilesRes.error) {

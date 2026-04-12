@@ -27,7 +27,7 @@ export default function OrganiserDashboard() {
         const savedName = localStorage.getItem("rhapsody_user") || "";
         const phone = localStorage.getItem("rhapsody_phone") || "";
 
-        let ticketsQuery = supabase.from("tickets").select("*");
+        let ticketsQuery = supabase.from("tickets").select("type, funds_destination, status, price, quantity, sold_by, created_at");
         if (savedName) {
           ticketsQuery = ticketsQuery.eq("sold_by", savedName);
         }
