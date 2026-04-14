@@ -55,9 +55,17 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       console.error('WhatsApp API response error:', JSON.stringify(data, null, 2));
+      
+      let errorMessage = data.error?.message || 'Failed to send WhatsApp message';
+      
+      // Handle Sandbox "Allowed List" error specifically
+      if (data.error?.code === 131030) {
+        errorMessage = `Meta Sandbox Restriction: Recipient phone number (${recipient}) is not in your Meta Dashboard "Allowed Numbers" list. Please add it in the Meta Developer Portal to test.`;
+      }
+
       return NextResponse.json({ 
         success: false,
-        error: data.error?.message || 'Failed to send WhatsApp message',
+        error: errorMessage,
         details: data.error,
         meta_status: response.status,
         code: data.error?.code,

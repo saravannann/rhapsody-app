@@ -184,7 +184,11 @@ export default function SellTicketsPage() {
                       whatsapp_status: 'failed', 
                       whatsapp_error: data.error 
                    }).eq('id', row.id);
-                   alert(`WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`);
+                                       const isSandboxError = data.code === 131030;
+                    const alertMsg = isSandboxError 
+                      ? `WhatsApp Sandbox Error: ${data.error}`
+                      : `WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`;
+                    alert(alertMsg);
                 } else {
                    console.log("WhatsApp sent!", data.message_id);
                    await supabase.from("tickets").update({ 

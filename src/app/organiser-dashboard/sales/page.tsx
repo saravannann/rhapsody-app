@@ -395,7 +395,11 @@ function SalesReportContent() {
             whatsapp_status: 'failed',
             whatsapp_error: data.error
           }).eq('id', t.id);
-          alert(`Automated Send Failed: ${data.error}`);
+          const isSandboxError = data.code === 131030;
+          const alertMsg = isSandboxError
+            ? `WhatsApp Sandbox Error: ${data.error}`
+            : `Automated Send Failed: ${data.error}`;
+          alert(alertMsg);
         } else {
           await supabase.from("tickets").update({
             whatsapp_status: 'sent',
@@ -545,7 +549,7 @@ function SalesReportContent() {
       t.funds_destination === 'trust' ? 'Trust' : 'Organizer',
       t.bank_txn_id || "N/A",
       t.sold_by || "N/A",
-      new Date(t.created_at).toLocaleString(),
+      new Date(t.created_at).toLocaleString('en-IN', { hour12: true }),
     ]);
 
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -768,7 +772,7 @@ function SalesReportContent() {
                 tickets.map(t => {
                   const d = new Date(t.created_at);
                   const formattedDate = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-                  const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                  const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
                   const isSelected = selectedIds.has(t.id);
                   return (
                     <li key={t.id} className={`px-4 py-3 transition-colors ${isSelected ? 'bg-purple-50/50 dark:bg-primary/5' : 'active:bg-gray-50/80'}`}>
@@ -865,7 +869,7 @@ function SalesReportContent() {
                     tickets.map(t => {
                       const d = new Date(t.created_at);
                       const formattedDate = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-                      const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                      const formattedTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
                       const isSelected = selectedIds.has(t.id);
                       return (
