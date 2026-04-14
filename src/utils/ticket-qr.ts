@@ -11,8 +11,20 @@ export function buildTicketQrPayload(params: {
   return `rhapsody|1|${params.ticketId}|${q}|${params.typeId}`;
 }
 
-export function shortTicketRef(ticketId: string): string {
-  return String(ticketId).replace(/-/g, "").slice(0, 8).toUpperCase();
+/**
+ * Formats the ticket ID into a human-friendly Booking ID.
+ * Format: R-SSSS-BBBBBBBB
+ * R = Constant
+ * SSSS = Running sequence (padded to 4 digits)
+ * BBBBBBBB = First 8 chars of UUID
+ */
+export function shortTicketRef(ticketId: string, sequence?: number | string | null): string {
+  const base = String(ticketId).replace(/-/g, "").slice(0, 8).toUpperCase();
+  if (sequence === undefined || sequence === null) {
+    return `R-XXXX-${base}`;
+  }
+  const s = String(sequence).padStart(4, "0");
+  return `R-${s}-${base}`;
 }
 
 export type ParsedTicketQr = {

@@ -23,6 +23,7 @@ interface Ticket {
   whatsapp_status: string | null;
   whatsapp_error: string | null;
   last_whatsapp_at: string | null;
+  sequence_number: number | null;
 }
 
 interface TotalMetrics {
@@ -140,7 +141,7 @@ function SalesReportContent() {
       console.log(`[SalesFetch] Initial: ${isInitial}, TargetPage: ${targetPage}, Range: ${start}-${end}`);
 
       // Base query with exact count
-      let query = supabase.from('tickets').select('*', { count: 'exact' });
+      let query = supabase.from('tickets').select('*, sequence_number', { count: 'exact' });
 
       // Metrics query (for totals across all pages)
       let mQuery = supabase.from('tickets').select('type, funds_destination, status, price, quantity');
@@ -155,14 +156,29 @@ function SalesReportContent() {
 
         if (searchQuery) {
           const s = `%${searchQuery}%`;
-          // Use id_text (generated column) to avoid UUID type mismatch errors in Postgres
-          const isShortId = /^[0-9a-fA-F]{1,8}$/.test(searchQuery);
           
-          if (isShortId || searchQuery.length > 20) {
-            res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s},id_text.ilike.${searchQuery}%`);
-          } else {
-            res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`);
+          // Smart Search: Handle the new R-SSSS-BBBBBBBB format
+          const formattedMatch = searchQuery.match(/^R-(\d{1,4})-([A-Z0-9]{0,8})/i);
+          const sequenceMatch = searchQuery.match(/^\d{1,4}$/); // Just the numbers
+          const shortIdMatch = /^[0-9a-fA-F]{1,8}$/.test(searchQuery);
+
+          let orConditions = `purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`;
+
+          if (formattedMatch) {
+            const seq = parseInt(formattedMatch[1]);
+            const base = formattedMatch[2];
+            if (base) {
+              orConditions += `,sequence_number.eq.${seq},id_text.ilike.${base}%`;
+            } else {
+              orConditions += `,sequence_number.eq.${seq}`;
+            }
+          } else if (sequenceMatch) {
+            orConditions += `,sequence_number.eq.${parseInt(searchQuery)}`;
+          } else if (shortIdMatch || searchQuery.length > 20) {
+            orConditions += `,id_text.ilike.${searchQuery}%`;
           }
+
+          res = res.or(orConditions);
         }
 
         if (ticketTypeFilter !== 'All Types') {
@@ -358,7 +374,7 @@ function SalesReportContent() {
       passLabel: t.type,
       quantity: ticketQuantity(t),
       totalInr: ticketLineTotal(t),
-      ref: shortTicketRef(t.id),
+      ref: shortTicketRef(t.id, t.sequence_number),
       ticketPageUrl: ticketLink,
     });
 
@@ -427,7 +443,7 @@ function SalesReportContent() {
         passLabel: t.type,
         quantity: ticketQuantity(t),
         totalInr: ticketLineTotal(t),
-        ref: shortTicketRef(t.id),
+        ref: shortTicketRef(t.id, t.sequence_number),
         ticketPageUrl: ticketLink,
       });
 
@@ -517,7 +533,7 @@ function SalesReportContent() {
       "Date",
     ];
     const rows = filteredTickets.map((t) => [
-      shortTicketRef(t.id),
+      shortTicketRef(t.id, t.sequence_number),
       t.purchaser_name || "N/A",
       t.purchaser_phone || "N/A",
       t.type,
@@ -866,8 +882,8 @@ function SalesReportContent() {
                               )}
                             </button>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{shortTicketRef(t.id)}</span>
+                          <td className="px-6 py-4 text-nowrap">
+                            <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{shortTicketRef(t.id, t.sequence_number)}</span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{t.purchaser_name || "Unknown"}</div>

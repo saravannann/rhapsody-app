@@ -20,3 +20,17 @@ UPDATE tickets SET checked_in_count = quantity WHERE status = 'checked_in';
 -- Add a searchable text version of the ID to support short-code lookups in the dashboard
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS id_text TEXT GENERATED ALWAYS AS (id::text) STORED;
 CREATE INDEX IF NOT EXISTS idx_tickets_id_text ON tickets (id_text);
+
+-- -----------------------------------------------------------------------------
+-- [NEW] Sequential Booking ID System
+-- -----------------------------------------------------------------------------
+
+-- 1. Add an identity column for the running sequence (SSSS)
+-- We use BIGINT to be safe, though 1-9999 fits in INTEGER.
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sequence_number BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1);
+
+-- 2. Create an index for faster lookups by sequence
+CREATE INDEX IF NOT EXISTS idx_tickets_sequence_number ON tickets(sequence_number);
+
+-- Note: When running this on an existing table with data, 
+-- Postgres will automatically populate sequence_number for existing rows.

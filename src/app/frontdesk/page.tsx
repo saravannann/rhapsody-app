@@ -143,7 +143,7 @@ export default function FrontdeskCheckInPage() {
       // Fetch Recent Check-ins from transaction log
       const { data: recent, error: logErr } = await supabase
         .from("ticket_checkins")
-        .select("*, tickets(id, purchaser_name, type)")
+        .select("*, tickets(id, purchaser_name, type, sequence_number)")
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -156,6 +156,7 @@ export default function FrontdeskCheckInPage() {
         type: log.tickets?.type || "Unknown",
         quantity: log.count,
         created_at: log.created_at,
+        sequence_number: log.tickets?.sequence_number,
         status: "checked_in"
       }));
 
@@ -202,7 +203,7 @@ export default function FrontdeskCheckInPage() {
 
     const { data: row, error } = await supabase
       .from("tickets")
-      .select("*, checked_in_count")
+      .select("*, checked_in_count, sequence_number")
       .eq("id", ticketId)
       .maybeSingle();
 
@@ -610,7 +611,7 @@ export default function FrontdeskCheckInPage() {
                                           </p>
                                        </div>
                                        <p className="font-mono text-[10px] font-bold text-gray-400 dark:text-violet-400 block mt-3 pr-2">
-                                          ID: #{shortTicketRef(String(result.ticket.id)).toUpperCase()}
+                                          ID: #{shortTicketRef(String(result.ticket.id), result.ticket.sequence_number).toUpperCase()}
                                        </p>
                                     </div>
                                  </div>
@@ -734,7 +735,7 @@ export default function FrontdeskCheckInPage() {
                                  <div className="min-w-0">
                                     <p className="font-bold text-gray-900 dark:text-violet-100 text-sm truncate">{item.purchaser_name}</p>
                                     <p className="text-[10px] font-bold text-gray-500 dark:text-violet-400 uppercase tracking-tighter">
-                                       #{shortTicketRef(item.id).toUpperCase()} • {TYPE_LABELS[item.type] || item.type} • Qty: {item.quantity}
+                                       #{shortTicketRef(item.id, item.sequence_number).toUpperCase()} • {TYPE_LABELS[item.type] || item.type} • Qty: {item.quantity}
                                     </p>
                                  </div>
                               </div>

@@ -166,7 +166,7 @@ export default function SellTicketsPage() {
                 passLabel,
                 quantity: qty,
                 totalInr: lineTotal,
-                ref: shortTicketRef(row.id),
+                ref: shortTicketRef(row.id, row.sequence_number),
                 ticketPageUrl: ticketUrl,
              });
              void fetch('/api/send-ticket', {
@@ -342,7 +342,7 @@ export default function SellTicketsPage() {
                   passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
                   quantity: person.qty,
                   totalInr: person.price * person.qty,
-                  ref: shortTicketRef(massRow?.id || ""),
+                  ref: shortTicketRef(massRow?.id || "", massRow?.sequence_number),
                   ticketPageUrl: ticketUrl
                });
                void fetch('/api/send-ticket', {
@@ -406,7 +406,7 @@ export default function SellTicketsPage() {
             passLabel: saleReceipt.passLabel,
             quantity: saleReceipt.quantity,
             totalInr: saleReceipt.totalInr,
-            ref: shortTicketRef(saleReceipt.ticketId),
+            ref: shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number),
             ticketPageUrl: `${appOrigin}/ticket/${saleReceipt.ticketId}`,
          })
       );
@@ -529,7 +529,7 @@ export default function SellTicketsPage() {
                                  {/* Details List */}
                                  <div className="w-full flex flex-col items-center space-y-1 text-[14px] font-medium text-gray-800">
                                     <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
-                                    <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId).toUpperCase()}</span></p>
+                                    <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number).toUpperCase()}</span></p>
                                  </div>
                               </div>
                            ) : (
@@ -539,7 +539,7 @@ export default function SellTicketsPage() {
                                  </p>
                                  <div className="space-y-1.5 text-center text-gray-800 text-[14px] mb-8 font-medium">
                                     <p>Ticket Type : <span className="font-bold text-gray-900">{saleReceipt.passLabel}</span></p>
-                                    <p>Ref : <span className="font-bold text-gray-900">{shortTicketRef(saleReceipt.ticketId).toUpperCase()}</span></p>
+                                    <p>Ref : <span className="font-bold text-gray-900">{shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number).toUpperCase()}</span></p>
                                  </div>
                                  <div className="px-5 py-3 bg-pink-50 border border-pink-100 rounded-lg text-center shadow-sm">
                                     <p className="text-[10px] text-pink-600 font-bold italic">
