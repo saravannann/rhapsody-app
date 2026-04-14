@@ -203,6 +203,8 @@ html.dark input:-webkit-autofill:active {
 [id^="fd-qr-"] video {
   border-radius: 16px !important;
   object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 [id^="fd-qr-"] img[alt="Info icon"], [id^="fd-qr-"] img[alt="Camera menu icon"] {

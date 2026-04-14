@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import {
   CheckCircle2,
   Loader2,
@@ -58,7 +58,7 @@ type LookupState =
     };
 
 export default function FrontdeskCheckInPage() {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanContainerId = `fd-qr-${useId().replace(/:/g, "")}`;
   const [scannerActive, setScannerActive] = useState(true);
   const [manualInput, setManualInput] = useState("");
@@ -235,47 +235,54 @@ export default function FrontdeskCheckInPage() {
   useEffect(() => {
     if (!scannerActive) {
       if (scannerRef.current) {
-        try {
-          scannerRef.current.clear().catch(() => {});
-        } catch {
-          /* ignore */
+        if (scannerRef.current.isScanning) {
+          scannerRef.current.stop().catch(() => {});
         }
         scannerRef.current = null;
       }
       return;
     }
 
-    const scanner = new Html5QrcodeScanner(
-      scanContainerId,
+    const html5QrCode = new Html5Qrcode(scanContainerId);
+    scannerRef.current = html5QrCode;
+
+    html5QrCode.start(
+      { facingMode: "environment" },
       {
-        fps: 12,
+        fps: 15,
         qrbox: { width: minBox(), height: minBox() },
         aspectRatio: 1,
       },
-      false
-    );
-    scannerRef.current = scanner;
-
-    scanner.render(
       (decodedText) => {
         onScanSuccess(decodedText);
       },
       () => {}
-    );
+    ).catch(err => {
+      console.error("Scanner start error:", err);
+      // Fallback if environment camera fails
+      html5QrCode.start(
+        { facingMode: "user" },
+        { 
+          fps: 15, 
+          qrbox: { width: minBox(), height: minBox() },
+          aspectRatio: 1,
+        },
+        (decodedText) => onScanSuccess(decodedText),
+        () => {}
+      ).catch(e => console.error("Final fallback error:", e));
+    });
 
     return () => {
-      scanner
-        .clear()
-        .catch(() => {})
-        .finally(() => {
-          scannerRef.current = null;
-        });
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
+      scannerRef.current = null;
     };
   }, [scannerActive, onScanSuccess, scanContainerId]);
 
   function minBox() {
-    if (typeof window === "undefined") return 260;
-    return Math.min(280, Math.floor(window.innerWidth - 48));
+    if (typeof window === "undefined") return 200;
+    return Math.min(200, Math.floor(window.innerWidth - 64));
   }
 
   const handleCheckIn = async () => {
@@ -408,10 +415,10 @@ export default function FrontdeskCheckInPage() {
 
                <div className="relative group">
                   <div className={`transition-all duration-300 ${scannerActive ? 'block' : 'hidden'}`}>
-                     <div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-md mx-auto">
-                        <div id={scanContainerId} className="min-h-[300px] w-full" />
-                        <div className="absolute inset-0 pointer-events-none border-[1.5rem] border-black/40 flex items-center justify-center">
-                           <div className="w-48 h-48 sm:w-64 sm:h-64 border-2 border-primary/50 relative">
+                     <div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square">
+                        <div id={scanContainerId} className="w-full h-full" />
+                        <div className="absolute inset-0 pointer-events-none border-[1rem] border-black/40 flex items-center justify-center">
+                           <div className="w-44 h-44 sm:w-48 sm:h-48 border-2 border-primary/30 relative">
                               <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-sm"></div>
                               <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-sm"></div>
                               <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-sm"></div>
@@ -449,90 +456,113 @@ export default function FrontdeskCheckInPage() {
                   </div>
                </div>
 
-               {/* Results / Status Display */}
-               <div className="mt-8 space-y-4">
-                  {lookup.kind === "loading" && (
-                     <div className="flex flex-col items-center py-10 bg-gray-50 dark:bg-violet-950/20 rounded-2xl border border-gray-100 dark:border-violet-500/10">
-                        <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
-                        <p className="text-sm font-bold text-gray-600 dark:text-violet-300/80 uppercase tracking-widest">Verifying Ticket...</p>
-                     </div>
-                  )}
-
-                  {lookup.kind === "error" && (
-                     <div className="p-5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 rounded-2xl flex items-start gap-3">
-                        <AlertOctagon className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
-                        <div>
-                           <p className="font-bold text-amber-900 dark:text-amber-100 text-sm">Action Required</p>
-                           <p className="text-sm text-amber-800 dark:text-amber-200/80 mt-1">{lookup.message}</p>
-                        </div>
-                     </div>
-                  )}
-
-                  {result && (
-                     <div className="p-6 bg-white dark:bg-violet-950/40 border border-gray-100 dark:border-violet-500/30 rounded-2xl shadow-xl space-y-5 animate-in slide-in-from-bottom-2">
-                        {result.mismatch && (
-                           <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-500/40 rounded-xl flex items-center gap-3 text-red-700 dark:text-red-400 font-bold text-xs uppercase tracking-wide">
-                              <AlertTriangle className="w-4 h-4" /> {result.mismatch}
+               {/* Modal Overlay for Results/Errors */}
+               {lookup.kind !== "idle" && lookup.kind !== "loading" && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                     <div className="bg-white dark:bg-violet-950/90 border border-white/20 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-300">
+                        
+                        {/* Error Modal */}
+                        {lookup.kind === "error" && (
+                           <div className="p-8 text-center space-y-6">
+                              <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                                 <AlertOctagon className="w-8 h-8" />
+                              </div>
+                              <div>
+                                 <h3 className="text-xl font-bold text-gray-900 dark:text-violet-100">Invalid Ticket</h3>
+                                 <p className="text-gray-500 dark:text-violet-300/80 mt-2">{lookup.message}</p>
+                              </div>
+                              <button 
+                                 onClick={() => setLookup({ kind: "idle" })}
+                                 className="w-full bg-gray-900 dark:bg-violet-800 text-white font-bold py-4 rounded-2xl hover:bg-gray-800 active:scale-95 transition-all"
+                              >
+                                 Dismiss
+                              </button>
                            </div>
                         )}
-                        
-                        <div className="flex items-start justify-between">
-                           <div>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">Pass Details</p>
-                              <h4 className="text-xl font-bold text-gray-900 dark:text-violet-100 leading-tight">
-                                 {String(result.ticket.purchaser_name || "Guest")}
-                              </h4>
-                              <p className="mt-1 text-sm font-bold text-primary">
-                                 {TYPE_LABELS[String(result.ticket.type)] || String(result.ticket.type)} {" "}
-                                 <span className="text-gray-300 mx-1">/</span> {" "}
-                                 Qty {ticketQuantity(result.ticket)}
-                              </p>
-                           </div>
-                           <div className="text-right">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">Booking Ref</p>
-                              <p className="font-mono text-sm font-bold text-gray-700 dark:text-violet-300">
-                                 #{shortTicketRef(String(result.ticket.id)).toUpperCase()}
-                              </p>
-                           </div>
-                        </div>
 
-                        <div className="pt-4 border-t border-gray-100 dark:border-violet-500/15 flex items-center justify-between">
-                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                              statusStr === "checked_in" 
-                                 ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30" 
-                                 : statusStr === "cancelled" 
-                                    ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-200/50 dark:border-red-500/30"
-                                    : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30"
-                           }`}>
-                              Status: {statusStr.replace("_", " ")}
-                           </span>
+                        {/* Result Modal */}
+                        {result && (
+                           <div className="relative">
+                              {/* Header Pattern */}
+                              <div className={`h-24 ${statusStr === 'checked_in' ? 'bg-emerald-500' : 'bg-primary'} opacity-10 absolute top-0 inset-x-0`} />
+                              
+                              <div className="p-8 pt-10 space-y-6">
+                                 {result.mismatch && (
+                                    <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-500/40 rounded-xl flex items-center gap-3 text-red-700 dark:text-red-400 font-bold text-sm uppercase tracking-wide">
+                                       <AlertTriangle className="w-5 h-5" /> {result.mismatch}
+                                    </div>
+                                 )}
 
-                           {canCheckIn && (
-                              <button 
-                                 disabled={checkingIn}
-                                 onClick={handleCheckIn}
-                                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
-                              >
-                                 {checkingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Confirm Check-in</>}
-                              </button>
-                           )}
+                                 <div className="flex justify-between items-start">
+                                    <div className="space-y-1">
+                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entry Pass</span>
+                                       <h3 className="text-2xl font-bold text-gray-900 dark:text-violet-100">{String(result.ticket.purchaser_name || "Guest")}</h3>
+                                       <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                                          {TYPE_LABELS[String(result.ticket.type)] || String(result.ticket.type)}
+                                          <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                          Qty {ticketQuantity(result.ticket)}
+                                       </div>
+                                    </div>
+                                    <div className="text-right">
+                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ticket ID</span>
+                                       <p className="font-mono text-sm font-bold text-gray-700 dark:text-violet-300 block mt-1">
+                                          #{shortTicketRef(String(result.ticket.id)).toUpperCase()}
+                                       </p>
+                                    </div>
+                                 </div>
 
-                           {statusStr === "checked_in" && (
-                              <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
-                                 <CheckCircle className="w-5 h-5" />
-                                 {justCheckedIn ? "Welcome! Check-in Complete" : "Already Verified"}
+                                 <div className="py-4 border-y border-gray-100 dark:border-violet-500/15 flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Current Status</span>
+                                       <span className={`mt-1 font-bold ${
+                                          statusStr === "checked_in" ? "text-emerald-600" : "text-amber-600"
+                                       }`}>
+                                          {statusStr.replace("_", " ").toUpperCase()}
+                                       </span>
+                                    </div>
+                                    
+                                    {statusStr === "checked_in" && (
+                                       <div className="flex items-center gap-2 text-emerald-600 font-bold italic">
+                                          <CheckCircle2 className="w-5 h-5" /> Verified
+                                       </div>
+                                    )}
+                                 </div>
+
+                                 <div className="flex gap-3">
+                                    <button 
+                                       onClick={() => setLookup({ kind: "idle" })}
+                                       className="flex-1 bg-gray-100 dark:bg-violet-950/50 text-gray-600 dark:text-violet-300 font-bold py-4 rounded-2xl hover:bg-gray-200 transition-all"
+                                    >
+                                       Close
+                                    </button>
+                                    
+                                    {canCheckIn && (
+                                       <button 
+                                          disabled={checkingIn}
+                                          onClick={handleCheckIn}
+                                          className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                       >
+                                          {checkingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Admit Guest</>}
+                                       </button>
+                                    )}
+                                 </div>
                               </div>
-                           )}
-                           
-                           {statusStr === "cancelled" && (
-                              <div className="flex items-center gap-2 text-red-600 font-bold text-sm">
-                                 <XCircle className="w-5 h-5" /> Denied: Cancelled
-                              </div>
-                           )}
-                        </div>
+                           </div>
+                        )}
                      </div>
-                  )}
-               </div>
+                  </div>
+               )}
+
+               {/* Loading Overlay (Semi-transparent over scanner) */}
+               {lookup.kind === "loading" && (
+                  <div className="absolute inset-0 z-40 bg-black/20 backdrop-blur-[1px] flex items-center justify-center rounded-3xl">
+                     <div className="bg-white/90 dark:bg-violet-950/90 px-6 py-4 rounded-2xl flex items-center gap-4 shadow-xl border border-white/20">
+                        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                        <span className="text-sm font-bold text-gray-700 dark:text-white uppercase tracking-widest">Validating...</span>
+                     </div>
+                  </div>
+               )}
+
 
 
             </div>
