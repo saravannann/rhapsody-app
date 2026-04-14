@@ -571,7 +571,7 @@ export default function FrontdeskCheckInPage() {
                      <div className="flex items-center justify-between mb-6 relative z-10">
                         <div className="flex items-center gap-3">
                            <Scan className="w-5 h-5 text-primary" />
-                           <h3 className="text-lg font-bold text-gray-900 dark:text-violet-100">Quick Admission</h3>
+                           <h2 className="text-lg font-bold text-gray-900 dark:text-violet-100">Quick Admission</h2>
                         </div>
                         <div className="flex rounded-xl overflow-hidden border border-gray-100 dark:border-violet-500/20">
                            <button onClick={() => setScannerActive(true)} className={`px-4 py-2 text-xs font-bold transition-all ${scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500 hover:text-primary'}`}>Camera</button>
@@ -588,7 +588,7 @@ export default function FrontdeskCheckInPage() {
                                  {cameraError && (
                                     <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-10">
                                        <AlertOctagon className="w-12 h-12 text-red-500 mb-4" />
-                                       <h4 className="text-white font-bold mb-2 uppercase tracking-widest text-xs">Scanner Blocked</h4>
+                                       <h3 className="text-white font-bold mb-2 uppercase tracking-widest text-xs">Scanner Blocked</h3>
                                        <button 
                                           onClick={() => window.location.reload()}
                                           className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"
@@ -630,7 +630,7 @@ export default function FrontdeskCheckInPage() {
                                           <AlertOctagon className="w-8 h-8" />
                                        </div>
                                        <div>
-                                          <h3 className="text-xl font-bold text-gray-900 dark:text-violet-100">Ticket Error</h3>
+                                          <h2 className="text-xl font-bold text-gray-900 dark:text-violet-100">Ticket Error</h2>
                                           <p className="text-gray-500 dark:text-violet-300/80 mt-2">{lookup.message}</p>
                                        </div>
                                        <button onClick={() => setLookup({ kind: "idle" })} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl">Dismiss</button>
@@ -641,7 +641,7 @@ export default function FrontdeskCheckInPage() {
                                     <div className="p-8 space-y-6">
                                        <div className="flex justify-between items-start">
                                           <div className="space-y-1">
-                                             <h3 className="text-2xl font-bold text-gray-900 dark:text-violet-100">{result.ticket.purchaser_name}</h3>
+                                             <h2 className="text-2xl font-bold text-gray-900 dark:text-violet-100">{result.ticket.purchaser_name}</h2>
                                              <div className="text-lg font-bold text-primary">{TYPE_LABELS[result.ticket.type] || result.ticket.type}</div>
                                           </div>
                                           <div className="bg-primary/5 px-6 py-3 rounded-2xl border border-primary/20 text-center">
@@ -658,7 +658,7 @@ export default function FrontdeskCheckInPage() {
                                              </p>
                                           </div>
                                           <p className="font-mono text-xs font-bold text-gray-400 uppercase tracking-widest">
-                                             #{shortTicketRef(result.ticket.id, (result.ticket as any).sequence_number).toUpperCase()}
+                                             #{shortTicketRef(result.ticket.id, result.ticket.sequence_number).toUpperCase()}
                                           </p>
                                        </div>
 
@@ -751,7 +751,7 @@ export default function FrontdeskCheckInPage() {
                <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm h-full">
                   <div className="flex items-center gap-3 mb-6">
                      <History className="w-5 h-5 text-primary" />
-                     <h3 className="text-lg font-bold text-gray-900 dark:text-violet-100">Live Entries</h3>
+                     <h2 className="text-lg font-bold text-gray-900 dark:text-violet-100">Live Entries</h2>
                   </div>
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                      {metrics.recentCheckIns.length === 0 ? (
@@ -843,10 +843,10 @@ export default function FrontdeskCheckInPage() {
 
                <div className="lg:col-span-4">
                   <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm h-full flex flex-col min-h-[500px]">
-                     <h3 className="text-lg font-bold text-gray-900 dark:text-violet-100 mb-6 flex items-center gap-2">
+                     <h2 className="text-lg font-bold text-gray-900 dark:text-violet-100 mb-6 flex items-center gap-2">
                         <Clock className="w-5 h-5 text-primary" />
                         Entry History
-                     </h3>
+                     </h2>
 
                      {selectedAudit ? (
                         <div className="space-y-6">

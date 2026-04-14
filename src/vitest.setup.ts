@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import 'jest-axe/extend-expect';
 import { vi } from 'vitest';
 
 // Mock Supabase with a robust Thenable chain

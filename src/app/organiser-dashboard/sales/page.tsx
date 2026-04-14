@@ -24,6 +24,7 @@ interface Ticket {
   whatsapp_error: string | null;
   last_whatsapp_at: string | null;
   sequence_number: number | null;
+  checked_in_count?: number;
 }
 
 interface TotalMetrics {
