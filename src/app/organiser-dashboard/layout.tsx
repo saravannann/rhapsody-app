@@ -12,26 +12,36 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [ready, setReady] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUserName(localStorage.getItem('rhapsody_user') || 'Organiser');
+    const user = localStorage.getItem('rhapsody_user');
+    const role = localStorage.getItem('rhapsody_role');
 
+    if (!user || (!role || (role !== 'organiser' && role !== 'admin'))) {
+      router.replace('/');
+      return;
+    }
+
+    setUserName(user);
+    
     // Retrieve all roles for granular access control
     const storedRoles = localStorage.getItem('rhapsody_all_roles');
     if (storedRoles) {
       try {
         setUserRoles(JSON.parse(storedRoles));
       } catch (e) {
-        setUserRoles([localStorage.getItem('rhapsody_role') || 'organiser']);
+        setUserRoles([role]);
       }
     } else {
-      setUserRoles([localStorage.getItem('rhapsody_role') || 'organiser']);
+      setUserRoles([role]);
     }
-  }, []);
+    
+    setReady(true);
+  }, [router]);
 
   useEffect(() => {
     document.body.style.overflow = mobileNavOpen ? "hidden" : "";
@@ -88,6 +98,14 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
       </Link>
     );
   };
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)]">
+        <p className="text-sm font-medium text-[var(--foreground)]">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] flex flex-col transition-colors duration-200">

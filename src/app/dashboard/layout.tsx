@@ -12,14 +12,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [ready, setReady] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setUserName(localStorage.getItem('rhapsody_user') || 'Admin');
-    setUserRole(localStorage.getItem('rhapsody_role') || '');
-  }, []);
+    const user = localStorage.getItem('rhapsody_user');
+    const role = localStorage.getItem('rhapsody_role');
+
+    if (!user || role !== 'admin') {
+      router.replace('/');
+      return;
+    }
+
+    setUserName(user);
+    setUserRole(role);
+    setReady(true);
+  }, [router]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +89,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </Link>
     );
   };
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)]">
+        <p className="text-sm font-medium text-[var(--foreground)]">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] flex flex-col transition-colors duration-200">
