@@ -27,6 +27,7 @@ interface TicketMinimal {
   purchaser_name: string | null;
   type: string;
   quantity: number;
+  checked_in_count: number;
   status: string;
   created_at: string;
 }
@@ -65,6 +66,9 @@ export default function FrontdeskCheckInPage() {
   const [lookup, setLookup] = useState<LookupState>({ kind: "idle" });
   const [checkingIn, setCheckingIn] = useState(false);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
+  const [partialCount, setPartialCount] = useState(1);
+  const [attendeeName, setAttendeeName] = useState("");
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const cooldownRef = useRef(false);
 
   // Metrics State
@@ -80,7 +84,7 @@ export default function FrontdeskCheckInPage() {
     try {
       const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("status, type, quantity, created_at");
+        .select("status, type, quantity, created_at, checked_in_count");
       
       if (error) {
         console.error("Supabase error fetching tickets:", error);
@@ -107,8 +111,8 @@ export default function FrontdeskCheckInPage() {
         if (status !== "cancelled" && !isDonor) {
           scannableTotal += q;
 
-          if (status === "checked_in") {
-            checkedInTotal += q;
+          if (status === "checked_in" || (t.checked_in_count || 0) > 0) {
+            checkedInTotal += (t.checked_in_count || 0);
             
             const updateTime = t.created_at ? new Date(t.created_at).getTime() : 0;
             if (updateTime > hourAgo) {
@@ -136,20 +140,31 @@ export default function FrontdeskCheckInPage() {
         peakStr = `${peakHr % 12 || 12}:00 ${peakHr >= 12 ? 'PM' : 'AM'} - ${(peakHr + 1) % 12 || 12}:00 ${(peakHr + 1) >= 12 ? 'PM' : 'AM'}`;
       }
 
-      // Fetch Recent Check-ins
-      const { data: recent } = await supabase
-        .from("tickets")
-        .select("*")
-        .eq("status", "checked_in")
+      // Fetch Recent Check-ins from transaction log
+      const { data: recent, error: logErr } = await supabase
+        .from("ticket_checkins")
+        .select("*, tickets(id, purchaser_name, type)")
         .order("created_at", { ascending: false })
         .limit(8);
+
+      if (logErr) console.error("Error fetching recent logs:", logErr);
+
+      // Map to a format usable by the list
+      const formattedRecent = (recent || []).map(log => ({
+        id: log.ticket_id,
+        purchaser_name: log.checked_in_name || log.tickets?.purchaser_name || "Guest",
+        type: log.tickets?.type || "Unknown",
+        quantity: log.count,
+        created_at: log.created_at,
+        status: "checked_in"
+      }));
 
       setMetrics({
         totalCheckedIn: checkedInTotal,
         totalScannable: scannableTotal,
         thisHour: hourCount,
         peakTime: peakStr,
-        recentCheckIns: recent || []
+        recentCheckIns: (formattedRecent as any) || []
       });
     } catch (error) {
        console.error("System error fetching check-in metrics:", error);
@@ -187,7 +202,7 @@ export default function FrontdeskCheckInPage() {
 
     const { data: row, error } = await supabase
       .from("tickets")
-      .select("*")
+      .select("*, checked_in_count")
       .eq("id", ticketId)
       .maybeSingle();
 
@@ -202,13 +217,20 @@ export default function FrontdeskCheckInPage() {
       return;
     }
 
-    if (String(row.status || "").toLowerCase() === "checked_in") {
+    const qty = ticketQuantity(row);
+    const checkedIn = row.checked_in_count || 0;
+
+    if (checkedIn >= qty) {
       setLookup({ 
         kind: "error", 
-        message: `This guest (${String(row.purchaser_name || "Guest")}) has already checked in and wristbands have been issued.` 
+        message: `Already checked-in: This guest (${String(row.purchaser_name || "Guest")}) and all ${qty} members have already been admitted.` 
       });
       return;
     }
+
+    // Set default check-in values for partial support
+    setPartialCount(qty - checkedIn);
+    setAttendeeName(row.purchaser_name || "");
 
     let mismatch: string | undefined;
     if (parsed) {
@@ -266,8 +288,22 @@ export default function FrontdeskCheckInPage() {
       },
       () => {}
     ).catch(err => {
-      console.error("Scanner start error:", err);
-      // Fallback if environment camera fails
+      // Check for HTTPS/Secure Context (modern browser requirement)
+      if (typeof window !== "undefined" && !window.isSecureContext && window.location.hostname !== "localhost") {
+        setCameraError("Insecure Connection (HTTP): Browsers only allow camera access on Secure Connections (HTTPS) or localhost. Please use HTTPS.");
+        return;
+      }
+
+      const errMsg = String(err).toLowerCase();
+      if (errMsg.includes("notallowederror") || errMsg.includes("permission denied")) {
+        console.warn("Camera access was denied by user/browser.");
+        setCameraError("Camera access denied. Please enable camera permissions in your browser settings and refresh the page.");
+        return;
+      }
+
+      console.error("Scanner start error (hardware/env):", err);
+
+      // Fallback if environment camera fails (e.g. desktop)
       html5QrCode.start(
         { facingMode: "user" },
         { 
@@ -277,7 +313,15 @@ export default function FrontdeskCheckInPage() {
         },
         (decodedText) => onScanSuccess(decodedText),
         () => {}
-      ).catch(e => console.error("Final fallback error:", e));
+      ).catch(e => {
+        const finalMsg = String(e).toLowerCase();
+        if (finalMsg.includes("notallowederror") || finalMsg.includes("permission denied")) {
+          setCameraError("Camera access denied. Please enable camera permissions in your browser settings.");
+        } else {
+          console.error("Final fallback error:", e);
+          setCameraError("Could not start camera. Please ensure no other app is using it.");
+        }
+      });
     });
 
     return () => {
@@ -296,22 +340,45 @@ export default function FrontdeskCheckInPage() {
   const handleCheckIn = async () => {
     if (lookup.kind !== "result" || lookup.mismatch) return;
     const row = lookup.ticket;
-    const status = String(row.status || "").toLowerCase();
-    if (status === "checked_in") return;
-    if (status === "cancelled") return;
+    const qty = ticketQuantity(row);
+    const existingCount = row.checked_in_count || 0;
+    
+    if (existingCount >= qty) return;
 
     setCheckingIn(true);
     try {
-      const { error } = await supabase
+      const newCount = existingCount + partialCount;
+      const finalStatus = newCount >= qty ? "checked_in" : row.status;
+
+      // 1. Update the ticket
+      const { error: updateError } = await supabase
         .from("tickets")
-        .update({ status: "checked_in" })
+        .update({ 
+          checked_in_count: newCount,
+          status: finalStatus
+        })
         .eq("id", row.id as string);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
+      // 2. Log the transaction
+      const { error: logError } = await supabase
+        .from("ticket_checkins")
+        .insert({
+          ticket_id: row.id,
+          count: partialCount,
+          checked_in_name: attendeeName || (newCount === qty ? row.purchaser_name : "Partial Group")
+        });
+
+      if (logError) console.error("Could not log check-in transaction:", logError);
+
+      // 3. Refresh and Close
+      await fetchMetrics();
+      setJustCheckedIn(true);
+      
       const { data: fresh } = await supabase
         .from("tickets")
-        .select("*")
+        .select("*, checked_in_count")
         .eq("id", row.id as string)
         .single();
 
@@ -321,11 +388,16 @@ export default function FrontdeskCheckInPage() {
         parsed: lookup.parsed,
         mismatch: lookup.mismatch,
       });
-      setJustCheckedIn(true);
-      fetchMetrics(); // Refresh stats
-    } catch (e) {
-      console.error(e);
-      alert("Could not update check-in status.");
+
+      // Show success feedback for 2 seconds then close
+      setTimeout(() => {
+        setLookup({ kind: "idle" });
+        setJustCheckedIn(false);
+      }, 2000);
+
+    } catch (err: any) {
+      console.error(err);
+      alert("Check-in failed: " + err.message);
     } finally {
       setCheckingIn(false);
     }
@@ -425,20 +497,39 @@ export default function FrontdeskCheckInPage() {
                   <div className={`transition-all duration-300 ${scannerActive ? 'block' : 'hidden'}`}>
                      <div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square">
                         <div id={scanContainerId} className="w-full h-full" />
-                        <div className="absolute inset-0 pointer-events-none border-[1rem] border-black/40 flex items-center justify-center">
-                           <div className="w-44 h-44 sm:w-48 sm:h-48 border-2 border-primary/30 relative">
-                              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-sm"></div>
-                              <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-sm"></div>
-                              <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-sm"></div>
-                              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-sm"></div>
-                              <div className="absolute inset-0 flex items-center justify-center opacity-40">
-                                 <QrCode className="w-24 h-24 text-primary animate-pulse" />
-                              </div>
+                        
+                        {cameraError ? (
+                           <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-10">
+                              <AlertOctagon className="w-12 h-12 text-red-500 mb-4" />
+                              <h4 className="text-white font-bold mb-2 uppercase tracking-widest text-xs">Scanner Blocked</h4>
+                              <p className="text-gray-400 text-[11px] leading-relaxed mb-6">
+                                 {cameraError}
+                              </p>
+                              <button 
+                                 onClick={() => window.location.reload()}
+                                 className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"
+                              >
+                                 Refresh & Retry
+                              </button>
                            </div>
-                        </div>
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-bold text-white/90 uppercase tracking-widest border border-white/10">
-                           Scan QR Code Here
-                        </div>
+                        ) : (
+                           <>
+                              <div className="absolute inset-0 pointer-events-none border-[1rem] border-black/40 flex items-center justify-center">
+                                 <div className="w-44 h-44 sm:w-48 sm:h-48 border-2 border-primary/30 relative">
+                                    <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-sm"></div>
+                                    <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-sm"></div>
+                                    <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-sm"></div>
+                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-sm"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                                       <QrCode className="w-24 h-24 text-primary animate-pulse" />
+                                    </div>
+                                 </div>
+                              </div>
+                              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-bold text-white/90 uppercase tracking-widest border border-white/10">
+                                 Scan QR Code Here
+                              </div>
+                           </>
+                        )}
                      </div>
                   </div>
 
@@ -526,25 +617,59 @@ export default function FrontdeskCheckInPage() {
 
                                  <div className="py-4 border-y border-gray-100 dark:border-violet-500/15 flex items-center justify-between">
                                     <div className="flex flex-col">
-                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Current Status</span>
+                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entry Progress</span>
                                        <span className={`mt-1 font-bold ${
                                           statusStr === "checked_in" ? "text-emerald-600" : "text-amber-600"
                                        }`}>
-                                          {statusStr.replace("_", " ").toUpperCase()}
+                                          {result.ticket.checked_in_count || 0} / {ticketQuantity(result.ticket)} ADMITTED
                                        </span>
                                     </div>
                                     
-                                    {statusStr === "checked_in" && (
+                                    {(result.ticket.checked_in_count || 0) === ticketQuantity(result.ticket) && (
                                        <div className="flex items-center gap-2 text-emerald-600 font-bold italic">
-                                          <CheckCircle2 className="w-5 h-5" /> Verified
+                                          <CheckCircle2 className="w-5 h-5" /> All Verified
                                        </div>
                                     )}
                                  </div>
 
-                                 <div className="flex gap-3">
+                                 {/* Partial Check-in Controls */}
+                                 {(result.ticket.checked_in_count || 0) < ticketQuantity(result.ticket) && (
+                                    <div className="space-y-4 py-2">
+                                       <div className="flex flex-col gap-1.5">
+                                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Received By / Remark</span>
+                                          <input 
+                                             type="text" 
+                                             value={attendeeName}
+                                             onChange={(e) => setAttendeeName(e.target.value)}
+                                             placeholder="e.g. Self, Family, or Group Leader name"
+                                             className="w-full bg-gray-50 dark:bg-violet-950/30 border border-gray-100 dark:border-violet-500/10 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all text-gray-900 dark:text-white"
+                                          />
+                                       </div>
+                                       
+                                       <div className="flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-950/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-500/10">
+                                          <div className="flex flex-col">
+                                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Wristbands to Issue</span>
+                                             <span className="text-xs text-emerald-600/70 dark:text-emerald-400/60 font-medium">Remaining for this QR: {ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0)}</span>
+                                          </div>
+                                          <div className="flex items-center gap-4">
+                                             <button 
+                                                onClick={() => setPartialCount(Math.max(1, partialCount - 1))}
+                                                className="w-10 h-10 rounded-full bg-white dark:bg-violet-900 shadow-sm flex items-center justify-center text-xl font-bold text-gray-600 dark:text-violet-200 border border-gray-100 dark:border-violet-700 active:scale-95 transition-all"
+                                             >-</button>
+                                             <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums min-w-[2ch] text-center">{partialCount}</span>
+                                             <button 
+                                                onClick={() => setPartialCount(Math.min(ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0), partialCount + 1))}
+                                                className="w-10 h-10 rounded-full bg-white dark:bg-violet-900 shadow-sm flex items-center justify-center text-xl font-bold text-gray-600 dark:text-violet-200 border border-gray-100 dark:border-violet-700 active:scale-95 transition-all"
+                                             >+</button>
+                                          </div>
+                                       </div>
+                                    </div>
+                                 )}
+
+                                 <div className="flex gap-3 pt-2">
                                     <button 
                                        onClick={() => setLookup({ kind: "idle" })}
-                                       className="flex-1 bg-gray-100 dark:bg-violet-950/50 text-gray-600 dark:text-violet-300 font-bold py-4 rounded-2xl hover:bg-gray-200 transition-all"
+                                       className="flex-1 bg-gray-100 dark:bg-violet-950/50 text-gray-600 dark:text-violet-300 font-bold py-4 rounded-2xl hover:bg-gray-200 transition-all border border-transparent dark:border-violet-500/10"
                                     >
                                        Close
                                     </button>
@@ -555,7 +680,10 @@ export default function FrontdeskCheckInPage() {
                                           onClick={handleCheckIn}
                                           className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                                        >
-                                          {checkingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Admit Guest</>}
+                                          {checkingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+                                             justCheckedIn ? <><CheckCircle2 className="w-5 h-5" /> Issued!</> :
+                                             <><CheckCircle2 className="w-5 h-5" /> Issue {partialCount} Band{partialCount > 1 ? 's' : ''}</>
+                                          }
                                        </button>
                                     )}
                                  </div>

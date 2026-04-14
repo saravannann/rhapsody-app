@@ -155,9 +155,11 @@ function SalesReportContent() {
 
         if (searchQuery) {
           const s = `%${searchQuery}%`;
-          // Try to handle ID search safely
-          if (searchQuery.length > 20) {
-            res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s},id.eq.${searchQuery}`);
+          // Use id_text (generated column) to avoid UUID type mismatch errors in Postgres
+          const isShortId = /^[0-9a-fA-F]{1,8}$/.test(searchQuery);
+          
+          if (isShortId || searchQuery.length > 20) {
+            res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s},id_text.ilike.${searchQuery}%`);
           } else {
             res = res.or(`purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`);
           }
@@ -505,6 +507,7 @@ function SalesReportContent() {
       "Purchaser Phone",
       "Ticket Type",
       "Qty",
+      "Checked In",
       "Unit INR",
       "Line INR",
       "Status",
@@ -514,11 +517,12 @@ function SalesReportContent() {
       "Date",
     ];
     const rows = filteredTickets.map((t) => [
-      t.id,
+      shortTicketRef(t.id),
       t.purchaser_name || "N/A",
       t.purchaser_phone || "N/A",
       t.type,
       ticketQuantity(t),
+      t.checked_in_count || 0,
       ticketUnitPrice(t),
       ticketLineTotal(t),
       t.status,
@@ -863,7 +867,7 @@ function SalesReportContent() {
                             </button>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{t.id.split('-')[0].toUpperCase()}</span>
+                            <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{shortTicketRef(t.id)}</span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{t.purchaser_name || "Unknown"}</div>
