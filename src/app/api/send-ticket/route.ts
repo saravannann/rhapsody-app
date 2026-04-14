@@ -30,8 +30,8 @@ export async function POST(request: Request) {
     const url = `https://graph.facebook.com/${WHATSAPP_VERSION}/${WHATSAPP_PHONE_ID}/messages`;
     console.log('WA Requesting:', url, 'to phone:', phone);
 
-    const recipient = phone.toString().replace(/\D/g, '');
-    console.log('WA Final Recipient:', recipient);
+    const recipient = phone.toString().trim().replace(/\D/g, '');
+    console.log('WA Final Recipient:', recipient, ' (Digits only)');
 
     const response = await fetch(url, {
       method: 'POST',
@@ -54,17 +54,29 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('WhatsApp API response error:', data);
+      console.error('WhatsApp API response error:', JSON.stringify(data, null, 2));
       return NextResponse.json({ 
         success: false,
         error: data.error?.message || 'Failed to send WhatsApp message',
         details: data.error,
-        meta_status: response.status
-      }, { status: 200 }); // Return 200 so the frontend can read the error payload easily
+        meta_status: response.status,
+        code: data.error?.code,
+        subcode: data.error?.error_subcode
+      }, { status: 200 }); 
     }
 
-    console.log('WA Meta Success Response:', data);
-    return NextResponse.json({ success: true, message_id: data.messages?.[0]?.id });
+    console.log('WA Meta Success Response:', JSON.stringify(data, null, 2));
+    
+    // Sometimes Meta returns success but the message is not delivered 
+    // (e.g. unverified number in sandbox). The message_id presence is a good sign.
+    const messageId = data.messages?.[0]?.id;
+    
+    return NextResponse.json({ 
+      success: true, 
+      message_id: messageId,
+      recipient: recipient,
+      wa_id: data.contacts?.[0]?.wa_id
+    });
 
   } catch (error) {
     console.error('WhatsApp API Error:', error);

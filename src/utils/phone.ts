@@ -9,10 +9,15 @@ const MAX_NATIONAL_DIGITS = 15;
  */
 export function nationalDigitsForIndia(raw: string): string {
   let d = raw.replace(/\D/g, "");
+  // If user included 0 prefix (e.g. 09876...), strip it
+  if (d.startsWith("0")) {
+    d = d.slice(1);
+  }
+  // If user included 91 prefix (e.g. 919876...), strip it
   if (d.startsWith("91") && d.length > 2) {
     d = d.slice(2);
   }
-  return d.slice(0, MAX_NATIONAL_DIGITS);
+  return d.slice(0, 10); // Indian mobile numbers are 10 digits
 }
 
 /** @deprecated use nationalDigitsForIndia — kept for any stray imports */

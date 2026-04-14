@@ -153,3 +153,58 @@ html.dark input:-webkit-autofill:active {
   background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.05), transparent);
   animation: shimmer 2s infinite;
 }
+
+/* HTML5 QR Scanner UI Overrides */
+#html5-qrcode-anchor-scan-type-change {
+  display: none !important;
+}
+
+[id^="fd-qr-"] button {
+  background-color: var(--color-primary, #ec4899) !important;
+  color: white !important;
+  padding: 8px 16px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.2) !important;
+}
+
+[id^="fd-qr-"] button:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+
+[id^="fd-qr-"] select {
+  background-color: var(--card-bg) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  margin: 10px 0 !important;
+  outline: none !important;
+}
+
+[id^="fd-qr-"] #html5-qrcode-button-camera-permission {
+  margin-top: 40px !important;
+  padding: 12px 24px !important;
+  font-size: 13px !important;
+}
+
+#html5-qrcode-anchor-scan-type-change {
+  display: none !important;
+}
+
+[id^="fd-qr-"] video {
+  border-radius: 16px !important;
+  object-fit: cover !important;
+}
+
+[id^="fd-qr-"] img[alt="Info icon"], [id^="fd-qr-"] img[alt="Camera menu icon"] {
+  display: none !important;
+}

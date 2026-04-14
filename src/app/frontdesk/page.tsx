@@ -60,7 +60,7 @@ type LookupState =
 export default function FrontdeskCheckInPage() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scanContainerId = `fd-qr-${useId().replace(/:/g, "")}`;
-  const [scannerActive, setScannerActive] = useState(false);
+  const [scannerActive, setScannerActive] = useState(true);
   const [manualInput, setManualInput] = useState("");
   const [lookup, setLookup] = useState<LookupState>({ kind: "idle" });
   const [checkingIn, setCheckingIn] = useState(false);
@@ -408,8 +408,8 @@ export default function FrontdeskCheckInPage() {
 
                <div className="relative group">
                   <div className={`transition-all duration-300 ${scannerActive ? 'block' : 'hidden'}`}>
-                     <div className="overflow-hidden rounded-2xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative">
-                        <div id={scanContainerId} className="min-h-[340px] w-full" />
+                     <div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-md mx-auto">
+                        <div id={scanContainerId} className="min-h-[300px] w-full" />
                         <div className="absolute inset-0 pointer-events-none border-[1.5rem] border-black/40 flex items-center justify-center">
                            <div className="w-48 h-48 sm:w-64 sm:h-64 border-2 border-primary/50 relative">
                               <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-sm"></div>
