@@ -505,12 +505,7 @@ export default function SellTicketsPage() {
                         {/* Dynamic Content Overlay (White Area) */}
                         <div className="absolute top-[48.5%] bottom-[8%] left-0 right-0 flex flex-col items-center justify-center px-6">
                            
-                           {/* Vertical Cost Stub (Right Side) */}
-                           <div className="absolute right-1 top-1/2 -translate-y-1/2 origin-right -rotate-90 whitespace-nowrap opacity-30">
-                              <p className="text-[11px] font-black text-gray-500 tracking-widest uppercase">
-                                 Total Cost: Rs.{saleReceipt.totalInr}
-                              </p>
-                           </div>
+
 
                            {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
                               <div className="w-full flex flex-col items-center">
@@ -532,6 +527,7 @@ export default function SellTicketsPage() {
                                  <div className="w-full flex flex-col items-center space-y-1 text-[14px] font-medium text-gray-800">
                                     <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
                                     <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number).toUpperCase()}</span></p>
+                                    <p>Total Cost : <span className="font-bold">Rs.{saleReceipt.totalInr}</span></p>
                                  </div>
                               </div>
                            ) : (
@@ -542,6 +538,7 @@ export default function SellTicketsPage() {
                                  <div className="space-y-1.5 text-center text-gray-800 text-[14px] mb-8 font-medium">
                                     <p>Ticket Type : <span className="font-bold text-gray-900">{saleReceipt.passLabel}</span></p>
                                     <p>Ref : <span className="font-bold text-gray-900">{shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number).toUpperCase()}</span></p>
+                                    <p>Total Cost : <span className="font-bold text-gray-900">Rs.{saleReceipt.totalInr}</span></p>
                                  </div>
                                  <div className="px-5 py-3 bg-pink-50 border border-pink-100 rounded-lg text-center shadow-sm">
                                     <p className="text-[10px] text-pink-600 font-bold italic">

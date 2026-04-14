@@ -114,12 +114,7 @@ export default function PublicTicketPage() {
         {/* Dynamic Content Overlay (White Area) */}
         <div className="absolute top-[48.5%] bottom-[8%] left-0 right-0 flex flex-col items-center justify-center px-8">
           
-          {/* Vertical Cost Stub (Right Side) */}
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 origin-right -rotate-90 whitespace-nowrap">
-            <p className="text-[13px] font-black text-gray-300 tracking-widest uppercase">
-               Total Cost: Rs.{lineTotal}
-            </p>
-          </div>
+
 
           {passLabel !== "Donor Pass" && passLabel !== "Donor" ? (
              <div className="w-full flex flex-col items-center">
@@ -141,6 +136,7 @@ export default function PublicTicketPage() {
                <div className="w-full flex flex-col items-center space-y-1.5 text-[16px] font-medium text-gray-800">
                   <p>Ticket Type : <span className="font-bold">{passLabel.replace(' Pass', '')}</span></p>
                   <p>Booking ID : <span className="font-bold">{ref.toUpperCase()}</span></p>
+                  <p>Total Cost : <span className="font-bold">Rs.{lineTotal}</span></p>
                </div>
              </div>
           ) : (
@@ -151,6 +147,7 @@ export default function PublicTicketPage() {
                 <div className="space-y-2 text-center text-gray-800 text-[16px] mb-8 font-medium">
                   <p>Ticket Type : <span className="font-bold text-gray-900">{passLabel}</span></p>
                   <p>Booking ID : <span className="font-bold text-gray-900">{ref.toUpperCase()}</span></p>
+                  <p>Total Cost : <span className="font-bold text-gray-900">Rs.{lineTotal}</span></p>
                 </div>
                 <div className="px-5 py-3 bg-pink-50 border border-pink-100 rounded-lg text-center shadow-sm">
                    <p className="text-[12px] text-pink-600 font-bold italic">
