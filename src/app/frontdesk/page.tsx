@@ -30,12 +30,14 @@ import { ticketQuantity } from "@/utils/ticket-counts";
 
 interface TicketMinimal {
   id: string;
+  ticket_id?: string;
   purchaser_name: string | null;
   type: string;
   quantity: number;
   checked_in_count: number;
   status: string;
   created_at: string;
+  sequence_number?: number | null;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -171,6 +173,7 @@ export default function FrontdeskCheckInPage() {
         purchaser_name: log.checked_in_name || log.tickets?.purchaser_name || "Guest",
         type: log.tickets?.type || "Unknown",
         quantity: log.count,
+        checked_in_count: log.count,
         created_at: log.created_at,
         sequence_number: log.tickets?.sequence_number,
         status: "checked_in"
@@ -181,7 +184,7 @@ export default function FrontdeskCheckInPage() {
         totalScannable: scannableTotal,
         thisHour: hourCount,
         peakTime: peakStr,
-        recentCheckIns: (formattedRecent as any) || []
+        recentCheckIns: (formattedRecent as TicketMinimal[]) || []
       });
     } catch (error) {
        console.error("System error fetching check-in metrics:", error);
@@ -762,7 +765,7 @@ export default function FrontdeskCheckInPage() {
                               <div className="min-w-0">
                                  <p className="font-bold text-gray-900 dark:text-violet-100 text-sm truncate">{item.purchaser_name}</p>
                                  <p className="text-[10px] font-bold text-gray-500 dark:text-violet-400 uppercase tracking-tighter">
-                                    #{shortTicketRef(item.ticket_id, (item as any).sequence_number).toUpperCase()} • {TYPE_LABELS[item.type] || item.type} • Qty: {item.quantity}
+                                    #{shortTicketRef(item.ticket_id || item.id, item.sequence_number).toUpperCase()} • {TYPE_LABELS[item.type] || item.type} • Qty: {item.quantity}
                                  </p>
                               </div>
                            </div>

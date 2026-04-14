@@ -124,7 +124,7 @@ export default function NotificationsPage() {
           }
 
           try {
-            await fetch('/api/send-ticket', {
+            const res = await fetch('/api/send-ticket', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -132,6 +132,15 @@ export default function NotificationsPage() {
                 ticketContent: fullMessage
               })
             });
+            const d = await res.json();
+            if (!d.success) {
+               const isSandboxError = d.code === 131030;
+               console.error(isSandboxError ? "WhatsApp Sandbox Error:" : "Broadcast API Fail:", d.error);
+               if (isSandboxError) {
+                 alert(`Critical: WhatsApp Sandbox Restriction hit. ${d.error}`);
+                 break; // Stop loop if sandbox restricted
+               }
+            }
           } catch (apiErr) {
             console.error(`Failed to send to ${org.phone}:`, apiErr);
           }

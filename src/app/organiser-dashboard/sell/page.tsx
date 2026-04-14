@@ -359,7 +359,8 @@ export default function SellTicketsPage() {
                .then(res => res.json())
                .then(async d => {
                   if (!d.success) {
-                     console.error("Mass WhatsApp Fail:", d.error);
+                                           const isSandboxError = d.code === 131030;
+                      console.error(isSandboxError ? "WhatsApp Sandbox Error:" : "Mass WhatsApp Fail:", d.error);
                      await supabase.from("tickets").update({ 
                         whatsapp_status: 'failed', 
                         whatsapp_error: d.error 

@@ -1,23 +1,28 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// Mock Supabase
+// Mock Supabase with a robust Thenable chain
+const createSupabaseMock = () => {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    delete: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    single: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    or: vi.fn().mockReturnThis(),
+    upsert: vi.fn().mockReturnThis(),
+    then: vi.fn((resolve) => Promise.resolve(resolve({ data: [], error: null }))),
+  };
+  return chain;
+};
+
 vi.mock('@/utils/supabase', () => ({
   supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      delete: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      single: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockReturnThis(),
-      or: vi.fn().mockReturnThis(),
-      upsert: vi.fn().mockReturnThis(),
-      then: vi.fn((cb) => cb({ data: null, error: null })),
-    })),
+    from: vi.fn(() => createSupabaseMock()),
     channel: vi.fn(() => ({
       on: vi.fn().mockReturnThis(),
       subscribe: vi.fn().mockReturnThis(),
@@ -26,7 +31,7 @@ vi.mock('@/utils/supabase', () => ({
   },
 }));
 
-// Mock html5-qrcode (it uses browser APIs that jsdom doesn't fully support)
+// Mock html5-qrcode
 vi.mock('html5-qrcode', () => ({
   Html5Qrcode: class {
     start = vi.fn().mockResolvedValue(undefined);
