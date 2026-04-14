@@ -494,19 +494,22 @@ export default function FrontdeskCheckInPage() {
                                  )}
 
                                  <div className="flex justify-between items-start">
-                                    <div className="space-y-1">
-                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entry Pass</span>
+                                    <div className="space-y-1.5">
+                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entry Pass Detail</span>
                                        <h3 className="text-2xl font-bold text-gray-900 dark:text-violet-100">{String(result.ticket.purchaser_name || "Guest")}</h3>
-                                       <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                                       <div className="text-xl font-bold text-primary">
                                           {TYPE_LABELS[String(result.ticket.type)] || String(result.ticket.type)}
-                                          <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                                          Qty {ticketQuantity(result.ticket)}
                                        </div>
                                     </div>
                                     <div className="text-right">
-                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ticket ID</span>
-                                       <p className="font-mono text-sm font-bold text-gray-700 dark:text-violet-300 block mt-1">
-                                          #{shortTicketRef(String(result.ticket.id)).toUpperCase()}
+                                       <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 px-6 py-3 rounded-2xl">
+                                          <span className="text-[10px] font-bold text-primary dark:text-primary-light uppercase tracking-widest block mb-1">Quantity</span>
+                                          <p className="text-4xl font-black text-primary tabular-nums">
+                                             {ticketQuantity(result.ticket)}
+                                          </p>
+                                       </div>
+                                       <p className="font-mono text-[10px] font-bold text-gray-400 dark:text-violet-400 block mt-3 pr-2">
+                                          ID: #{shortTicketRef(String(result.ticket.id)).toUpperCase()}
                                        </p>
                                     </div>
                                  </div>
