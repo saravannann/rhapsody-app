@@ -27,6 +27,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function PublicTicketPage() {
+  console.log("Rhapsody Ticket Page Active - New Design V2");
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
   const [loading, setLoading] = useState(true);
@@ -99,72 +100,65 @@ export default function PublicTicketPage() {
   const lineTotal = ticketLineTotal(row);
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] px-4 py-8 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white shadow-xl relative overflow-hidden">
+    <div className="min-h-screen bg-gray-200 flex items-center justify-center p-0 sm:p-4 font-sans">
+      <div className="w-full max-w-[420px] aspect-[9/16] bg-white shadow-2xl relative overflow-hidden">
+        {/* Master Template Background */}
+        <Image 
+          src="/ticket-template.jpg" 
+          alt="Ticket Template" 
+          fill 
+          className="object-cover pointer-events-none"
+          priority
+        />
         
-        {/* Header Section */}
-        <div className="p-6 sm:p-8 flex flex-col items-center text-center">
-          <Image src="/logo.png" alt="Rhapsody Logo" width={96} height={96} className="h-20 sm:h-24 w-auto object-contain mb-4" priority />
+        {/* Dynamic Content Overlay (White Area) */}
+        <div className="absolute top-[48.5%] bottom-[5%] left-0 right-0 flex flex-col items-center justify-start pt-8 pb-4 px-8">
           
-          <p className="italic text-gray-900 font-medium text-sm sm:text-[15px] leading-snug mb-6 max-w-[280px]">
-            Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer
-          </p>
-
-          <h2 className="text-2xl sm:text-3xl text-gray-900 mb-4 font-normal tracking-wide">
-            May 9th | 4:30 PM Onwards
-          </h2>
-
-          <p className="text-gray-800 text-[15px] sm:text-lg font-normal tracking-wide mb-2 sm:mb-4 leading-relaxed">
-            Sri Mutha Venkata Subba Rao Concert Hall<br />
-            Chennai
-          </p>
-        </div>
-
-        {/* Separator */}
-        <div className="w-full px-6 sm:px-8">
-           <hr className="border-t-2 border-black mb-8" />
-        </div>
-
-        {/* Main Ticket Info Section */}
-        {passLabel !== "Donor Pass" && passLabel !== "Donor" ? (
-          <div className="px-6 sm:px-8 pb-8 flex flex-row items-center justify-center gap-4 sm:gap-6">
-            
-            <div className="flex flex-col items-center shrink-0 w-[120px]">
-              <div className="bg-white p-1 border border-gray-200 rounded">
-                <QRCode value={qrPayload} size={110} level="M" className="h-auto max-w-full" />
-              </div>
-              <p className="mt-2 text-center text-[9px] sm:text-[10px] text-gray-700 leading-snug">
-                Show this QR at entrance
-              </p>
-            </div>
-
-            <div className="flex flex-col items-start justify-center flex-1 min-w-0">
-              <p className="text-gray-900 font-medium text-[15px] sm:text-[16px] mb-2 tracking-wide whitespace-nowrap">{qty} Ticket(s)</p>
-              <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] mb-2 tracking-wide whitespace-nowrap">Ticket Type : {passLabel.replace(' Pass', '')}</p>
-              <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] mb-2 tracking-wide whitespace-nowrap">Booking ID : {ref.toUpperCase()}</p>
-              <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] tracking-wide whitespace-nowrap">Total Cost : Rs.{lineTotal}</p>
-            </div>
-
+          {/* Vertical Cost Stub (Right Side) */}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 origin-right -rotate-90 whitespace-nowrap">
+            <p className="text-[14px] font-black text-gray-300 tracking-widest uppercase">
+               Total Cost: Rs.{lineTotal}
+            </p>
           </div>
-        ) : (
-          <div className="px-6 sm:px-8 pb-8 flex flex-col items-center text-center">
-             <div className="mb-4">
-                <p className="text-gray-900 font-normal text-lg sm:text-xl mb-3 tracking-wide">{qty} Ticket(s)</p>
-                <p className="text-gray-900 font-normal text-base sm:text-lg mb-3 tracking-wide">Ticket Type : {passLabel}</p>
-                <p className="text-gray-900 font-normal text-base sm:text-lg mb-3 tracking-wide">Booking ID : {ref.toUpperCase()}</p>
-                <p className="text-gray-900 font-normal text-base sm:text-lg tracking-wide">Total Cost : Rs.{lineTotal}</p>
+
+          {passLabel !== "Donor Pass" && passLabel !== "Donor" ? (
+             <div className="w-full flex flex-col items-center">
+               {/* QR Code */}
+               <div className="p-2 border-[4px] border-black rounded-sm mb-4 bg-white shadow-sm">
+                  <QRCode value={qrPayload} size={150} level="M" />
+               </div>
+               
+               <p className="text-[13px] font-medium text-gray-400 mb-6 tracking-tight">
+                  Show this QR at the entrance
+               </p>
+
+               {/* Large Bold Quantity */}
+               <p className="text-[28px] font-black text-gray-900 mb-6 tracking-tighter uppercase leading-none">
+                  {qty} Ticket(s)
+               </p>
+               
+               {/* Details List */}
+               <div className="w-full flex flex-col items-center space-y-2.5 text-[17px] font-medium text-gray-800">
+                  <p>Ticket Type : <span className="font-bold">{passLabel.replace(' Pass', '')}</span></p>
+                  <p>Booking ID : <span className="font-bold">{ref.toUpperCase()}</span></p>
+               </div>
              </div>
-             <p className="text-xs text-pink-600 font-medium mt-2">Thank you for your donation. No validation QR is required.</p>
-          </div>
-        )}
-
-        {/* Footer Area */}
-        <div className="bg-[#e5e7eb]/80 py-2.5 text-center relative">
-           <div className="absolute top-0 left-0 w-full h-1 flex overflow-hidden opacity-50">
-               {/* Just a slight styling border effect to match the image */}
-               <div className="w-full border-t-4 border-gray-300 border-dotted" />
-           </div>
-           <p className="text-gray-800 text-xs sm:text-[13px] font-medium tracking-wide mt-1">Cancelation is not allowed for this event</p>
+          ) : (
+             <div className="w-full flex flex-col items-center pt-10">
+                <p className="text-[28px] font-black text-gray-900 mb-6 tracking-tight uppercase">
+                   {qty} Ticket(s)
+                </p>
+                <div className="space-y-2.5 text-center text-gray-800 text-[17px] mb-8 font-medium">
+                  <p>Ticket Type : <span className="font-bold text-gray-900">{passLabel}</span></p>
+                  <p>Booking ID : <span className="font-bold text-gray-900">{ref.toUpperCase()}</span></p>
+                </div>
+                <div className="px-6 py-4 bg-pink-50 border border-pink-100 rounded-lg text-center">
+                   <p className="text-sm text-pink-600 font-bold italic">
+                      Donation Recorded — No QR required.
+                   </p>
+                </div>
+             </div>
+          )}
         </div>
 
       </div>

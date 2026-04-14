@@ -489,67 +489,65 @@ export default function SellTicketsPage() {
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
                         <CheckCircle2 className="h-7 w-7" aria-hidden />
                      </div>
-                     <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 mb-6">Sale recorded successfully!</h2>
-
-                     {/* Render exact Ticket UI inline */}
-                     <div className="w-full max-w-md bg-white shadow-xl relative overflow-hidden rounded-2xl border border-gray-200">
-                        <div className="p-6 sm:p-8 flex flex-col items-center text-center bg-[#f3f4f6]">
-                           <div className="relative h-20 sm:h-24 w-40 mb-4">
-                              <Image src="/logo.png" alt="Rhapsody Logo" fill className="object-contain" priority />
+                     <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 mb-6">Sale recorded successfully!</h2>                     {/* Render exact Ticket UI inline */}
+                     <div className="w-full max-w-[340px] aspect-[9/16] bg-white shadow-2xl relative overflow-hidden mx-auto rounded-lg">
+                        {/* Master Template Background */}
+                        <Image 
+                           src="/ticket-template.jpg" 
+                           alt="Ticket Template" 
+                           fill 
+                           className="object-cover pointer-events-none"
+                           priority
+                        />
+                        
+                        {/* Dynamic Content Overlay (White Area) */}
+                        <div className="absolute top-[48.5%] bottom-[5%] left-0 right-0 flex flex-col items-center justify-start pt-6 pb-4 px-6">
+                           
+                           {/* Vertical Cost Stub (Right Side) */}
+                           <div className="absolute right-1 top-1/2 -translate-y-1/2 origin-right -rotate-90 whitespace-nowrap opacity-30">
+                              <p className="text-[11px] font-black text-gray-500 tracking-widest uppercase">
+                                 Total Cost: Rs.{saleReceipt.totalInr}
+                              </p>
                            </div>
 
-                           <p className="italic text-gray-900 font-medium text-sm sm:text-[15px] leading-snug mb-6 max-w-[280px]">
-                              Chennai&apos;s First Cultural Extravaganza to Raise Funds for Cancer
-                           </p>
-
-                           <h2 className="text-2xl sm:text-3xl text-gray-900 mb-4 font-normal tracking-wide">
-                              May 9th | 4:30 PM Onwards
-                           </h2>
-
-                           <p className="text-gray-800 text-[15px] sm:text-lg font-normal tracking-wide mb-2 sm:mb-4 leading-relaxed">
-                              Sri Mutha Venkata Subba Rao Concert Hall<br />
-                              Chennai
-                           </p>
-                        </div>
-
-                        <div className="w-full px-6 sm:px-8 bg-[#f3f4f6]">
-                           <hr className="border-t-2 border-black mb-8" />
-                        </div>
-
-                        <div className="bg-[#f3f4f6]">
                            {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
-                              <div className="px-6 sm:px-8 pb-8 flex flex-row items-center justify-center gap-4 sm:gap-6">
-                                 <div className="flex flex-col items-center shrink-0 w-[120px]">
-                                    <div className="bg-white p-1 border border-gray-200 rounded">
-                                       <QRCode value={saleReceipt.qrPayload} size={110} level="M" className="h-auto max-w-full" />
-                                    </div>
-                                    <p className="mt-2 text-center text-[9px] sm:text-[10px] text-gray-700 leading-snug">
-                                       Show this QR at entrance
-                                    </p>
+                              <div className="w-full flex flex-col items-center">
+                                 {/* QR Code */}
+                                 <div className="p-2 border-[3px] border-black rounded-sm mb-4 bg-white shadow-sm">
+                                    <QRCode value={saleReceipt.qrPayload} size={120} level="M" />
                                  </div>
+                                 
+                                 <p className="text-[11px] font-medium text-gray-500 mb-4 tracking-tight">
+                                    Show this QR at the entrance
+                                 </p>
 
-                                 <div className="flex flex-col items-start justify-center flex-1 min-w-0">
-                                    <p className="text-gray-900 font-medium text-[15px] sm:text-[16px] mb-2 tracking-wide whitespace-nowrap">{saleReceipt.quantity} Ticket(s)</p>
-                                    <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] mb-2 tracking-wide whitespace-nowrap">Ticket Type : {saleReceipt.passLabel.replace(' Pass', '')}</p>
-                                    <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] mb-2 tracking-wide whitespace-nowrap">Booking ID : {shortTicketRef(saleReceipt.ticketId).toUpperCase()}</p>
-                                    <p className="text-gray-900 font-normal text-[13px] sm:text-[14px] tracking-wide whitespace-nowrap">Total Cost : Rs.{saleReceipt.totalInr}</p>
+                                 {/* Large Bold Quantity */}
+                                 <p className="text-[26px] font-black text-gray-900 mb-4 tracking-tighter uppercase leading-none">
+                                    {saleReceipt.quantity} Ticket(s)
+                                 </p>
+                                 
+                                 {/* Details List */}
+                                 <div className="w-full flex flex-col items-center space-y-1.5 text-[15px] font-medium text-gray-800">
+                                    <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
+                                    <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId).toUpperCase()}</span></p>
                                  </div>
                               </div>
                            ) : (
-                              <div className="px-6 sm:px-8 pb-8 flex flex-col items-center text-center">
-                                 <div className="mb-4">
-                                    <p className="text-gray-900 font-normal text-lg sm:text-xl mb-3 tracking-wide">{saleReceipt.quantity} Ticket(s)</p>
-                                    <p className="text-gray-900 font-normal text-base sm:text-lg mb-3 tracking-wide">Ticket Type : {saleReceipt.passLabel}</p>
-                                    <p className="text-gray-900 font-normal text-base sm:text-lg mb-3 tracking-wide">Booking ID : {shortTicketRef(saleReceipt.ticketId).toUpperCase()}</p>
-                                    <p className="text-gray-900 font-normal text-base sm:text-lg tracking-wide">Total Cost : Rs.{saleReceipt.totalInr}</p>
+                              <div className="w-full flex flex-col items-center pt-8">
+                                 <p className="text-[26px] font-black text-gray-900 mb-6 tracking-tight uppercase leading-none">
+                                    {saleReceipt.quantity} Ticket(s)
+                                 </p>
+                                 <div className="space-y-2 text-center text-gray-800 text-[15px] mb-8 font-medium">
+                                    <p>Ticket Type : <span className="font-bold text-gray-900">{saleReceipt.passLabel}</span></p>
+                                    <p>Ref : <span className="font-bold text-gray-900">{shortTicketRef(saleReceipt.ticketId).toUpperCase()}</span></p>
                                  </div>
-                                 <p className="text-xs text-pink-600 font-medium mt-2">Thank you for your donation. No validation QR is required.</p>
+                                 <div className="px-5 py-3 bg-pink-50 border border-pink-100 rounded-lg text-center shadow-sm">
+                                    <p className="text-[11px] text-pink-600 font-bold italic">
+                                       Donation Recorded — No QR required.
+                                    </p>
+                                 </div>
                               </div>
                            )}
-                        </div>
-
-                        <div className="bg-[#e5e7eb]/80 py-2.5 text-center relative border-t-4 border-gray-300 border-dotted">
-                           <p className="text-gray-800 text-xs sm:text-[13px] font-medium tracking-wide">Cancelation is not allowed for this event</p>
                         </div>
                      </div>
 
