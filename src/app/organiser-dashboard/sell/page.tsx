@@ -30,6 +30,7 @@ type SaleReceipt = {
    qrPayload: string;
    purchaserName: string;
    purchaserPhoneE164: string;
+   sequence_number?: number | null;
 };
 
 const CATEGORIES: Category[] = [
@@ -134,7 +135,7 @@ export default function SellTicketsPage() {
                funds_destination: formData.fundsDestination,
                bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
             })
-            .select("id")
+            .select("id, sequence_number")
             .single();
 
          if (error) throw error;
@@ -154,6 +155,7 @@ export default function SellTicketsPage() {
             qrPayload,
             purchaserName: formData.name.trim(),
             purchaserPhoneE164: purchaserPhone,
+            sequence_number: row.sequence_number,
          };
 
           setSaleReceipt(receipt);
@@ -330,7 +332,7 @@ export default function SellTicketsPage() {
                sold_by: formData.poc,
                funds_destination: formData.fundsDestination,
                bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
-            }).select("id").single();
+            }).select("id, sequence_number").single();
 
             if (error) throw error;
 
