@@ -553,7 +553,12 @@ function SalesReportContent() {
       new Date(t.created_at).toLocaleString('en-IN', { hour12: true }),
     ]);
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    // Sort by Order ID (first column) ascending
+    rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);

@@ -17,8 +17,12 @@ import {
   Users,
   Clock,
   ExternalLink,
-  ChevronRight,
-  User
+  User,
+  Zap,
+  Volume2,
+  VolumeX,
+  Smartphone,
+  ChevronRight
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import {
@@ -51,8 +55,16 @@ function extractTicketIdFromPaste(raw: string): string | null {
   const trimmed = raw.trim();
   const parsed = parseTicketQrPayload(trimmed);
   if (parsed) return parsed.ticketId;
-  const m = trimmed.match(/\/ticket\/([0-9a-f-]{36})/i);
-  return m ? m[1] : null;
+  
+  // 1. Check for full /ticket/[id] link
+  const linkMatch = trimmed.match(/\/ticket\/([0-9a-f-]{36})/i);
+  if (linkMatch) return linkMatch[1];
+  
+  // 2. Check for plain UUID (36 chars with dashes)
+  const uuidMatch = trimmed.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  if (uuidMatch) return trimmed;
+
+  return null;
 }
 
 type LookupState =
@@ -78,13 +90,54 @@ export default function FrontdeskCheckInPage() {
   const [attendeeName, setAttendeeName] = useState("");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'scanner' | 'research'>('scanner');
-  
+  const [torchOn, setTorchOn] = useState(false);
+  const [feedbackEnabled, setFeedbackEnabled] = useState(false);
+
   // Research State
   const [researchQuery, setResearchQuery] = useState("");
   const [researchResults, setResearchResults] = useState<any[]>([]);
   const [researchLoading, setResearchLoading] = useState(false);
   const [selectedAudit, setSelectedAudit] = useState<any | null>(null);
   const [auditLog, setAuditLog] = useState<any[]>([]);
+
+  // Audio Context for beeps
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const initAudio = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    setFeedbackEnabled(true);
+  };
+
+  const playSound = (freq: number, duration: number, type: OscillatorType = 'sine') => {
+    if (!feedbackEnabled || !audioContextRef.current) return;
+    try {
+      const ctx = audioContextRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {
+      console.warn("Audio failed", e);
+    }
+  };
+
+  const notifySuccess = () => {
+    playSound(880, 0.1); 
+    if ('vibrate' in navigator) navigator.vibrate(50);
+  };
+
+  const notifyError = () => {
+    playSound(220, 0.3, 'sawtooth');
+    if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+  };
 
   const cooldownRef = useRef(false);
 
@@ -121,21 +174,14 @@ export default function FrontdeskCheckInPage() {
         const q = ticketQuantity(t);
         const type = String(t.type || "").toLowerCase();
         const status = String(t.status || "").toLowerCase();
-
-        // Standard scannable logic: exclude Donor passes, exclude cancelled tickets
         const isDonor = type.includes("donor");
         
         if (status !== "cancelled" && !isDonor) {
           scannableTotal += q;
-
           if (status === "checked_in" || (t.checked_in_count || 0) > 0) {
             checkedInTotal += (t.checked_in_count || 0);
-            
             const updateTime = t.created_at ? new Date(t.created_at).getTime() : 0;
-            if (updateTime > hourAgo) {
-              hourCount += q;
-            }
-
+            if (updateTime > hourAgo) hourCount += q;
             if (updateTime > 0) {
               const hr = new Date(updateTime).getHours();
               hourlyDistribution[hr] = (hourlyDistribution[hr] || 0) + q;
@@ -149,15 +195,11 @@ export default function FrontdeskCheckInPage() {
         let peakHr = 0;
         let maxVal = 0;
         for (const [hr, val] of Object.entries(hourlyDistribution)) {
-          if (val > maxVal) {
-            maxVal = val;
-            peakHr = parseInt(hr);
-          }
+          if (val > maxVal) { maxVal = val; peakHr = parseInt(hr); }
         }
         peakStr = `${peakHr % 12 || 12}:00 ${peakHr >= 12 ? 'PM' : 'AM'} - ${(peakHr + 1) % 12 || 12}:00 ${(peakHr + 1) >= 12 ? 'PM' : 'AM'}`;
       }
 
-      // Fetch Recent Check-ins from transaction log
       const { data: recent, error: logErr } = await supabase
         .from("ticket_checkins")
         .select("*, tickets(id, purchaser_name, type, sequence_number)")
@@ -166,10 +208,9 @@ export default function FrontdeskCheckInPage() {
 
       if (logErr) console.error("Error fetching recent logs:", logErr);
 
-      // Map to a format usable by the list
       const formattedRecent = (recent || []).map(log => ({
-        id: log.id, // Transaction ID (Unique for keys)
-        ticket_id: log.ticket_id, // Ticket Reference
+        id: log.id,
+        ticket_id: log.ticket_id,
         purchaser_name: log.checked_in_name || log.tickets?.purchaser_name || "Guest",
         type: log.tickets?.type || "Unknown",
         quantity: log.count,
@@ -199,133 +240,6 @@ export default function FrontdeskCheckInPage() {
     return () => { supabase.removeChannel(sub); };
   }, [fetchMetrics]);
 
-  const runLookup = useCallback(async (raw: string) => {
-    const trimmed = raw.trim();
-    setJustCheckedIn(false);
-    if (!trimmed) {
-      setLookup({ kind: "error", message: "Scan a QR or paste code / link." });
-      return;
-    }
-
-    const parsed = parseTicketQrPayload(trimmed);
-    const ticketId = parsed?.ticketId ?? extractTicketIdFromPaste(trimmed);
-
-    if (!ticketId) {
-      setLookup({
-        kind: "error",
-        message: "Unrecognised format. Scan the ticket QR or paste the ticket link.",
-      });
-      return;
-    }
-
-    setLookup({ kind: "loading" });
-
-    const { data: row, error } = await supabase
-      .from("tickets")
-      .select("*, checked_in_count, sequence_number")
-      .eq("id", ticketId)
-      .maybeSingle();
-
-    if (error) {
-      console.error(error);
-      setLookup({ kind: "error", message: "Could not load ticket. Try again." });
-      return;
-    }
-
-    if (!row) {
-      setLookup({ kind: "error", message: "No ticket found for this code." });
-      return;
-    }
-
-    const qty = ticketQuantity(row);
-    const checkedIn = row.checked_in_count || 0;
-
-    if (checkedIn >= qty) {
-      setLookup({ 
-        kind: "error", 
-        message: `Already checked-in: This guest (${String(row.purchaser_name || "Guest")}) and all ${qty} members have already been admitted.` 
-      });
-      return;
-    }
-
-    // Set default check-in values for partial support
-    setPartialCount(qty - checkedIn);
-    setAttendeeName(row.purchaser_name || "");
-
-    // [New] Fetch history immediately for the mini-timeline
-    fetchAuditLog(row.id);
-
-    let mismatch: string | undefined;
-    if (parsed) {
-      if (row.type !== parsed.typeId) {
-        mismatch = "QR data does not match our records (type).";
-      } else if (ticketQuantity(row) !== parsed.quantity) {
-        mismatch = "QR data does not match our records (quantity).";
-      }
-    }
-
-    setLookup({
-      kind: "result",
-      ticket: row as TicketMinimal,
-      parsed: parsed ?? null,
-      mismatch,
-    });
-  }, []);
-
-  const onScanSuccess = useCallback(
-    (decodedText: string) => {
-      if (cooldownRef.current) return;
-      cooldownRef.current = true;
-      setManualInput(decodedText);
-      void runLookup(decodedText);
-      setTimeout(() => {
-        cooldownRef.current = false;
-      }, 1500);
-    },
-    [runLookup]
-  );
-
-  const handleResearch = useCallback(async () => {
-    if (!researchQuery.trim()) return;
-    setResearchLoading(true);
-    
-    // Reset previous audit selection and logs
-    setSelectedAudit(null);
-    setAuditLog([]);
-
-    try {
-      const s = `%${researchQuery}%`;
-      const formattedMatch = researchQuery.match(/^R-(\d{1,4})-([A-Z0-9]{0,8})/i);
-      const sequenceMatch = researchQuery.match(/^\d{1,4}$/);
-      const shortIdMatch = /^[0-9a-fA-F]{1,8}$/.test(researchQuery);
-
-      let query = supabase.from('tickets').select('*, sequence_number');
-      let orConditions = `purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`;
-
-      if (formattedMatch) {
-        const seq = parseInt(formattedMatch[1]);
-        const base = formattedMatch[2];
-        if (base) {
-          orConditions += `,sequence_number.eq.${seq},id_text.ilike.${base}%`;
-        } else {
-          orConditions += `,sequence_number.eq.${seq}`;
-        }
-      } else if (sequenceMatch) {
-         orConditions += `,sequence_number.eq.${parseInt(researchQuery)}`;
-      } else if (shortIdMatch || researchQuery.length > 20) {
-         orConditions += `,id_text.ilike.${researchQuery}%`;
-      }
-
-      const { data, error } = await query.or(orConditions).limit(20);
-      if (error) throw error;
-      setResearchResults(data || []);
-    } catch (err) {
-      console.error("Research Fetch Error:", err);
-    } finally {
-      setResearchLoading(false);
-    }
-  }, [researchQuery]);
-
   const fetchAuditLog = useCallback(async (ticketId: string) => {
     try {
       const { data, error } = await supabase
@@ -340,119 +254,41 @@ export default function FrontdeskCheckInPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!scannerActive) {
-      if (scannerRef.current) {
-        if (scannerRef.current.isScanning) {
-          scannerRef.current.stop().catch(() => {});
-        }
-        scannerRef.current = null;
-      }
-      return;
-    }
+  const handleCheckIn = useCallback(async (overrideTicket?: TicketMinimal, overrideCount?: number) => {
+    const currentResult = lookup.kind === "result" ? lookup : null;
+    const row = overrideTicket || currentResult?.ticket;
+    if (!row) return;
 
-    const html5QrCode = new Html5Qrcode(scanContainerId);
-    scannerRef.current = html5QrCode;
-
-    html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 15,
-        qrbox: { width: minBox(), height: minBox() },
-        aspectRatio: 1,
-      },
-      (decodedText) => {
-        onScanSuccess(decodedText);
-      },
-      () => {}
-    ).catch(err => {
-      // Check for HTTPS/Secure Context (modern browser requirement)
-      if (typeof window !== "undefined" && !window.isSecureContext && window.location.hostname !== "localhost") {
-        setCameraError("Insecure Connection (HTTP): Browsers only allow camera access on Secure Connections (HTTPS) or localhost. Please use HTTPS.");
-        return;
-      }
-
-      const errMsg = String(err).toLowerCase();
-      if (errMsg.includes("notallowederror") || errMsg.includes("permission denied")) {
-        console.warn("Camera access was denied by user/browser.");
-        setCameraError("Camera access denied. Please enable camera permissions in your browser settings and refresh the page.");
-        return;
-      }
-
-      console.error("Scanner start error (hardware/env):", err);
-
-      // Fallback if environment camera fails (e.g. desktop)
-      html5QrCode.start(
-        { facingMode: "user" },
-        { 
-          fps: 15, 
-          qrbox: { width: minBox(), height: minBox() },
-          aspectRatio: 1,
-        },
-        (decodedText) => onScanSuccess(decodedText),
-        () => {}
-      ).catch(e => {
-        const finalMsg = String(e).toLowerCase();
-        if (finalMsg.includes("notallowederror") || finalMsg.includes("permission denied")) {
-          setCameraError("Camera access denied. Please enable camera permissions in your browser settings.");
-        } else {
-          console.error("Final fallback error:", e);
-          setCameraError("Could not start camera. Please ensure no other app is using it.");
-        }
-      });
-    });
-
-    return () => {
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {});
-      }
-      scannerRef.current = null;
-    };
-  }, [scannerActive, onScanSuccess, scanContainerId]);
-
-  function minBox() {
-    if (typeof window === "undefined") return 200;
-    return Math.min(200, Math.floor(window.innerWidth - 64));
-  }
-
-  const handleCheckIn = async () => {
-    if (lookup.kind !== "result" || lookup.mismatch) return;
-    const row = lookup.ticket;
     const qty = ticketQuantity(row);
     const existingCount = row.checked_in_count || 0;
+    const countToAdmit = overrideCount !== undefined ? overrideCount : partialCount;
     
     if (existingCount >= qty) return;
+    if (countToAdmit <= 0) return;
 
     setCheckingIn(true);
     try {
-      const newCount = existingCount + partialCount;
+      const newCount = existingCount + countToAdmit;
       const finalStatus = newCount >= qty ? "checked_in" : row.status;
 
-      // 1. Update the ticket
       const { error: updateError } = await supabase
         .from("tickets")
-        .update({ 
-          checked_in_count: newCount,
-          status: finalStatus
-        })
+        .update({ checked_in_count: newCount, status: finalStatus })
         .eq("id", row.id as string);
 
       if (updateError) throw updateError;
 
-      // 2. Log the transaction
       const { error: logError } = await supabase
         .from("ticket_checkins")
         .insert({
           ticket_id: row.id,
-          count: partialCount,
+          count: countToAdmit,
           checked_in_name: attendeeName || (newCount === qty ? row.purchaser_name : "Partial Group")
         });
 
-      if (logError) {
-        console.error("Could not log check-in transaction:", JSON.stringify(logError, null, 2));
-      }
+      if (logError) console.error("Log error:", logError);
 
-      // 3. Refresh and Close
+      notifySuccess();
       await fetchMetrics();
       setJustCheckedIn(true);
       
@@ -465,11 +301,10 @@ export default function FrontdeskCheckInPage() {
       setLookup({
         kind: "result",
         ticket: (fresh || row) as TicketMinimal,
-        parsed: lookup.parsed,
-        mismatch: lookup.mismatch,
+        parsed: currentResult?.parsed || null,
+        mismatch: currentResult?.mismatch,
       });
 
-      // Show success feedback for 2 seconds then close
       setTimeout(() => {
         setLookup({ kind: "idle" });
         setJustCheckedIn(false);
@@ -481,23 +316,184 @@ export default function FrontdeskCheckInPage() {
     } finally {
       setCheckingIn(false);
     }
-  };
+  }, [lookup, partialCount, attendeeName, fetchMetrics]);
+
+  const runLookup = useCallback(async (raw: string) => {
+    const trimmed = raw.trim();
+    setJustCheckedIn(false);
+    if (!trimmed) {
+       setLookup({ kind: "error", message: "Scan a QR or paste code / link." });
+       return;
+    }
+
+    const parsed = parseTicketQrPayload(trimmed);
+    const ticketId = parsed?.ticketId ?? extractTicketIdFromPaste(trimmed);
+
+    if (!ticketId) {
+      notifyError();
+      setLookup({ kind: "error", message: "Unrecognised format." });
+      return;
+    }
+
+    setLookup({ kind: "loading" });
+    const { data: row, error } = await supabase
+      .from("tickets")
+      .select("*, checked_in_count, sequence_number")
+      .eq("id", ticketId)
+      .maybeSingle();
+
+    if (error || !row) {
+      setLookup({ kind: "error", message: "No ticket found." });
+      return;
+    }
+
+    const qty = ticketQuantity(row);
+    const checkedIn = row.checked_in_count || 0;
+
+    if (checkedIn >= qty) {
+      notifyError();
+      // We still set it as a result so we can show the history/audit trail
+    }
+
+    setPartialCount(Math.max(0, qty - checkedIn));
+    setAttendeeName(row.purchaser_name || "");
+    fetchAuditLog(row.id);
+
+    let mismatch: string | undefined;
+    if (parsed && (row.type !== parsed.typeId || ticketQuantity(row) !== parsed.quantity)) {
+      mismatch = "QR data mismatch.";
+    }
+
+    const rs: LookupState = { kind: "result", ticket: row as TicketMinimal, parsed: parsed || null, mismatch };
+    setLookup(rs);
+
+    if (qty === 1 && checkedIn === 0 && !mismatch) {
+       setTimeout(() => { handleCheckIn(row as TicketMinimal, 1); }, 300);
+    }
+  }, [fetchAuditLog, handleCheckIn]);
+
+  // [FIX] Use a ref to prevent scanner restart loops
+  const lookupRef = useRef(lookup);
+  useEffect(() => { lookupRef.current = lookup; }, [lookup]);
+
+  const onScanSuccess = useCallback((decodedText: string) => {
+    if (cooldownRef.current || lookupRef.current.kind !== 'idle') return;
+    cooldownRef.current = true;
+    setManualInput(decodedText);
+    void runLookup(decodedText);
+    setTimeout(() => { cooldownRef.current = false; }, 1500);
+  }, [runLookup]);
+
+  const handleResearch = useCallback(async () => {
+    if (!researchQuery.trim()) return;
+    setResearchLoading(true);
+    setSelectedAudit(null);
+    setAuditLog([]);
+
+    try {
+      const s = `%${researchQuery.trim()}%`;
+      const qText = researchQuery.trim();
+      
+      // Smart detection of what the user is searching for
+      const formattedMatch = qText.match(/^R-(\d{1,4})-([A-Z0-9]{0,8})/i);
+      const sequenceMatch = qText.match(/^\d{1,4}$/);
+      const isUuidPrefix = /^[0-9a-fA-F-]{4,36}$/.test(qText);
+
+      let query = supabase.from('tickets').select('*, sequence_number');
+      let orConditions = `purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`;
+
+      if (formattedMatch) {
+         const seq = parseInt(formattedMatch[1]);
+         orConditions += `,sequence_number.eq.${seq}`;
+      } else if (sequenceMatch) {
+         orConditions += `,sequence_number.eq.${parseInt(qText)}`;
+      } 
+      
+      // Always try to match the ID as a fragment for "BBBBBBBB" searches
+      if (isUuidPrefix || qText.length >= 6) {
+         // Use id_text (generated text column) for UUID partial matching
+         orConditions += `,id_text.ilike.%${qText}%`;
+      }
+
+      const { data, error } = await query.or(orConditions).order('created_at', { ascending: false }).limit(20);
+      if (error) throw error;
+      setResearchResults(data || []);
+    } catch (err) {
+      console.error("Research Error:", err);
+    } finally {
+      setResearchLoading(false);
+    }
+  }, [researchQuery]);
+
+  useEffect(() => {
+    if (!scannerActive) {
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
+      scannerRef.current = null;
+      return;
+    }
+
+    // [FIX] Delayed initialization to ensure DOM is ready
+    let animationFrameId: number;
+
+    const initScanner = () => {
+      const element = document.getElementById(scanContainerId);
+      if (!element) return; 
+
+      const h = new Html5Qrcode(scanContainerId);
+      scannerRef.current = h;
+      
+      const startCamera = (mode: string) => {
+        return h.start(
+          { facingMode: mode }, 
+          { fps: 15, qrbox: { width: minBox(), height: minBox() }, aspectRatio: 1 }, 
+          (d) => onScanSuccess(d), 
+          () => {}
+        );
+      }
+
+      startCamera("environment").catch((err) => {
+        // [FIX] Ignore AbortError and Interruption errors
+        const errMsg = String(err);
+        if (errMsg.includes("AbortError") || errMsg.includes("interrupted")) {
+          return; 
+        }
+
+        // Fallback to user camera
+        startCamera("user").catch(e => {
+           const finalMsg = String(e);
+           if (!finalMsg.includes("AbortError") && !finalMsg.includes("interrupted")) {
+              setCameraError(finalMsg);
+           }
+        });
+      });
+    };
+
+    animationFrameId = requestAnimationFrame(initScanner);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
+      scannerRef.current = null;
+    };
+  }, [scannerActive, onScanSuccess, scanContainerId]);
+
+  function minBox() {
+    if (typeof window === "undefined") return 200;
+    return Math.min(200, Math.floor(window.innerWidth - 64));
+  }
 
   const result = lookup.kind === "result" ? lookup : null;
-  const statusStr = result
-    ? String(result.ticket.status || "").toLowerCase()
-    : "";
-  const canCheckIn =
-    result &&
-    !result.mismatch &&
-    (statusStr === "pending" || statusStr === "booked" || statusStr === "ticket issued" || statusStr === "ticket_issued");
-
+  const statusStr = result ? String(result.ticket.status || "").toLowerCase() : "";
+  const canCheckIn = result && !result.mismatch && (statusStr === "pending" || statusStr === "booked" || statusStr === "ticket issued" || statusStr === "ticket_issued");
   const checkInRate = metrics.totalScannable > 0 ? ((metrics.totalCheckedIn / metrics.totalScannable) * 100).toFixed(1) : "0.0";
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 sm:py-8 space-y-6 sm:space-y-10 animate-in fade-in duration-700">
       
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
          <div className="flex items-start gap-4">
             <div className="p-3.5 bg-primary/10 rounded-2xl border border-primary/20 shadow-sm">
@@ -509,63 +505,46 @@ export default function FrontdeskCheckInPage() {
                   Front Desk
                </h1>
                <p className="text-gray-500 dark:text-violet-300 font-medium mt-1">
-                  {activeTab === 'scanner' ? 'Scan QR codes to validate and check-in attendees' : 'Audit and research ticket entry history'}
+                  {activeTab === 'scanner' ? 'Scan QR codes to validate' : 'Research ticket history'}
                </p>
             </div>
          </div>
          
          <div className="flex bg-white dark:bg-violet-950/40 p-1 rounded-2xl border border-gray-100 dark:border-violet-500/10 shadow-sm self-start">
-            <button 
-               onClick={() => {
-                  setActiveTab('scanner');
-                  setLookup({ kind: 'idle' });
-               }}
-               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'scanner' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-primary dark:text-violet-400/60 hover:bg-gray-50 dark:hover:bg-violet-950/40'}`}
-            >
-               <Scan className="w-4 h-4" />
-               Scanner
+            <button onClick={() => { setActiveTab('scanner'); setLookup({ kind: 'idle' }); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'scanner' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-primary dark:text-violet-400/60 hover:bg-gray-50 dark:hover:bg-violet-950/40'}`}>
+               <Scan className="w-4 h-4" /> Scanner
             </button>
-            <button 
-               onClick={() => setActiveTab('research')}
-               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'research' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-primary dark:text-violet-400/60 hover:bg-gray-50 dark:hover:bg-violet-950/40'}`}
-            >
-               <Search className="w-4 h-4" />
-               Research
+            <button onClick={() => setActiveTab('research')} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'research' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-primary dark:text-violet-400/60 hover:bg-gray-50 dark:hover:bg-violet-950/40'}`}>
+               <Search className="w-4 h-4" /> Research
             </button>
          </div>
       </div>
 
       {activeTab === 'scanner' ? (
          <>
-            {/* Metrics Row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
-                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-2 sm:mb-4">Total Checked In</span>
+               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
+                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-2 sm:mb-4">Total Checked In</span>
                   <div className="flex items-baseline gap-2">
                      <span className="text-2xl sm:text-4xl font-bold text-emerald-600 tabular-nums">{metrics.totalCheckedIn}</span>
                      <span className="text-xs sm:text-sm font-bold text-gray-400">of {metrics.totalScannable}</span>
                   </div>
                </div>
-
-               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
-                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-2 sm:mb-4">Check-in Rate</span>
+               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
+                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-2 sm:mb-4">Check-in Rate</span>
                   <div className="text-2xl sm:text-4xl font-bold text-secondary tabular-nums">{checkInRate}%</div>
                </div>
-
-               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
-                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-1 sm:mb-4">This Hour</span>
+               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
+                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-1 sm:mb-4">This Hour</span>
                   <div className="text-2xl sm:text-4xl font-bold text-primary tabular-nums">{metrics.thisHour}</div>
                </div>
-
-               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm hover:border-primary/30 transition-all group">
-                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest block mb-1 sm:mb-4">Peak Time</span>
+               <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
+                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-1 sm:mb-4">Peak Time</span>
                   <div className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 mt-2">{metrics.peakTime}</div>
                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-               
-               {/* Left Side: Scanner */}
                <div className="lg:col-span-2 space-y-6">
                   <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm relative overflow-hidden">
                      <div className="flex items-center justify-between mb-6 relative z-10">
@@ -574,319 +553,112 @@ export default function FrontdeskCheckInPage() {
                            <h2 className="text-lg font-bold text-gray-900 dark:text-violet-100">Quick Admission</h2>
                         </div>
                         <div className="flex rounded-xl overflow-hidden border border-gray-100 dark:border-violet-500/20">
-                           <button onClick={() => setScannerActive(true)} className={`px-4 py-2 text-xs font-bold transition-all ${scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500 hover:text-primary'}`}>Camera</button>
-                           <button onClick={() => setScannerActive(false)} className={`px-4 py-2 text-xs font-bold transition-all ${!scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500 hover:text-primary'}`}>Manual</button>
+                           {!feedbackEnabled ? (
+                             <button onClick={initAudio} className="px-3 py-2 bg-amber-500/10 text-amber-500 flex items-center gap-1.5"><VolumeX className="w-3.5 h-3.5" /><span className="text-[10px] font-bold uppercase">Sound Off</span></button>
+                           ) : (
+                             <button onClick={() => setFeedbackEnabled(false)} className="px-3 py-2 bg-emerald-500/10 text-emerald-500 flex items-center gap-1.5"><Volume2 className="w-3.5 h-3.5" /><span className="text-[10px] font-bold uppercase">Sound On</span></button>
+                           )}
+                           <button onClick={() => setScannerActive(true)} className={`px-4 py-2 text-xs font-bold transition-all ${scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500'}`}>Camera</button>
+                           <button onClick={() => setScannerActive(false)} className={`px-4 py-2 text-xs font-bold transition-all ${!scannerActive ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-violet-950/30 text-gray-500'}`}>Manual</button>
                         </div>
                      </div>
 
                      <div className="relative group min-h-[400px] flex items-center justify-center">
+                        {scannerActive && (
+                           <button onClick={() => { const next = !torchOn; setTorchOn(next); if (scannerRef.current) (scannerRef.current as any).applyVideoConstraints({ advanced: [{ torch: next }] }).catch(() => {}); }} className={`absolute top-0 right-0 z-30 p-4 rounded-full transition-all ${torchOn ? 'bg-amber-400 text-gray-900' : 'bg-gray-900/40 text-white'}`}><Zap className={`w-6 h-6 ${torchOn ? 'fill-current' : ''}`} /></button>
+                        )}
                         {scannerActive ? (
-                           <div className="w-full relative">
-                              <div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square">
-                                 <div id={scanContainerId} className="w-full h-full" />
-                                 
-                                 {cameraError && (
-                                    <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-10">
-                                       <AlertOctagon className="w-12 h-12 text-red-500 mb-4" />
-                                       <h3 className="text-white font-bold mb-2 uppercase tracking-widest text-xs">Scanner Blocked</h3>
-                                       <button 
-                                          onClick={() => window.location.reload()}
-                                          className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"
-                                       >
-                                          Refresh & Retry
-                                       </button>
-                                    </div>
-                                 )}
-                              </div>
-                           </div>
+                           <div className="w-full relative"><div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square text-center"><div id={scanContainerId} className="w-full h-full" />{cameraError && <p className="text-white p-4">Camera Error</p>}</div></div>
                         ) : (
-                           <div className="w-full max-w-md space-y-4">
-                              <div className="relative">
-                                 <textarea
-                                    value={manualInput}
-                                    onChange={(e) => setManualInput(e.target.value)}
-                                    rows={4}
-                                    placeholder="Paste ticket QR text or URL..."
-                                    className="block w-full px-6 py-6 bg-gray-50 dark:bg-violet-950/20 border-2 border-dashed border-gray-200 dark:border-violet-500/20 rounded-3xl text-sm font-bold text-gray-900 dark:text-violet-100 placeholder:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                 />
-                              </div>
-                              <button 
-                                 onClick={() => runLookup(manualInput)}
-                                 className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
-                              >
-                                 Verify Ticket
-                              </button>
-                           </div>
+                           <div className="w-full max-w-md space-y-4"><textarea value={manualInput} onChange={(e) => setManualInput(e.target.value)} rows={4} placeholder="Paste ticket code..." className="block w-full px-6 py-6 bg-gray-50 dark:bg-violet-950/20 border-2 border-dashed border-gray-200 dark:border-violet-500/20 rounded-3xl text-sm font-bold outline-none" /><button onClick={() => runLookup(manualInput)} className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-widest">Verify Ticket</button></div>
                         )}
 
-                        {/* Modal Overlay for Results */}
                         {lookup.kind !== "idle" && lookup.kind !== "loading" && (
                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                              <div className="bg-white dark:bg-violet-950/90 border border-white/20 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden scale-in-center">
-                                 
-                                 {lookup.kind === "error" && (
-                                    <div className="p-8 text-center space-y-6">
-                                       <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600">
-                                          <AlertOctagon className="w-8 h-8" />
-                                       </div>
-                                       <div>
-                                          <h2 className="text-xl font-bold text-gray-900 dark:text-violet-100">Ticket Error</h2>
-                                          <p className="text-gray-500 dark:text-violet-300/80 mt-2">{lookup.message}</p>
-                                       </div>
-                                       <button onClick={() => setLookup({ kind: "idle" })} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl">Dismiss</button>
-                                    </div>
-                                 )}
-
-                                 {result && (
-                                    <div className="p-8 space-y-6">
+                              <div className="bg-white dark:bg-violet-950/90 border border-white/20 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden p-8 space-y-6">
+                                 {lookup.kind === "error" ? (
+                                    <div className="text-center space-y-6"><div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600"><AlertOctagon className="w-8 h-8" /></div><h2 className="text-xl font-bold">{lookup.message}</h2><button onClick={() => setLookup({ kind: "idle" })} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl">Dismiss</button></div>
+                                 ) : result && (
+                                    <>
                                        <div className="flex justify-between items-start">
-                                          <div className="space-y-1">
-                                             <h2 className="text-2xl font-bold text-gray-900 dark:text-violet-100">{result.ticket.purchaser_name}</h2>
-                                             <div className="text-lg font-bold text-primary">{TYPE_LABELS[result.ticket.type] || result.ticket.type}</div>
-                                          </div>
-                                          <div className="bg-primary/5 px-6 py-3 rounded-2xl border border-primary/20 text-center">
-                                             <span className="text-[10px] font-bold text-primary uppercase block">Quantity</span>
-                                             <p className="text-3xl font-black text-primary">{ticketQuantity(result.ticket)}</p>
-                                          </div>
-                                       </div>
-
-                                       <div className="py-4 border-y border-gray-100 dark:border-violet-500/10 flex items-center justify-between">
                                           <div>
-                                             <span className="text-[10px] font-bold text-gray-400 uppercase">Current Admission</span>
-                                             <p className="text-lg font-bold text-gray-800 dark:text-violet-200">
-                                                {result.ticket.checked_in_count || 0} / {ticketQuantity(result.ticket)} Admitted
-                                             </p>
+                                             <h2 className="text-2xl font-bold">{result.ticket.purchaser_name}</h2>
+                                             <div className="text-lg font-bold text-primary">{TYPE_LABELS[result.ticket.type] || result.ticket.type}</div>
+                                             {(result.ticket.checked_in_count || 0) >= ticketQuantity(result.ticket) && (
+                                                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                                   <AlertOctagon className="w-3 h-3" />
+                                                   Fully Admitted
+                                                </div>
+                                             )}
                                           </div>
-                                          <p className="font-mono text-xs font-bold text-gray-400 uppercase tracking-widest">
-                                             #{shortTicketRef(result.ticket.id, result.ticket.sequence_number).toUpperCase()}
-                                          </p>
+                                          <div className={`px-6 py-3 rounded-2xl border text-center transition-all ${ (result.ticket.checked_in_count || 0) >= ticketQuantity(result.ticket) ? 'bg-red-50 border-red-100 text-red-600' : 'bg-primary/5 border-primary/20 text-primary'}`}>
+                                             <span className="text-[10px] font-bold uppercase block">Quantity</span>
+                                             <p className="text-3xl font-black">{ticketQuantity(result.ticket)}</p>
+                                          </div>
                                        </div>
-
-                                       {/* Mini Timeline Integration */}
+                                       <div className="py-4 border-y border-gray-100 flex items-center justify-between"><div><span className="text-[10px] font-bold text-gray-400 uppercase">Current Admission</span><p className="text-lg font-bold">{result.ticket.checked_in_count || 0} / {ticketQuantity(result.ticket)} Admitted</p></div><p className="font-mono text-xs text-gray-400 uppercase tracking-widest">#{shortTicketRef(result.ticket.id, result.ticket.sequence_number).toUpperCase()}</p></div>
+                                       
                                        {auditLog.length > 0 && (
-                                          <div className="bg-gray-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-3">
-                                             <div className="flex items-center gap-2 mb-2">
-                                                <Clock className="w-3.5 h-3.5 text-primary" />
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Previous Entries</span>
-                                             </div>
-                                             <div className="space-y-3">
-                                                {auditLog.slice(0, 3).map((log) => (
-                                                   <div key={log.id} className="flex items-center justify-between text-[11px]">
-                                                      <div className="flex items-center gap-2">
-                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            <span className="font-bold text-gray-700 dark:text-violet-200 shrink-0">{log.count} Band{log.count > 1 ? 's' : ''}</span>
-                                                            <span className="text-gray-300 dark:text-violet-500/30 font-medium">•</span>
-                                                            <span className="text-[9px] font-medium text-gray-400 uppercase tracking-tighter truncate">{log.checked_in_name || "Self"}</span>
-                                                         </div>
-                                                      </div>
-                                                      <span className="text-gray-400 font-medium">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
-                                                   </div>
-                                                ))}
-                                                {auditLog.length > 3 && (
-                                                   <p className="text-[9px] text-primary font-bold text-center pt-1">+ {auditLog.length - 3} more in Research tab</p>
-                                                )}
-                                             </div>
-                                          </div>
+                                          <div className="bg-gray-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-2"><div className="flex items-center gap-2 mb-2"><Clock className="w-3.5 h-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-widest">Previous Entries</span></div>{auditLog.slice(0, 3).map((log) => (<div key={log.id} className="flex items-center justify-between text-[11px]"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="font-bold">{log.count} Band{log.count > 1 ? 's' : ''} • {log.checked_in_name || "Self"}</span></div><span>{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>))}</div>
                                        )}
 
                                        {(result.ticket.checked_in_count || 0) < ticketQuantity(result.ticket) && (
                                           <div className="space-y-5">
-                                             <div>
-                                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Checking in for:</label>
-                                                <div className="relative">
-                                                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                                   <input 
-                                                      type="text"
-                                                      value={attendeeName}
-                                                      onChange={(e) => setAttendeeName(e.target.value)}
-                                                      placeholder="Guest Name (Optional)"
-                                                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-violet-900/10 border border-gray-100 dark:border-violet-500/10 rounded-2xl text-sm font-bold text-gray-900 dark:text-violet-100 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                                   />
-                                                </div>
-                                             </div>
-
-                                             <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-2xl">
-                                                <div className="flex flex-col">
-                                                   <span className="text-xs font-bold text-emerald-600">Issue Band Count</span>
-                                                   <span className="text-[9px] text-emerald-600/60 font-bold uppercase tracking-tight">Quantity to Admit</span>
-                                                </div>
+                                             <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Attendee Name:</label><input type="text" value={attendeeName} onChange={(e) => setAttendeeName(e.target.value)} className="w-full px-4 py-3.5 bg-gray-50 border rounded-2xl text-sm font-bold outline-none" /></div>
+                                             <div className="flex items-center justify-between bg-emerald-50 p-4 rounded-2xl">
+                                                <div className="flex flex-col"><span className="text-xs font-bold text-emerald-600">Issue Band Count</span><span className="text-[9px] uppercase tracking-tight">Quantity to Admit</span></div>
                                                 <div className="flex items-center gap-4">
-                                                   <button onClick={() => setPartialCount(Math.max(1, partialCount - 1))} className="w-10 h-10 rounded-full bg-white dark:bg-violet-900 flex items-center justify-center text-xl font-bold shadow-sm">-</button>
-                                                   <span className="text-2xl font-black tabular-nums text-emerald-700 dark:text-emerald-400">{partialCount}</span>
-                                                   <button onClick={() => setPartialCount(Math.min(ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0), partialCount + 1))} className="w-10 h-10 rounded-full bg-white dark:bg-violet-900 flex items-center justify-center text-xl font-bold shadow-sm">+</button>
+                                                   <button onClick={() => setPartialCount(Math.max(1, (partialCount || 0) - 1))} className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold shadow-sm">-</button>
+                                                   <input type="tel" value={partialCount === 0 ? '' : partialCount} onChange={(e) => { const val = e.target.value === '' ? 0 : parseInt(e.target.value); const max = ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0); if (!isNaN(val)) setPartialCount(Math.min(max, val)); }} className="w-20 h-12 bg-white text-center text-2xl font-black rounded-xl outline-none" />
+                                                   <button onClick={() => setPartialCount(Math.min(ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0), (partialCount || 0) + 1))} className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold shadow-sm">+</button>
                                                 </div>
                                              </div>
+                                             {ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0) > 1 && (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                   <button onClick={() => setPartialCount(1)} className={`py-2 rounded-xl text-[10px] font-black uppercase border ${partialCount === 1 ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-600'}`}>Just 1</button>
+                                                   <button onClick={() => setPartialCount(ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0))} className={`py-2 rounded-xl text-[10px] font-black uppercase border ${partialCount === (ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0)) ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-600'}`}>All Remaining ({ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0)})</button>
+                                                </div>
+                                             )}
                                           </div>
                                        )}
-
                                        <div className="flex gap-3 pt-2">
-                                          <button onClick={() => setLookup({ kind: "idle" })} className="flex-1 bg-gray-100 dark:bg-violet-950/50 text-gray-600 dark:text-violet-300 font-bold py-4 rounded-2xl">Close</button>
-                                          {canCheckIn && (
-                                             <button 
-                                                disabled={checkingIn} 
-                                                onClick={handleCheckIn}
-                                                className="flex-[2] bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2"
-                                             >
-                                                {checkingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Admission'}
-                                             </button>
-                                          )}
+                                          <button onClick={() => setLookup({ kind: "idle" })} className="flex-1 bg-gray-100 font-bold py-4 rounded-2xl">Close</button>
+                                          {canCheckIn && <button disabled={checkingIn} onClick={() => handleCheckIn()} className="flex-[2] bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2">{checkingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Admission'}</button>}
                                        </div>
-                                    </div>
+                                    </>
                                  )}
                               </div>
                            </div>
                         )}
-
-                        {lookup.kind === "loading" && (
-                           <div className="absolute inset-0 z-40 bg-black/20 backdrop-blur-[1px] flex items-center justify-center rounded-3xl">
-                              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                           </div>
-                        )}
+                        {lookup.kind === "loading" && <div className="absolute inset-0 z-40 bg-black/20 backdrop-blur-[1px] flex items-center justify-center rounded-3xl"><Loader2 className="w-10 h-10 text-primary animate-spin" /></div>}
                      </div>
                   </div>
                </div>
 
-               {/* Right Side: Activity */}
                <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm h-full">
-                  <div className="flex items-center gap-3 mb-6">
-                     <History className="w-5 h-5 text-primary" />
-                     <h2 className="text-lg font-bold text-gray-900 dark:text-violet-100">Live Entries</h2>
-                  </div>
+                  <div className="flex items-center gap-3 mb-6"><History className="w-5 h-5 text-primary" /><h2 className="text-lg font-bold">Live Entries</h2></div>
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                     {metrics.recentCheckIns.length === 0 ? (
-                        <p className="text-gray-400 text-center py-20 italic">No entries logged yet today</p>
-                     ) : (
-                        metrics.recentCheckIns.map((item) => (
-                           <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-violet-950/30 border border-transparent hover:border-primary/20 transition-all">
-                              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                 <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
-                              </div>
-                              <div className="min-w-0">
-                                 <p className="font-bold text-gray-900 dark:text-violet-100 text-sm truncate">{item.purchaser_name}</p>
-                                 <p className="text-[10px] font-bold text-gray-500 dark:text-violet-400 uppercase tracking-tighter">
-                                    #{shortTicketRef(item.ticket_id || item.id, item.sequence_number).toUpperCase()} • {TYPE_LABELS[item.type] || item.type} • Qty: {item.quantity}
-                                 </p>
-                              </div>
-                           </div>
-                        ))
-                     )}
+                     {metrics.recentCheckIns.length === 0 ? <p className="text-gray-400 text-center py-20 italic">No entries yet</p> : metrics.recentCheckIns.map((item) => (
+                        <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-violet-950/30 border border-transparent hover:border-primary/20 transition-all"><div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5 text-emerald-600" /></div><div className="min-w-0"><p className="font-bold text-sm truncate">{item.purchaser_name}</p><p className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">#{shortTicketRef(item.ticket_id || item.id, item.sequence_number).toUpperCase()} • Qty: {item.quantity}</p></div></div>
+                     ))}
                   </div>
                </div>
             </div>
          </>
       ) : (
-         /* Research Portal */
          <div className="space-y-6">
-            <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm">
+            <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                     <input 
-                        type="text" 
-                        placeholder="Search by ID, Name, or Mobile..."
-                        className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-violet-950/20 border border-gray-100 dark:border-violet-500/20 rounded-2xl text-sm font-bold text-gray-900 dark:text-violet-100 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        value={researchQuery}
-                        onChange={(e) => setResearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleResearch()}
-                     />
-                  </div>
-                  <button 
-                     onClick={handleResearch}
-                     disabled={researchLoading}
-                     className="px-8 py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 disabled:opacity-50"
-                  >
-                     {researchLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Search Records'}
-                  </button>
+                  <div className="flex-1 relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" placeholder="Search..." className="w-full pl-12 pr-4 py-4 bg-gray-50 border rounded-2xl text-sm font-bold outline-none" value={researchQuery} onChange={(e) => setResearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleResearch()} /></div>
+                  <button onClick={handleResearch} disabled={researchLoading} className="px-8 py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">{researchLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Search'}</button>
                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-               <div className="lg:col-span-8 space-y-4">
-                  {researchResults.length === 0 && !researchLoading ? (
-                     <div className="bg-white dark:bg-violet-950/20 border-2 border-dashed border-gray-100 dark:border-violet-500/10 rounded-3xl p-20 text-center">
-                        <History className="w-12 h-12 text-gray-200 dark:text-violet-800 mx-auto mb-4" />
-                        <p className="text-gray-400 dark:text-violet-400/40 font-bold uppercase tracking-widest text-xs">Enter a search query to research records</p>
-                     </div>
-                  ) : (
-                     researchResults.map((t) => (
-                        <div 
-                           key={t.id}
-                           onClick={() => {
-                              setSelectedAudit(t);
-                              fetchAuditLog(t.id);
-                           }}
-                           className={`p-5 rounded-3xl border transition-all cursor-pointer flex items-center justify-between ${selectedAudit?.id === t.id ? 'bg-primary/5 border-primary/30 shadow-md ring-1 ring-primary/20' : 'bg-white dark:bg-violet-950/40 border-gray-100 dark:border-violet-500/10 hover:border-primary/20'}`}
-                        >
-                           <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${t.checked_in_count >= t.quantity ? 'bg-emerald-100 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
-                                 {t.checked_in_count >= t.quantity ? <CheckCircle2 className="w-6 h-6" /> : <Users className="w-6 h-6" />}
-                              </div>
-                              <div>
-                                 <div className="flex items-center gap-2">
-                                    <p className="font-bold text-gray-900 dark:text-violet-100 text-base">{t.purchaser_name}</p>
-                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-primary/10 text-primary uppercase">{t.type}</span>
-                                 </div>
-                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-tighter mt-1">
-                                    #{shortTicketRef(t.id, t.sequence_number).toUpperCase()} • {t.purchaser_phone}
-                                 </p>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <p className="text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{t.checked_in_count || 0} / {t.quantity}</p>
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Admitted</p>
-                           </div>
-                        </div>
-                     ))
-                  )}
-               </div>
-
-               <div className="lg:col-span-4">
-                  <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 dark:border-violet-500/15 p-6 sm:p-8 shadow-sm h-full flex flex-col min-h-[500px]">
-                     <h2 className="text-lg font-bold text-gray-900 dark:text-violet-100 mb-6 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
-                        Entry History
-                     </h2>
-
-                     {selectedAudit ? (
-                        <div className="space-y-6">
-                           <div>
-                              <p className="text-lg font-bold text-gray-900 dark:text-violet-100 leading-tight">{selectedAudit.purchaser_name}</p>
-                              <p className="text-xs font-bold text-primary mt-1 flex items-center gap-2">
-                                 #{shortTicketRef(selectedAudit.id, selectedAudit.sequence_number).toUpperCase()}
-                                 <a href={`/ticket/${selectedAudit.id}`} target="_blank" className="text-gray-400 hover:text-primary transition-colors"><ExternalLink className="w-3 h-3" /></a>
-                              </p>
-                           </div>
-
-                           <div className="space-y-6 relative ml-1">
-                              {auditLog.length === 0 ? (
-                                 <div className="text-center py-10 italic text-gray-400 text-sm">No admission history found.</div>
-                              ) : (
-                                 auditLog.map((log, i) => (
-                                    <div key={log.id} className="relative pl-8">
-                                       {i !== auditLog.length - 1 && <div className="absolute left-3 top-5 bottom-0 w-0.5 bg-gray-100 dark:bg-violet-900/40" />}
-                                       <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center z-10">
-                                          <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-500" />
-                                       </div>
-                                       <div>
-                                          <p className="text-sm font-bold text-gray-800 dark:text-violet-200">{log.count} Band{log.count > 1 ? 's' : ''} Issued</p>
-                                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">{log.checked_in_name || "Self"}</p>
-                                          <p className="text-[9px] text-gray-400 dark:text-violet-400/60 mt-1">
-                                             {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })} • {new Date(log.created_at).toLocaleDateString()}
-                                          </p>
-                                       </div>
-                                    </div>
-                                 ))
-                              )}
-                           </div>
-                        </div>
-                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                           <History className="w-12 h-12 text-gray-200 dark:text-violet-900/30 mb-4" />
-                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Select a ticket from search results<br/>to view history</p>
-                        </div>
-                     )}
-                  </div>
+               <div className="mt-8 space-y-4">
+                  {researchResults.map(t => (
+                    <div key={t.id} onClick={() => { setManualInput(t.id); runLookup(t.id); setActiveTab('scanner'); }} className="p-4 bg-gray-50 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-all">
+                       <div><p className="font-bold">{t.purchaser_name}</p><p className="text-xs text-gray-500">Ref: {shortTicketRef(t.id, t.sequence_number).toUpperCase()}</p></div>
+                       <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </div>
+                  ))}
                </div>
             </div>
          </div>
