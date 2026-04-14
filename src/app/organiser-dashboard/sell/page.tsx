@@ -501,7 +501,7 @@ export default function SellTicketsPage() {
                         />
                         
                         {/* Dynamic Content Overlay (White Area) */}
-                        <div className="absolute top-[48.5%] bottom-[5%] left-0 right-0 flex flex-col items-center justify-start pt-6 pb-4 px-6">
+                        <div className="absolute top-[48.5%] bottom-[8%] left-0 right-0 flex flex-col items-center justify-center px-6">
                            
                            {/* Vertical Cost Stub (Right Side) */}
                            <div className="absolute right-1 top-1/2 -translate-y-1/2 origin-right -rotate-90 whitespace-nowrap opacity-30">
@@ -513,36 +513,36 @@ export default function SellTicketsPage() {
                            {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
                               <div className="w-full flex flex-col items-center">
                                  {/* QR Code */}
-                                 <div className="p-2 border-[3px] border-black rounded-sm mb-4 bg-white shadow-sm">
-                                    <QRCode value={saleReceipt.qrPayload} size={120} level="M" />
+                                 <div className="p-1.5 border-[3px] border-black rounded-sm mb-3 bg-white shadow-sm">
+                                    <QRCode value={saleReceipt.qrPayload} size={110} level="M" />
                                  </div>
                                  
-                                 <p className="text-[11px] font-medium text-gray-500 mb-4 tracking-tight">
+                                 <p className="text-[10px] font-medium text-gray-500 mb-3 tracking-tight">
                                     Show this QR at the entrance
                                  </p>
 
                                  {/* Large Bold Quantity */}
-                                 <p className="text-[26px] font-black text-gray-900 mb-4 tracking-tighter uppercase leading-none">
+                                 <p className="text-[24px] font-black text-gray-900 mb-3 tracking-tighter uppercase leading-none">
                                     {saleReceipt.quantity} Ticket(s)
                                  </p>
                                  
                                  {/* Details List */}
-                                 <div className="w-full flex flex-col items-center space-y-1.5 text-[15px] font-medium text-gray-800">
+                                 <div className="w-full flex flex-col items-center space-y-1 text-[14px] font-medium text-gray-800">
                                     <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
                                     <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId).toUpperCase()}</span></p>
                                  </div>
                               </div>
                            ) : (
-                              <div className="w-full flex flex-col items-center pt-8">
-                                 <p className="text-[26px] font-black text-gray-900 mb-6 tracking-tight uppercase leading-none">
+                              <div className="w-full flex flex-col items-center">
+                                 <p className="text-[24px] font-black text-gray-900 mb-5 tracking-tight uppercase leading-none">
                                     {saleReceipt.quantity} Ticket(s)
                                  </p>
-                                 <div className="space-y-2 text-center text-gray-800 text-[15px] mb-8 font-medium">
+                                 <div className="space-y-1.5 text-center text-gray-800 text-[14px] mb-8 font-medium">
                                     <p>Ticket Type : <span className="font-bold text-gray-900">{saleReceipt.passLabel}</span></p>
                                     <p>Ref : <span className="font-bold text-gray-900">{shortTicketRef(saleReceipt.ticketId).toUpperCase()}</span></p>
                                  </div>
                                  <div className="px-5 py-3 bg-pink-50 border border-pink-100 rounded-lg text-center shadow-sm">
-                                    <p className="text-[11px] text-pink-600 font-bold italic">
+                                    <p className="text-[10px] text-pink-600 font-bold italic">
                                        Donation Recorded — No QR required.
                                     </p>
                                  </div>

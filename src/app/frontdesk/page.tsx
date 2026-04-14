@@ -202,6 +202,14 @@ export default function FrontdeskCheckInPage() {
       return;
     }
 
+    if (String(row.status || "").toLowerCase() === "checked_in") {
+      setLookup({ 
+        kind: "error", 
+        message: `This guest (${String(row.purchaser_name || "Guest")}) has already checked in and wristbands have been issued.` 
+      });
+      return;
+    }
+
     let mismatch: string | undefined;
     if (parsed) {
       if (row.type !== parsed.typeId) {
@@ -468,7 +476,9 @@ export default function FrontdeskCheckInPage() {
                                  <AlertOctagon className="w-8 h-8" />
                               </div>
                               <div>
-                                 <h3 className="text-xl font-bold text-gray-900 dark:text-violet-100">Invalid Ticket</h3>
+                                 <h3 className="text-xl font-bold text-gray-900 dark:text-violet-100">
+                                    {lookup.message.toLowerCase().includes("already checked in") ? "Already Checked-In" : "Invalid Ticket"}
+                                 </h3>
                                  <p className="text-gray-500 dark:text-violet-300/80 mt-2">{lookup.message}</p>
                               </div>
                               <button 
