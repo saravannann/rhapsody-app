@@ -592,7 +592,7 @@ function SalesReportContent() {
       </div>
 
       {/* Filters & Search Section */}
-      <div className="bg-white/95 dark:bg-violet-950/20 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-violet-500/20 shadow-xl shadow-purple-500/5 sticky top-16 z-30 transition-all duration-300">
+      <div className="bg-white/95 dark:bg-violet-950/20 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-violet-500/20 shadow-xl shadow-purple-500/5 md:sticky md:top-16 md:z-30 transition-all duration-300">
         <div className="flex flex-col gap-6">
           {/* Top Row: Search & Date */}
           <div className="flex flex-col lg:flex-row gap-4">

@@ -310,7 +310,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-lg sm:text-3xl font-bold text-gray-900 dark:text-violet-100 mb-0.5 tabular-nums break-all">₹{formattedRevenue}</div>
-                <div className="flex items-center gap-1.5 mt-1 sm:mt-1.5 mb-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:mt-1.5 mb-1.5">
                   <div className="flex items-center gap-1 bg-green-50/70 border border-green-100 dark:border-green-500/25 dark:bg-green-950/25 px-1.5 py-0.5 rounded text-[9px] font-bold text-green-700 dark:text-green-400">
                     <span>Trust:</span> <span className="tabular-nums">₹{new Intl.NumberFormat('en-IN').format(metrics.trustRevenue)}</span>
                   </div>

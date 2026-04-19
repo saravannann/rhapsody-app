@@ -97,8 +97,9 @@ export default function SellTicketsPage() {
       const isPhoneValid = hasIndianNationalDigits(formData.phone);
       const isNameValid = !!formData.name.trim();
       const isPocValid = !!formData.poc;
+      const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
 
-      if (!isPhoneValid || !isNameValid || !isPocValid) {
+      if (!isPhoneValid || !isNameValid || !isPocValid || !isTxnValid) {
          setShowErrors(true);
          return;
       }
@@ -879,7 +880,7 @@ export default function SellTicketsPage() {
                                           ? 'bg-red-500 hover:bg-red-600'
                                           : 'bg-violet-600 hover:bg-violet-700'
                                     ) :
-                                       showErrors && (!formData.name || !hasIndianNationalDigits(formData.phone) || !formData.poc)
+                                       showErrors && (!formData.name || !hasIndianNationalDigits(formData.phone) || !formData.poc || (formData.fundsDestination === 'trust' && !formData.txnId.trim()))
                                           ? 'bg-red-500 hover:bg-red-600'
                                           : selectedCategory.btn
                                        }`}
