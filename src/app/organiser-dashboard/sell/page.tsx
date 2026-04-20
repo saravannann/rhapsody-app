@@ -206,11 +206,12 @@ export default function SellTicketsPage() {
                   ref: shortTicketRef(row.id, row.sequence_number),
                   ticketId: row.id,
                });
-               void fetch('/api/send-ticket', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg, templateData })
-               })
+                console.log("Triggering WhatsApp API for:", purchaserPhone);
+                void fetch('/api/send-ticket', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg, templateData })
+                })
                   .then(res => res.json())
                   .then(async data => {
                      if (!data.success) {
@@ -224,14 +225,14 @@ export default function SellTicketsPage() {
                            whatsapp_status: 'failed',
                            whatsapp_error: data.error
                         }).eq('id', row.id);
-                     } else {
+                      } else {
                         console.log("WhatsApp sent!", data.message_id);
-                        if (!currentUser.allRoles.includes("tester")) {
+                        if (!currentUser.allRoles.includes("tester") && row?.id) {
                            await supabase.from("tickets").update({
                               whatsapp_status: 'sent',
                               whatsapp_error: null,
                               last_whatsapp_at: new Date().toISOString()
-                           }).eq('id', (row as any).id);
+                           }).eq('id', row.id);
                         }
                      }
                   })
