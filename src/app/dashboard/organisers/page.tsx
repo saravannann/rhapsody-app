@@ -21,7 +21,7 @@ import {
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { CenteredModal } from "@/components/centered-modal";
-import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
+import { hasNationalDigits, toE164, INDIA_CC } from "@/utils/phone";
 import {
   buildTargetRowsFromProfile,
   soldCountsFromTickets,
@@ -321,7 +321,7 @@ export default function OrganisersPage() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.roles.length === 0) return alert("Please select at least one role!");
-    if (!hasIndianNationalDigits(formData.phone)) {
+    if (!hasNationalDigits(formData.phone)) {
       alert("Enter a phone number.");
       return;
     }
@@ -332,7 +332,7 @@ export default function OrganisersPage() {
       const mockUuid = crypto.randomUUID();
       let phoneE164: string;
       try {
-        phoneE164 = toIndianE164(formData.phone);
+        phoneE164 = toE164(INDIA_CC, formData.phone);
       } catch {
         alert("Enter a valid phone number.");
         setIsSubmitting(false);
@@ -755,7 +755,7 @@ export default function OrganisersPage() {
               <div className="min-h-[1.75rem]">
                  {success && <span className="inline-flex items-center text-xs sm:text-sm font-bold text-accent bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100"><CheckCircle2 className="w-4 h-4 mr-2 shrink-0" /> User saved!</span>}
               </div>
-              <button type="submit" disabled={isSubmitting || !formData.name || !hasIndianNationalDigits(formData.phone)} className="w-full sm:w-auto bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[140px]">
+              <button type="submit" disabled={isSubmitting || !formData.name || !hasNationalDigits(formData.phone)} className="w-full sm:w-auto bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[140px]">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save member"}
               </button>
             </div>

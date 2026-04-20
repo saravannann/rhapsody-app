@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nationalDigitsForIndia, toIndianE164, hasIndianNationalDigits } from './phone';
+import { nationalDigitsForIndia, toE164, hasNationalDigits, INDIA_CC } from './phone';
 
 describe('phone utils', () => {
   describe('nationalDigitsForIndia', () => {
@@ -24,29 +24,29 @@ describe('phone utils', () => {
     });
   });
 
-  describe('toIndianE164', () => {
-    it('should prepend +91', () => {
-      expect(toIndianE164('9876543210')).toBe('+919876543210');
+  describe('toE164', () => {
+    it('should prepend +91 for India', () => {
+      expect(toE164(INDIA_CC, '9876543210')).toBe('+919876543210');
     });
 
     it('should throw Error if input results in empty digits', () => {
-      expect(() => toIndianE164('')).toThrow('Phone number is required');
-      expect(() => toIndianE164('abc')).toThrow('Phone number is required');
+      expect(() => toE164(INDIA_CC, '')).toThrow('Phone number is required');
+      expect(() => toE164(INDIA_CC, 'abc')).toThrow('Phone number is required');
     });
   });
 
-  describe('hasIndianNationalDigits', () => {
-    it('should return true for valid 10 digits', () => {
-      expect(hasIndianNationalDigits('9876543210')).toBe(true);
+  describe('hasNationalDigits', () => {
+    it('should return true for valid digits', () => {
+      expect(hasNationalDigits('9876543210')).toBe(true);
     });
 
     it('should return true even for partial digits', () => {
-      expect(hasIndianNationalDigits('987')).toBe(true);
+      expect(hasNationalDigits('987')).toBe(true);
     });
 
     it('should return false for no digits', () => {
-      expect(hasIndianNationalDigits('abc')).toBe(false);
-      expect(hasIndianNationalDigits('')).toBe(false);
+      expect(hasNationalDigits('abc')).toBe(false);
+      expect(hasNationalDigits('')).toBe(false);
     });
   });
 });

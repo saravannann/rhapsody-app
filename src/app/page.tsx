@@ -9,10 +9,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import {
-  hasIndianNationalDigits,
-  indianPhoneLookupVariants,
+  hasNationalDigits,
+  phoneLookupVariants,
   nationalDigitsForIndia,
-  toIndianE164,
+  toE164,
+  INDIA_CC,
 } from "@/utils/phone";
 
 export default function LoginPage() {
@@ -43,13 +44,13 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      if (!hasIndianNationalDigits(phoneDigits)) {
+      if (!hasNationalDigits(phoneDigits)) {
         alert("Enter your phone number.");
         setIsLoading(false);
         return;
       }
 
-      const keys = indianPhoneLookupVariants(phoneDigits);
+      const keys = phoneLookupVariants(INDIA_CC, phoneDigits);
       const { data: rows } = await supabase
         .from('profiles')
         .select('name, roles, password, phone')
@@ -62,7 +63,7 @@ export default function LoginPage() {
         const storedPhone =
           profile.phone && String(profile.phone).startsWith("+91")
             ? String(profile.phone)
-            : toIndianE164(nationalDigitsForIndia(phoneDigits));
+            : toE164(INDIA_CC, nationalDigitsForIndia(phoneDigits));
         localStorage.setItem('rhapsody_user', profile.name || 'User');
         localStorage.setItem('rhapsody_phone', storedPhone);
         const pr = profile as { roles?: unknown; role?: unknown };
@@ -172,7 +173,7 @@ export default function LoginPage() {
             
             <button
               onClick={handleLogin}
-              disabled={isLoading || !hasIndianNationalDigits(phoneDigits) || !password}
+              disabled={isLoading || !hasNationalDigits(phoneDigits) || !password}
               className="w-full flex items-center justify-center bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-primary text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-pink-500/30 transition-all active:scale-[0.98] disabled:opacity-80 disabled:cursor-not-allowed"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Login"}

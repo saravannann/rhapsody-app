@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import QRCode from "react-qr-code";
-import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon } from "lucide-react";
+import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon, Contact } from "lucide-react";
 import { supabase } from "@/utils/supabase";
-import { IndianMobileInput } from "@/components/indian-mobile-input";
-import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
+import { InternationalMobileInput } from "@/components/international-mobile-input";
+import { hasNationalDigits, toE164, parsePhoneFromContact, INDIA_CC } from "@/utils/phone";
 import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
 import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl, buildTicketTemplateData } from "@/utils/whatsapp-ticket";
 import * as XLSX from "xlsx";
@@ -45,6 +45,7 @@ export default function SellTicketsPage() {
    const [formData, setFormData] = useState({
       name: '',
       phone: '',
+      countryCode: INDIA_CC,
       email: '',
       poc: '',
       qty: 1,
@@ -95,7 +96,7 @@ export default function SellTicketsPage() {
    const handleCheckout = async (e: React.FormEvent) => {
       e.preventDefault();
 
-      const isPhoneValid = hasIndianNationalDigits(formData.phone);
+      const isPhoneValid = hasNationalDigits(formData.phone);
       const isNameValid = !!formData.name.trim();
       const isPocValid = !!formData.poc;
       const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
@@ -112,7 +113,7 @@ export default function SellTicketsPage() {
       try {
          let purchaserPhone: string;
          try {
-            purchaserPhone = toIndianE164(formData.phone);
+            purchaserPhone = toE164(formData.countryCode, formData.phone);
          } catch {
             alert("Enter a valid phone number.");
             setIsSubmitting(false);
@@ -220,7 +221,7 @@ export default function SellTicketsPage() {
             }).eq('id', row.id);
          }
 
-         setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "", whatsappOptIn: true });
+         setFormData({ name: "", phone: "", countryCode: INDIA_CC, email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "", whatsappOptIn: true });
 
       } catch (err: unknown) {
          console.error("Error selling ticket:", err);
@@ -335,14 +336,15 @@ export default function SellTicketsPage() {
             setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid category ("${originalCat}")`] } : null);
             continue;
          }
-         try {
-            let phone: string;
             try {
-               phone = toIndianE164(person.phone);
-            } catch {
-               setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid phone`] } : null);
-               continue;
-            }
+               let phone: string;
+               try {
+                  const p = parsePhoneFromContact(person.phone);
+                  phone = toE164(p.countryCode, p.nationalDigits);
+               } catch {
+                  setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid phone`] } : null);
+                  continue;
+               }
 
             const { data: massRow, error } = await supabase.from("tickets").insert({
                type: person.type,
@@ -428,7 +430,7 @@ export default function SellTicketsPage() {
          setMassData([]);
          setMassStatus(null);
          setSellMode('individual');
-         setFormData(prev => ({ ...prev, txnId: '', whatsappOptIn: true }));
+         setFormData(prev => ({ ...prev, txnId: '', countryCode: INDIA_CC, whatsappOptIn: true }));
       }
    };
 
@@ -728,7 +730,39 @@ export default function SellTicketsPage() {
                                  /* Individual Mode Fields */
                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                     <div>
-                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Purchaser name</label>
+                                        <div className="flex justify-between items-center mb-1 ml-1">
+                                           <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest">Purchaser name</label>
+                                           {typeof navigator !== 'undefined' && 'contacts' in navigator && (
+                                              <button
+                                                 type="button"
+                                                 onClick={async () => {
+                                                    try {
+                                                       const props = ['name', 'tel'];
+                                                       const opts = { multiple: false };
+                                                       // @ts-ignore
+                                                       const contacts = await (navigator.contacts as any).select(props, opts);
+                                                       if (contacts && contacts[0]) {
+                                                          const contact = contacts[0];
+                                                          const name = contact.name?.[0] || "";
+                                                          const rawTel = contact.tel?.[0] || "";
+                                                          if (rawTel) {
+                                                             const { countryCode, nationalDigits } = parsePhoneFromContact(rawTel);
+                                                             setFormData(prev => ({ ...prev, name: name || prev.name, phone: nationalDigits, countryCode }));
+                                                          } else if (name) {
+                                                             setFormData(prev => ({ ...prev, name }));
+                                                          }
+                                                       }
+                                                    } catch (err) {
+                                                       console.error("Contact Pick Error:", err);
+                                                    }
+                                                 }}
+                                                 className="flex items-center gap-1 text-[9px] font-bold text-primary hover:text-pink-600 uppercase tracking-tight transition-colors group"
+                                              >
+                                                 <Contact className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                                                 Import Contact
+                                              </button>
+                                           )}
+                                        </div>
                                        <div className="relative">
                                           <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors pointer-events-none ${showErrors && !formData.name ? 'text-red-500' : 'text-gray-400 dark:text-violet-400/60'}`} />
                                           <input
@@ -747,19 +781,20 @@ export default function SellTicketsPage() {
                                     </div>
                                     <div>
                                        <label className="block text-[10px] font-bold text-gray-500 dark:text-violet-300/70 uppercase tracking-widest mb-1 ml-1">Phone</label>
-                                       <IndianMobileInput
+                                       <InternationalMobileInput
                                           LeftIcon={Phone}
-                                          value={formData.phone}
-                                          onChange={(digits) => setFormData({ ...formData, phone: digits })}
-                                          className={`${showErrors && !hasIndianNationalDigits(formData.phone) ? 'border-red-500 ring-red-500/10' : 'border-gray-100 dark:border-violet-500/20'} bg-[#f8fafc] dark:bg-violet-950/25 shadow-sm transition-all`}
-                                          prefixClassName={`transition-colors ${showErrors && !hasIndianNationalDigits(formData.phone) ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-950/30' : 'bg-[#f0f4f8] border-gray-100 text-gray-700 dark:bg-violet-950/50 dark:border-violet-500/25 dark:text-violet-200'}`}
-                                          inputClassName="font-bold text-gray-900 dark:text-violet-100"
-                                       />
-                                       {showErrors && !hasIndianNationalDigits(formData.phone) ? (
-                                          <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Enter valid mobile number</p>
-                                       ) : (
-                                          <p className="text-[10px] text-gray-400 dark:text-violet-400/55 mt-1 ml-1">India (+91)</p>
-                                       )}
+                                           countryCode={formData.countryCode}
+                                           nationalDigits={formData.phone}
+                                           onDigitsChange={(digits) => setFormData({ ...formData, phone: digits })}
+                                           onCountryCodeChange={(cc) => setFormData({ ...formData, countryCode: cc })}
+                                           className={`${showErrors && !hasNationalDigits(formData.phone) ? 'border-red-500 ring-red-500/10' : 'border-gray-100 dark:border-violet-500/20'}`}
+                                           placeholder="Enter mobile number"
+                                        />
+                                        {showErrors && !hasNationalDigits(formData.phone) ? (
+                                           <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Enter valid mobile number</p>
+                                        ) : (
+                                           <p className="text-[10px] text-gray-400 dark:text-violet-400/55 mt-1 ml-1">Supported: IN (+91), US/CA (+1)</p>
+                                        )}
                                     </div>
                                  </div>
                               )}
@@ -932,7 +967,7 @@ export default function SellTicketsPage() {
                                           ? 'bg-red-500 hover:bg-red-600'
                                           : 'bg-violet-600 hover:bg-violet-700'
                                     ) :
-                                       showErrors && (!formData.name || !hasIndianNationalDigits(formData.phone) || !formData.poc || (formData.fundsDestination === 'trust' && !formData.txnId.trim()))
+                                       showErrors && (!formData.name || !hasNationalDigits(formData.phone) || !formData.poc || (formData.fundsDestination === 'trust' && !formData.txnId.trim()))
                                           ? 'bg-red-500 hover:bg-red-600'
                                           : selectedCategory.btn
                                        }`}
