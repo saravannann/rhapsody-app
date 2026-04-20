@@ -78,7 +78,9 @@ export default function LoginPage() {
             ? 'organiser'
             : roles.includes('front_desk')
               ? 'front_desk'
-              : 'organiser';
+              : roles.includes('tester')
+                ? 'tester'
+                : 'organiser';
         localStorage.setItem('rhapsody_role', resolvedRole);
         localStorage.setItem('rhapsody_all_roles', JSON.stringify(roles));
 

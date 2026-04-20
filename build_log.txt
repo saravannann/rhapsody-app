@@ -1,0 +1,41 @@
+
+> rhapsody-app@0.1.0 build
+> next build
+
+▲ Next.js 16.2.3 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1998ms
+  Running TypeScript ...
+  Finished TypeScript in 2.7s ...
+  Collecting page data using 13 workers ...
+  Generating static pages using 13 workers (0/17) ...
+  Generating static pages using 13 workers (4/17) 
+  Generating static pages using 13 workers (8/17) 
+  Generating static pages using 13 workers (12/17) 
+✓ Generating static pages using 13 workers (17/17) in 225ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/send-ticket
+├ ○ /dashboard
+├ ○ /dashboard/notifications
+├ ○ /dashboard/organisers
+├ ○ /dashboard/sales
+├ ○ /dashboard/sell
+├ ○ /dashboard/settings
+├ ○ /frontdesk
+├ ○ /frontdesk/settings
+├ ○ /organiser-dashboard
+├ ○ /organiser-dashboard/sales
+├ ○ /organiser-dashboard/sell
+├ ○ /organiser-dashboard/settings
+└ ƒ /ticket/[id]
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

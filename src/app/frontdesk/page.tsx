@@ -176,7 +176,7 @@ export default function FrontdeskCheckInPage() {
         const status = String(t.status || "").toLowerCase();
         const isDonor = type.includes("donor");
         
-        if (status !== "cancelled" && !isDonor) {
+        if (status !== "cancelled" && status !== "test" && !isDonor) {
           scannableTotal += q;
           if (status === "checked_in" || (t.checked_in_count || 0) > 0) {
             checkedInTotal += (t.checked_in_count || 0);

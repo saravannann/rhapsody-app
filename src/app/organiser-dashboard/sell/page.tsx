@@ -31,6 +31,7 @@ type SaleReceipt = {
    purchaserName: string;
    purchaserPhoneE164: string;
    sequence_number?: number | null;
+   isTest?: boolean;
 };
 
 const CATEGORIES: Category[] = [
@@ -58,7 +59,7 @@ export default function SellTicketsPage() {
    const [showErrors, setShowErrors] = useState(false);
    const [saleReceipt, setSaleReceipt] = useState<SaleReceipt | null>(null);
    const [organisers, setOrganisers] = useState<{ id: string; name: string }[]>([]);
-   const [currentUser, setCurrentUser] = useState({ name: '', role: '' });
+   const [currentUser, setCurrentUser] = useState({ name: '', role: '', allRoles: [] as string[] });
    const [appOrigin, setAppOrigin] = useState("");
    const [sellMode, setSellMode] = useState<'individual' | 'mass'>('individual');
    const [massFile, setMassFile] = useState<File | null>(null);
@@ -82,7 +83,15 @@ export default function SellTicketsPage() {
    useEffect(() => {
       const savedName = localStorage.getItem('rhapsody_user') || 'User';
       const savedRole = localStorage.getItem('rhapsody_role') || 'organiser';
-      setCurrentUser({ name: savedName, role: savedRole });
+      const savedAllRolesStr = localStorage.getItem('rhapsody_all_roles') || '[]';
+      let savedAllRoles: string[] = [];
+      try {
+         savedAllRoles = JSON.parse(savedAllRolesStr);
+      } catch {
+         savedAllRoles = [savedRole];
+      }
+
+      setCurrentUser({ name: savedName, role: savedRole, allRoles: savedAllRoles });
 
       if (savedRole !== 'admin') {
          setFormData(prev => ({ ...prev, poc: savedName }));
@@ -131,7 +140,7 @@ export default function SellTicketsPage() {
                type: typeId,
                price: price,
                quantity: qty,
-               status: "booked",
+               status: currentUser.allRoles.includes("tester") ? "test" : "booked",
                purchaser_name: formData.name,
                purchaser_phone: purchaserPhone,
                sold_by: formData.poc,
@@ -160,6 +169,7 @@ export default function SellTicketsPage() {
             purchaserName: formData.name.trim(),
             purchaserPhoneE164: purchaserPhone,
             sequence_number: row.sequence_number,
+            isTest: currentUser.allRoles.includes("tester"),
          };
 
          setSaleReceipt(receipt);
@@ -585,6 +595,14 @@ export default function SellTicketsPage() {
                                     <p className="text-[10px] text-pink-600 font-bold italic">
                                        Donation Recorded — No QR required.
                                     </p>
+                                 </div>
+                              </div>
+                           )}
+
+                           {saleReceipt.isTest && (
+                              <div className="absolute top-[20%] left-0 right-0 z-20 pointer-events-none overflow-hidden h-full">
+                                 <div className="w-[150%] py-2 bg-red-600/90 text-white text-[12px] font-black font-sans uppercase tracking-[0.2em] text-center -rotate-45 -translate-x-1/4 translate-y-8 shadow-lg border-y border-white/20">
+                                    TEST TICKET — NOT FOR ENTRY
                                  </div>
                               </div>
                            )}

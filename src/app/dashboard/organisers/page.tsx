@@ -61,11 +61,12 @@ interface OrgUser {
   targets: Target[];
 }
 
-const ROLE_DISPLAY_ORDER = ["admin", "organiser", "front_desk"] as const;
+const ROLE_DISPLAY_ORDER = ["admin", "organiser", "front_desk", "tester"] as const;
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
   organiser: "Organiser",
   front_desk: "Front Desk",
+  tester: "Tester",
 };
 
 /** Stable keys for role chips (raw role id when available). */
@@ -89,6 +90,7 @@ function canonicalRoleSlugs(roles: string[]): string[] {
     if (low === "admin") key = "admin";
     else if (low === "organiser" || low === "organizer") key = "organiser";
     else if (low === "front_desk" || low === "front desk") key = "front_desk";
+    else if (low === "tester") key = "tester";
     const dedup = key.toLowerCase();
     if (seen.has(dedup)) continue;
     seen.add(dedup);
@@ -153,6 +155,22 @@ function RoleChecklist({
         />
         <span className="text-sm font-bold text-gray-700 dark:text-violet-200">
           Front Desk <span className="font-normal text-gray-500 dark:text-violet-400/70">(Scanner Only)</span>
+        </span>
+      </label>
+      <label className="flex cursor-pointer items-center gap-3 group">
+        <div
+          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${selected.includes("tester") ? "border-primary bg-primary" : "border-pink-200 bg-[#fdfaff] group-hover:border-primary"}`}
+        >
+          {selected.includes("tester") && <CheckCircle2 className="h-3 w-3 text-white" />}
+        </div>
+        <input
+          type="checkbox"
+          className="hidden"
+          checked={selected.includes("tester")}
+          onChange={() => onToggle("tester")}
+        />
+        <span className="text-sm font-bold text-gray-700 dark:text-violet-200">
+          Tester <span className="font-normal text-gray-500 dark:text-violet-400/70">(Simulated Sales)</span>
         </span>
       </label>
     </div>
