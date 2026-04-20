@@ -63,7 +63,7 @@ export default function SellTicketsPage() {
    const [massFile, setMassFile] = useState<File | null>(null);
    const [massData, setMassData] = useState<{ name: string, phone: string, qty: number, type: string, price: number }[]>([]);
    const [massStatus, setMassStatus] = useState<{ total: number, sent: number, totalQty: number, errors: string[] } | null>(null);
-   
+
    const massSplit = useMemo(() => {
       const split: Record<string, number> = {};
       massData.forEach(p => {
@@ -161,58 +161,58 @@ export default function SellTicketsPage() {
             sequence_number: row.sequence_number,
          };
 
-          setSaleReceipt(receipt);
+         setSaleReceipt(receipt);
 
-          // Automated WhatsApp background trigger
-          if (formData.whatsappOptIn) {
-             try {
-                const ticketUrl = `${window.location.origin}/ticket/${row.id}`;
-                const msg = buildTicketWhatsAppMessage({
-                   purchaserName: formData.name.trim(),
-                   passLabel,
-                   quantity: qty,
-                   totalInr: lineTotal,
-                   ref: shortTicketRef(row.id, row.sequence_number),
-                   ticketPageUrl: ticketUrl,
-                });
-                void fetch('/api/send-ticket', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg })
-                })
-                .then(res => res.json())
-                .then(async data => {
-                   if (!data.success) {
-                      console.error("WhatsApp Error:", data.error);
-                      await supabase.from("tickets").update({ 
-                         whatsapp_status: 'failed', 
-                         whatsapp_error: data.error 
-                      }).eq('id', row.id);
-                                          const isSandboxError = data.code === 131030;
-                       const alertMsg = isSandboxError 
-                         ? `WhatsApp Sandbox Error: ${data.error}`
-                         : `WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`;
-                       alert(alertMsg);
-                   } else {
-                      console.log("WhatsApp sent!", data.message_id);
-                      await supabase.from("tickets").update({ 
-                         whatsapp_status: 'sent', 
-                         whatsapp_error: null,
-                         last_whatsapp_at: new Date().toISOString()
-                      }).eq('id', row.id);
-                   }
-                })
-             } catch (waErr) {
-                console.error("WA Prep Fail:", waErr);
-             }
-          } else {
-             await supabase.from("tickets").update({ 
-                 whatsapp_status: 'not_sent', 
-                 whatsapp_error: 'Opt-out selected' 
-             }).eq('id', row.id);
-          }
+         // Automated WhatsApp background trigger
+         if (formData.whatsappOptIn) {
+            try {
+               const ticketUrl = `${window.location.origin}/ticket/${row.id}`;
+               const msg = buildTicketWhatsAppMessage({
+                  purchaserName: formData.name.trim(),
+                  passLabel,
+                  quantity: qty,
+                  totalInr: lineTotal,
+                  ref: shortTicketRef(row.id, row.sequence_number),
+                  ticketPageUrl: ticketUrl,
+               });
+               void fetch('/api/send-ticket', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg })
+               })
+                  .then(res => res.json())
+                  .then(async data => {
+                     if (!data.success) {
+                        console.error("WhatsApp Error:", data.error);
+                        await supabase.from("tickets").update({
+                           whatsapp_status: 'failed',
+                           whatsapp_error: data.error
+                        }).eq('id', row.id);
+                        const isSandboxError = data.code === 131030;
+                        const alertMsg = isSandboxError
+                           ? `WhatsApp Sandbox Error: ${data.error}`
+                           : `WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`;
+                        alert(alertMsg);
+                     } else {
+                        console.log("WhatsApp sent!", data.message_id);
+                        await supabase.from("tickets").update({
+                           whatsapp_status: 'sent',
+                           whatsapp_error: null,
+                           last_whatsapp_at: new Date().toISOString()
+                        }).eq('id', row.id);
+                     }
+                  })
+            } catch (waErr) {
+               console.error("WA Prep Fail:", waErr);
+            }
+         } else {
+            await supabase.from("tickets").update({
+               whatsapp_status: 'not_sent',
+               whatsapp_error: 'Opt-out selected'
+            }).eq('id', row.id);
+         }
 
-          setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "", whatsappOptIn: true });
+         setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "", whatsappOptIn: true });
 
       } catch (err: unknown) {
          console.error("Error selling ticket:", err);
@@ -311,7 +311,7 @@ export default function SellTicketsPage() {
       const isVolumeValid = totalQty >= 30;
 
       const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
-      
+
       if (!isFileValid || !isPocValid || !isVolumeValid || !isTxnValid) {
          setShowErrors(true);
          return;
@@ -368,32 +368,32 @@ export default function SellTicketsPage() {
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({ phone, ticketContent: message })
                   })
-                  .then(res => res.json())
-                  .then(async d => {
-                     if (!d.success) {
-                                              const isSandboxError = d.code === 131030;
-                         console.error(isSandboxError ? "WhatsApp Sandbox Error:" : "Mass WhatsApp Fail:", d.error);
-                        await supabase.from("tickets").update({ 
-                           whatsapp_status: 'failed', 
-                           whatsapp_error: d.error 
-                        }).eq('id', massRow?.id);
-                     } else {
-                        console.log("Mass WhatsApp Sent:", d.message_id);
-                        await supabase.from("tickets").update({ 
-                           whatsapp_status: 'sent', 
-                           whatsapp_error: null,
-                           last_whatsapp_at: new Date().toISOString()
-                        }).eq('id', massRow?.id);
-                     }
-                  })
-                  .catch(e => console.error("WhatsApp Mass Network Fail:", e));
+                     .then(res => res.json())
+                     .then(async d => {
+                        if (!d.success) {
+                           const isSandboxError = d.code === 131030;
+                           console.error(isSandboxError ? "WhatsApp Sandbox Error:" : "Mass WhatsApp Fail:", d.error);
+                           await supabase.from("tickets").update({
+                              whatsapp_status: 'failed',
+                              whatsapp_error: d.error
+                           }).eq('id', massRow?.id);
+                        } else {
+                           console.log("Mass WhatsApp Sent:", d.message_id);
+                           await supabase.from("tickets").update({
+                              whatsapp_status: 'sent',
+                              whatsapp_error: null,
+                              last_whatsapp_at: new Date().toISOString()
+                           }).eq('id', massRow?.id);
+                        }
+                     })
+                     .catch(e => console.error("WhatsApp Mass Network Fail:", e));
                } catch (waErr) {
                   console.error("WA Mass Prep Fail:", waErr);
                }
             } else {
-               await supabase.from("tickets").update({ 
-                   whatsapp_status: 'not_sent', 
-                   whatsapp_error: 'Opt-out selected' 
+               await supabase.from("tickets").update({
+                  whatsapp_status: 'not_sent',
+                  whatsapp_error: 'Opt-out selected'
                }).eq('id', massRow?.id);
             }
 
@@ -517,17 +517,17 @@ export default function SellTicketsPage() {
                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 mb-6">Sale recorded successfully!</h2>                     {/* Render exact Ticket UI inline */}
                      <div className="w-full max-w-[340px] aspect-[9/16] bg-white shadow-2xl relative overflow-hidden mx-auto rounded-lg">
                         {/* Master Template Background */}
-                        <Image 
-                           src="/ticket-template.jpg" 
-                           alt="Ticket Template" 
-                           fill 
+                        <Image
+                           src="/ticket-template.jpg"
+                           alt="Ticket Template"
+                           fill
                            className="object-cover pointer-events-none"
                            priority
                         />
-                        
+
                         {/* Dynamic Content Overlay (White Area) */}
                         <div className="absolute top-[48.5%] bottom-[8%] left-0 right-0 flex flex-col items-center justify-center px-6">
-                           
+
 
 
                            {saleReceipt.passLabel !== 'Donor Pass' && saleReceipt.passLabel !== 'Donor' ? (
@@ -536,7 +536,7 @@ export default function SellTicketsPage() {
                                  <div className="p-1.5 border-[3px] border-black rounded-sm mb-3 bg-white shadow-sm">
                                     <QRCode value={saleReceipt.qrPayload} size={110} level="M" />
                                  </div>
-                                 
+
                                  <p className="text-[10px] font-medium text-gray-500 mb-3 tracking-tight">
                                     Show this QR at the entrance
                                  </p>
@@ -545,7 +545,7 @@ export default function SellTicketsPage() {
                                  <p className="text-[24px] font-black text-gray-900 mb-3 tracking-tighter uppercase leading-none">
                                     {saleReceipt.quantity} Ticket(s)
                                  </p>
-                                 
+
                                  {/* Details List */}
                                  <div className="w-full flex flex-col items-center space-y-1 text-[14px] font-medium text-gray-800">
                                     <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
@@ -675,7 +675,7 @@ export default function SellTicketsPage() {
                                                    <Users className="w-3 h-3 text-emerald-600" />
                                                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">{massData.length} Recipients</p>
                                                 </div>
-                                                
+
                                                 <div className="flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-500/20 px-2.5 py-1 rounded-lg">
                                                    <Ticket className="w-3 h-3 text-violet-600" />
                                                    <p className="text-[10px] text-violet-600 font-bold uppercase tracking-tight">Total: {massData.reduce((s, i) => s + i.qty, 0)}</p>
@@ -899,10 +899,10 @@ export default function SellTicketsPage() {
                                  </div>
                                  <div className="flex flex-col">
                                     <span className="text-sm font-bold text-gray-700 dark:text-violet-200">
-                                       Send ticket via WhatsApp
+                                       I agree to receive the ticket via Whatsapp
                                     </span>
                                     <span className="text-[10px] text-gray-400 dark:text-violet-400/60">
-                                       Uncheck to skip if the patron prefers SMS/Email (manual sharing required).
+                                       Uncheck to skip this.
                                     </span>
                                  </div>
                               </label>
@@ -945,7 +945,7 @@ export default function SellTicketsPage() {
                      {/* Summary — sticky on large screens */}
                      <div className="space-y-3 lg:sticky lg:top-20 lg:self-start">
                         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 overflow-hidden relative">
-                                 <div className={`absolute top-0 right-0 p-3 opacity-5`}>
+                           <div className={`absolute top-0 right-0 p-3 opacity-5`}>
                               <IndianRupee className="w-16 h-16 sm:w-20 sm:h-20" />
                            </div>
                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-50 pb-2">Order summary</h3>
