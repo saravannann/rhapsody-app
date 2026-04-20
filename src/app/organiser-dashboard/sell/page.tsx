@@ -134,24 +134,36 @@ export default function SellTicketsPage() {
          const price = selectedCategory?.price || 0;
          const lineTotal = price * qty;
 
-         const { data: row, error } = await supabase
-            .from("tickets")
-            .insert({
-               type: typeId,
-               price: price,
-               quantity: qty,
-               status: currentUser.allRoles.includes("tester") ? "test" : "booked",
-               purchaser_name: formData.name,
-               purchaser_phone: purchaserPhone,
-               sold_by: formData.poc,
-               funds_destination: formData.fundsDestination,
-               bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
-               whatsapp_opt_in: formData.whatsappOptIn,
-            })
-            .select("id, sequence_number")
-            .single();
+         let row: { id: string; sequence_number: number | null } | null = null;
 
-         if (error) throw error;
+         if (currentUser.allRoles.includes("tester")) {
+            // Mock insert for testers
+            row = {
+               id: crypto.randomUUID(),
+               sequence_number: 0,
+            };
+         } else {
+            const { data, error } = await supabase
+               .from("tickets")
+               .insert({
+                  type: typeId,
+                  price: price,
+                  quantity: qty,
+                  status: "booked",
+                  purchaser_name: formData.name,
+                  purchaser_phone: purchaserPhone,
+                  sold_by: formData.poc,
+                  funds_destination: formData.fundsDestination,
+                  bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
+                  whatsapp_opt_in: formData.whatsappOptIn,
+               })
+               .select("id, sequence_number")
+               .single();
+
+            if (error) throw error;
+            row = data;
+         }
+
          if (!row?.id) throw new Error("No ticket id returned");
 
          const qrPayload = buildTicketQrPayload({
@@ -202,29 +214,31 @@ export default function SellTicketsPage() {
                   .then(res => res.json())
                   .then(async data => {
                      if (!data.success) {
-                        console.error("WhatsApp Error:", data.error);
-                        await supabase.from("tickets").update({
-                           whatsapp_status: 'failed',
-                           whatsapp_error: data.error
-                        }).eq('id', row.id);
                         const isSandboxError = data.code === 131030;
                         const alertMsg = isSandboxError
                            ? `WhatsApp Sandbox Error: ${data.error}`
                            : `WhatsApp Fail: ${data.error}\n\nCheck your terminal for full details.`;
                         alert(alertMsg);
+                        console.error("WhatsApp Error:", data.error);
+                        await supabase.from("tickets").update({
+                           whatsapp_status: 'failed',
+                           whatsapp_error: data.error
+                        }).eq('id', row.id);
                      } else {
                         console.log("WhatsApp sent!", data.message_id);
-                        await supabase.from("tickets").update({
-                           whatsapp_status: 'sent',
-                           whatsapp_error: null,
-                           last_whatsapp_at: new Date().toISOString()
-                        }).eq('id', row.id);
+                        if (!currentUser.allRoles.includes("tester")) {
+                           await supabase.from("tickets").update({
+                              whatsapp_status: 'sent',
+                              whatsapp_error: null,
+                              last_whatsapp_at: new Date().toISOString()
+                           }).eq('id', (row as any).id);
+                        }
                      }
                   })
             } catch (waErr) {
                console.error("WA Prep Fail:", waErr);
             }
-         } else {
+         } else if (!currentUser.allRoles.includes("tester")) {
             await supabase.from("tickets").update({
                whatsapp_status: 'not_sent',
                whatsapp_error: 'Opt-out selected'
@@ -356,20 +370,29 @@ export default function SellTicketsPage() {
                   continue;
                }
 
-            const { data: massRow, error } = await supabase.from("tickets").insert({
-               type: person.type,
-               price: person.price,
-               quantity: person.qty,
-               status: "booked",
-               purchaser_name: person.name,
-               purchaser_phone: phone,
-               sold_by: formData.poc,
-               funds_destination: formData.fundsDestination,
-               bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
-               whatsapp_opt_in: formData.whatsappOptIn,
-            }).select("id, sequence_number").single();
+            let massRow: { id: string; sequence_number: number | null } | null = null;
+            if (currentUser.allRoles.includes("tester")) {
+               massRow = {
+                  id: crypto.randomUUID(),
+                  sequence_number: 0,
+               };
+            } else {
+               const { data, error } = await supabase.from("tickets").insert({
+                  type: person.type,
+                  price: person.price,
+                  quantity: person.qty,
+                  status: "booked",
+                  purchaser_name: person.name,
+                  purchaser_phone: phone,
+                  sold_by: formData.poc,
+                  funds_destination: formData.fundsDestination,
+                  bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
+                  whatsapp_opt_in: formData.whatsappOptIn,
+               }).select("id, sequence_number").single();
 
-            if (error) throw error;
+               if (error) throw error;
+               massRow = data;
+            }
 
             // Trigger WhatsApp for mass issuance
             if (formData.whatsappOptIn) {
@@ -407,18 +430,20 @@ export default function SellTicketsPage() {
                            }).eq('id', massRow?.id);
                         } else {
                            console.log("Mass WhatsApp Sent:", d.message_id);
-                           await supabase.from("tickets").update({
-                              whatsapp_status: 'sent',
-                              whatsapp_error: null,
-                              last_whatsapp_at: new Date().toISOString()
-                           }).eq('id', massRow?.id);
+                           if (!currentUser.allRoles.includes("tester")) {
+                              await supabase.from("tickets").update({
+                                 whatsapp_status: 'sent',
+                                 whatsapp_error: null,
+                                 last_whatsapp_at: new Date().toISOString()
+                              }).eq('id', massRow?.id);
+                           }
                         }
                      })
                      .catch(e => console.error("WhatsApp Mass Network Fail:", e));
                } catch (waErr) {
                   console.error("WA Mass Prep Fail:", waErr);
                }
-            } else {
+            } else if (!currentUser.allRoles.includes("tester")) {
                await supabase.from("tickets").update({
                   whatsapp_status: 'not_sent',
                   whatsapp_error: 'Opt-out selected'
