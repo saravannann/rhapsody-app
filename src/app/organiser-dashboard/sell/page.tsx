@@ -685,8 +685,8 @@ export default function SellTicketsPage() {
 
                      {/* Form + summary */}
                      <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-                        <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
-                           <div className="p-4 sm:p-5 border-b border-gray-50 dark:border-violet-500/12 flex justify-between items-center bg-[#fdfaff] dark:bg-violet-950/30">
+                        <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
+                           <div className="p-4 sm:p-5 border-b border-gray-50 dark:border-violet-500/12 flex justify-between items-center bg-[#fdfaff] dark:bg-violet-950/30 rounded-t-xl sm:rounded-t-2xl">
                               <div>
                                  <h2 className={`text-lg sm:text-xl font-bold ${selectedCategory.color}`}>{sellMode === 'mass' ? 'Mass Ticket Issuance' : selectedCategory.name}</h2>
                                  <p className="text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest mt-0.5">{sellMode === 'mass' ? 'Bulk Export' : 'Details'}</p>
