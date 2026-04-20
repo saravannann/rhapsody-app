@@ -25,16 +25,21 @@ export function buildTicketTemplateData(params: {
   const isDonor = params.passLabel.toLowerCase().includes("donor");
   const templateName = isDonor ? "donor_ticket_v2" : "regular_ticket_v2";
 
+  const parameters: { type: string; text: string }[] = [
+    { type: "text", text: name },
+    { type: "text", text: params.passLabel },
+    { type: "text", text: params.quantity.toString() },
+    { type: "text", text: params.ref.toUpperCase() },
+    { type: "text", text: params.totalInr.toLocaleString("en-IN") }
+  ];
+
+  if (!isDonor) {
+    parameters.push({ type: "text", text: params.ticketId });
+  }
+
   return {
     templateName,
-    parameters: [
-      { type: "text", text: name },
-      { type: "text", text: params.passLabel },
-      { type: "text", text: params.quantity.toString() },
-      { type: "text", text: params.ref.toUpperCase() },
-      { type: "text", text: params.totalInr.toLocaleString("en-IN") },
-      { type: "text", text: params.ticketId }
-    ]
+    parameters
   };
 }
 
