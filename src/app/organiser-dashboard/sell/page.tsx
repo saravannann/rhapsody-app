@@ -8,7 +8,7 @@ import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
 import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
-import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl } from "@/utils/whatsapp-ticket";
+import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl, buildTicketTemplateData } from "@/utils/whatsapp-ticket";
 import * as XLSX from "xlsx";
 
 interface Category {
@@ -175,10 +175,18 @@ export default function SellTicketsPage() {
                   ref: shortTicketRef(row.id, row.sequence_number),
                   ticketPageUrl: ticketUrl,
                });
+               const templateData = buildTicketTemplateData({
+                  purchaserName: formData.name.trim(),
+                  passLabel,
+                  quantity: qty,
+                  totalInr: lineTotal,
+                  ref: shortTicketRef(row.id, row.sequence_number),
+                  ticketId: row.id,
+               });
                void fetch('/api/send-ticket', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg })
+                  body: JSON.stringify({ phone: purchaserPhone, ticketContent: msg, templateData })
                })
                   .then(res => res.json())
                   .then(async data => {
@@ -363,10 +371,18 @@ export default function SellTicketsPage() {
                      ref: shortTicketRef(massRow?.id || "", massRow?.sequence_number),
                      ticketPageUrl: ticketUrl
                   });
+                  const templateData = buildTicketTemplateData({
+                     purchaserName: person.name,
+                     passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
+                     quantity: person.qty,
+                     totalInr: person.price * person.qty,
+                     ref: shortTicketRef(massRow?.id || "", massRow?.sequence_number),
+                     ticketId: massRow?.id || "",
+                  });
                   void fetch('/api/send-ticket', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ phone, ticketContent: message })
+                     body: JSON.stringify({ phone, ticketContent: message, templateData })
                   })
                      .then(res => res.json())
                      .then(async d => {

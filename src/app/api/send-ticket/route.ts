@@ -2,24 +2,15 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { phone, ticketContent } = await request.json();
+    const { phone, ticketContent, templateData } = await request.json();
 
-    if (!phone || !ticketContent) {
-      return NextResponse.json({ error: 'Phone and ticketContent are required' }, { status: 400 });
+    if (!phone || (!ticketContent && !templateData)) {
+      return NextResponse.json({ error: 'Phone and ticketContent/templateData are required' }, { status: 400 });
     }
-
-    console.log('WA Content Length:', ticketContent.length);
-    console.log('WA Content Snippet:', ticketContent.substring(0, 50) + '...');
 
     const WHATSAPP_PHONE_ID = process.env.NEXT_WHATSAPP_PHONE_ID;
     const WHATSAPP_ACCESS_TOKEN = process.env.NEXT_WHATSAPP_ACCESS_TOKEN;
     const WHATSAPP_VERSION = process.env.NEXT_WHATSAPP_VERSION || 'v20.0';
-
-    console.log('WA Env Check:', { 
-      hasId: !!WHATSAPP_PHONE_ID, 
-      hasToken: !!WHATSAPP_ACCESS_TOKEN, 
-      version: WHATSAPP_VERSION 
-    });
 
     if (!WHATSAPP_PHONE_ID || !WHATSAPP_ACCESS_TOKEN) {
       console.error('Missing WhatsApp Credentials');
@@ -33,13 +24,25 @@ export async function POST(request: Request) {
     const recipient = phone.toString().trim().replace(/\D/g, '');
     console.log('WA Final Recipient:', recipient, ' (Digits only)');
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    let body;
+    if (templateData) {
+      body = {
+        messaging_product: 'whatsapp',
+        to: recipient,
+        type: 'template',
+        template: {
+          name: templateData.templateName,
+          language: { code: 'en' },
+          components: [
+            {
+              type: 'body',
+              parameters: templateData.parameters
+            }
+          ]
+        }
+      };
+    } else {
+      body = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: recipient,
@@ -48,7 +51,16 @@ export async function POST(request: Request) {
           preview_url: true,
           body: ticketContent
         }
-      }),
+      };
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();

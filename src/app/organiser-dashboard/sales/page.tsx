@@ -6,7 +6,7 @@ import { Download, Search, Loader2, FileSpreadsheet, Filter, ChevronDown, Messag
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 import { shortTicketRef } from "@/utils/ticket-qr";
-import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl } from "@/utils/whatsapp-ticket";
+import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl, buildTicketTemplateData } from "@/utils/whatsapp-ticket";
 
 interface Ticket {
   id: string;
@@ -381,12 +381,21 @@ function SalesReportContent() {
 
     if (mode === 'auto') {
       try {
+        const templateData = buildTicketTemplateData({
+          purchaserName: t.purchaser_name || "Guest",
+          passLabel: t.type,
+          quantity: ticketQuantity(t),
+          totalInr: ticketLineTotal(t),
+          ref: shortTicketRef(t.id, t.sequence_number),
+          ticketId: t.id
+        });
         const res = await fetch('/api/send-ticket', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             phone: t.purchaser_phone || "",
-            ticketContent: message
+            ticketContent: message,
+            templateData
           })
         });
         const data = await res.json();
@@ -453,10 +462,18 @@ function SalesReportContent() {
       });
 
       try {
+        const templateData = buildTicketTemplateData({
+          purchaserName: t.purchaser_name || "Guest",
+          passLabel: t.type,
+          quantity: ticketQuantity(t),
+          totalInr: ticketLineTotal(t),
+          ref: shortTicketRef(t.id, t.sequence_number),
+          ticketId: t.id
+        });
         const res = await fetch('/api/send-ticket', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: t.purchaser_phone || "", ticketContent: message })
+          body: JSON.stringify({ phone: t.purchaser_phone || "", ticketContent: message, templateData })
         });
         const data = await res.json();
 

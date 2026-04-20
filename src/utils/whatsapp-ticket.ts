@@ -13,6 +13,31 @@ export function buildWhatsAppSendUrl(phoneDigits: string, message: string): stri
   return `https://wa.me/${d}?text=${encodeURIComponent(message)}`;
 }
 
+export function buildTicketTemplateData(params: {
+  purchaserName: string;
+  passLabel: string;
+  quantity: number;
+  totalInr: number;
+  ref: string;
+  ticketId: string;
+}) {
+  const name = params.purchaserName.trim() || "Guest";
+  const isDonor = params.passLabel.toLowerCase().includes("donor");
+  const templateName = isDonor ? "donor_ticket_v2" : "regular_ticket_v2";
+
+  return {
+    templateName,
+    parameters: [
+      { type: "text", text: name },
+      { type: "text", text: params.passLabel },
+      { type: "text", text: params.quantity.toString() },
+      { type: "text", text: params.ref.toUpperCase() },
+      { type: "text", text: params.totalInr.toLocaleString("en-IN") },
+      { type: "text", text: params.ticketId }
+    ]
+  };
+}
+
 export function buildTicketWhatsAppMessage(params: {
   purchaserName: string;
   passLabel: string;

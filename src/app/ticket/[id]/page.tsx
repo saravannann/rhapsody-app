@@ -152,7 +152,7 @@ export default function PublicTicketPage() {
                 </div>
                 <div className="px-5 py-3 bg-pink-50 border border-pink-100 rounded-lg text-center shadow-sm">
                    <p className="text-[12px] text-pink-600 font-bold italic">
-                      Donation Recorded — No QR required.
+                      Thanks for your Contribution — No QR required.
                    </p>
                 </div>
              </div>
