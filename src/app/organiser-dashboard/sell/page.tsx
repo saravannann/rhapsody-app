@@ -780,7 +780,7 @@ export default function SellTicketsPage() {
                                                  type="button"
                                                  onClick={async () => {
                                                     try {
-                                                       const contacts = await (navigator.contacts as any).select(['name', 'tel'], { multiple: false });
+                                                       const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
                                                        if (contacts && contacts[0]) {
                                                           const contact = contacts[0];
                                                           const name = contact.name?.[0] || "";
