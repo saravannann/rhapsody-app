@@ -11,8 +11,12 @@ describe('phone utils', () => {
       expect(nationalDigitsForIndia('09876543210')).toBe('9876543210');
     });
 
-    it('should strip leading 91', () => {
+    it('should strip leading 91 only if number is longer than 10 digits (likely country code)', () => {
       expect(nationalDigitsForIndia('919876543210')).toBe('9876543210');
+    });
+
+    it('should NOT strip 91 if it is part of a 10-digit national number', () => {
+      expect(nationalDigitsForIndia('9176212345')).toBe('9176212345');
     });
 
     it('should handle full international format +91', () => {

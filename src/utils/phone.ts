@@ -13,8 +13,8 @@ export function nationalDigitsForIndia(raw: string): string {
   if (d.startsWith("0")) {
     d = d.slice(1);
   }
-  // If user included 91 prefix (e.g. 919876...), strip it
-  if (d.startsWith("91") && d.length > 2) {
+  // Only strip 91 if it's likely a country code prefix (i.e. we have more than 10 digits)
+  if (d.startsWith("91") && d.length > 10) {
     d = d.slice(2);
   }
   return d.slice(0, 10); // Indian mobile numbers are 10 digits
