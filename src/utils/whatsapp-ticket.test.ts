@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { phoneToWhatsAppDigits, buildWhatsAppSendUrl, buildTicketWhatsAppMessage } from './whatsapp-ticket';
+import { phoneToWhatsAppDigits, buildWhatsAppSendUrl, buildTicketWhatsAppMessage, buildTicketTemplateData } from './whatsapp-ticket';
 
 describe('whatsapp-ticket utils', () => {
   describe('phoneToWhatsAppDigits', () => {
@@ -66,6 +66,52 @@ describe('whatsapp-ticket utils', () => {
       });
       expect(msg).toContain('Hello Jane Doe');
       expect(msg).toContain('Your Rhapsody ticket is confirmed');
+    });
+  });
+
+  describe('buildTicketTemplateData', () => {
+    const baseParams = {
+      purchaserName: 'John Doe',
+      passLabel: 'Platinum Pass',
+      quantity: 1,
+      totalInr: 500,
+      ref: 'REF123',
+      ticketId: 'TICK-456'
+    };
+
+    it('should return regular template for non-donor pass', () => {
+      const data = buildTicketTemplateData(baseParams);
+      expect(data.templateName).toBe('regular_ticket_v2');
+      expect(data.parameters).toHaveLength(6);
+    });
+
+    it('should return donor template for donor pass and skip ticketId parameter', () => {
+      const data = buildTicketTemplateData({
+        ...baseParams,
+        passLabel: 'Donor Pass'
+      });
+      expect(data.templateName).toBe('donor_ticket_v2');
+      expect(data.parameters).toHaveLength(5);
+      // Ensure ticketId is not in parameters
+      expect(data.parameters.some(p => p.text === 'TICK-456')).toBe(false);
+    });
+
+    it('should respect environment variables if set', () => {
+      const originalRegular = process.env.NEXT_PUBLIC_WHATSAPP_REGULAR_TEMPLATE;
+      const originalDonor = process.env.NEXT_PUBLIC_WHATSAPP_DONOR_TEMPLATE;
+      
+      process.env.NEXT_PUBLIC_WHATSAPP_REGULAR_TEMPLATE = 'custom_regular';
+      process.env.NEXT_PUBLIC_WHATSAPP_DONOR_TEMPLATE = 'custom_donor';
+      
+      const regularData = buildTicketTemplateData(baseParams);
+      expect(regularData.templateName).toBe('custom_regular');
+      
+      const donorData = buildTicketTemplateData({ ...baseParams, passLabel: 'Donor Pass' });
+      expect(donorData.templateName).toBe('custom_donor');
+      
+      // Cleanup
+      process.env.NEXT_PUBLIC_WHATSAPP_REGULAR_TEMPLATE = originalRegular;
+      process.env.NEXT_PUBLIC_WHATSAPP_DONOR_TEMPLATE = originalDonor;
     });
   });
 });

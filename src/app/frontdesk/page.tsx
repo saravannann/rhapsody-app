@@ -565,12 +565,12 @@ export default function FrontdeskCheckInPage() {
 
                      <div className="relative group min-h-[400px] flex items-center justify-center">
                         {scannerActive && (
-                           <button onClick={() => { const next = !torchOn; setTorchOn(next); if (scannerRef.current) (scannerRef.current as any).applyVideoConstraints({ advanced: [{ torch: next }] }).catch(() => {}); }} className={`absolute top-0 right-0 z-30 p-4 rounded-full transition-all ${torchOn ? 'bg-amber-400 text-gray-900' : 'bg-gray-900/40 text-white'}`}><Zap className={`w-6 h-6 ${torchOn ? 'fill-current' : ''}`} /></button>
+                           <button onClick={() => { const next = !torchOn; setTorchOn(next); if (scannerRef.current) (scannerRef.current as any).applyVideoConstraints({ advanced: [{ torch: next }] }).catch(() => {}); }} aria-label="Toggle flashlight" className={`absolute top-0 right-0 z-30 p-4 rounded-full transition-all ${torchOn ? 'bg-amber-400 text-gray-900' : 'bg-gray-900/40 text-white'}`}><Zap className={`w-6 h-6 ${torchOn ? 'fill-current' : ''}`} /></button>
                         )}
                         {scannerActive ? (
                            <div className="w-full relative"><div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square text-center"><div id={scanContainerId} className="w-full h-full" />{cameraError && <p className="text-white p-4">Camera Error</p>}</div></div>
                         ) : (
-                           <div className="w-full max-w-md space-y-4"><textarea value={manualInput} onChange={(e) => setManualInput(e.target.value)} rows={4} placeholder="Paste ticket code..." className="block w-full px-6 py-6 bg-gray-50 dark:bg-violet-950/20 border-2 border-dashed border-gray-200 dark:border-violet-500/20 rounded-3xl text-sm font-bold outline-none" /><button onClick={() => runLookup(manualInput)} className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-widest">Verify Ticket</button></div>
+                           <div className="w-full max-w-md space-y-4"><textarea value={manualInput} onChange={(e) => setManualInput(e.target.value)} rows={4} placeholder="Paste ticket code / QR text..." aria-label="Manual ticket input" className="block w-full px-6 py-6 bg-gray-50 dark:bg-violet-950/20 border-2 border-dashed border-gray-200 dark:border-violet-500/20 rounded-3xl text-sm font-bold outline-none" /><button onClick={() => runLookup(manualInput)} className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-widest">Verify Ticket</button></div>
                         )}
 
                         {lookup.kind !== "idle" && lookup.kind !== "loading" && (
@@ -608,9 +608,9 @@ export default function FrontdeskCheckInPage() {
                                              <div className="flex items-center justify-between bg-emerald-50 p-4 rounded-2xl">
                                                 <div className="flex flex-col"><span className="text-xs font-bold text-emerald-600">Issue Band Count</span><span className="text-[9px] uppercase tracking-tight">Quantity to Admit</span></div>
                                                 <div className="flex items-center gap-4">
-                                                   <button onClick={() => setPartialCount(Math.max(1, (partialCount || 0) - 1))} className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold shadow-sm">-</button>
+                                                   <button onClick={() => setPartialCount(Math.max(1, (partialCount || 0) - 1))} aria-label="Decrease quantity" className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold shadow-sm">-</button>
                                                    <input type="tel" value={partialCount === 0 ? '' : partialCount} onChange={(e) => { const val = e.target.value === '' ? 0 : parseInt(e.target.value); const max = ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0); if (!isNaN(val)) setPartialCount(Math.min(max, val)); }} className="w-20 h-12 bg-white text-center text-2xl font-black rounded-xl outline-none" />
-                                                   <button onClick={() => setPartialCount(Math.min(ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0), (partialCount || 0) + 1))} className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold shadow-sm">+</button>
+                                                   <button onClick={() => setPartialCount(Math.min(ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0), (partialCount || 0) + 1))} aria-label="Increase quantity" className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold shadow-sm">+</button>
                                                 </div>
                                              </div>
                                              {ticketQuantity(result.ticket) - (result.ticket.checked_in_count || 0) > 1 && (
@@ -649,7 +649,7 @@ export default function FrontdeskCheckInPage() {
          <div className="space-y-6">
             <div className="bg-white dark:bg-violet-950/40 rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" placeholder="Search..." className="w-full pl-12 pr-4 py-4 bg-gray-50 border rounded-2xl text-sm font-bold outline-none" value={researchQuery} onChange={(e) => setResearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleResearch()} /></div>
+                  <div className="flex-1 relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" placeholder="Search by ID, Name, or Mobile" aria-label="Search tickets" className="w-full pl-12 pr-4 py-4 bg-gray-50 border rounded-2xl text-sm font-bold outline-none" value={researchQuery} onChange={(e) => setResearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleResearch()} /></div>
                   <button onClick={handleResearch} disabled={researchLoading} className="px-8 py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">{researchLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Search'}</button>
                </div>
                <div className="mt-8 space-y-4">
