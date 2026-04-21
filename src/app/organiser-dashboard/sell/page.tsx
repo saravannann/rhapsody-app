@@ -107,72 +107,40 @@ export default function SellTicketsPage() {
       });
    }, []);
 
-   const handleCheckout = async (e: React.FormEvent) => {
-      e.preventDefault();
+   const issueTicket = async (ticketData: any) => {
+      if (currentUser.isTester) {
+         console.log("🧪 TESTER MODE: Mocking ticket issuance", ticketData);
+         return {
+            id: `mock-${crypto.randomUUID()}`,
+            sequence_number: 9999,
+            isMock: true
+         };
+      }
 
-      const isPhoneValid = hasIndianNationalDigits(formData.phone);
-      const isNameValid = !!formData.name.trim();
-      const isPocValid = !!formData.poc;
-      const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
+      const { data, error } = await supabase
+         .from("tickets")
+         .insert(ticketData)
+         .select("id, sequence_number")
+         .single();
 
-      if (!isPhoneValid || !isNameValid || !isPocValid || !isTxnValid) {
-         setShowErrors(true);
+      if (error) throw error;
+      return { ...data, isMock: false };
+   };
+
+   const updateWhatsAppStatus = async (ticketId: string, status: string, errorMsg?: string | null, isMock?: boolean) => {
+      if (isMock) {
+         console.log(`🧪 TESTER MODE: Mocking WhatsApp status update for ${ticketId} -> ${status}`, errorMsg);
          return;
       }
 
-      setIsSubmitting(true);
-      setShowErrors(false);
-      setSaleReceipt(null);
+      await supabase.from("tickets").update({
+         whatsapp_status: status,
+         whatsapp_error: errorMsg || null,
+         last_whatsapp_at: status === 'sent' ? new Date().toISOString() : undefined
+      }).eq('id', ticketId);
+   };
 
-      try {
-         let purchaserPhone: string;
-         try {
-            purchaserPhone = toIndianE164(formData.phone);
-         } catch {
-            alert("Enter a valid phone number.");
-            setIsSubmitting(false);
-            return;
-         }
-         const qty = formData.qty;
-         const passLabel = selectedCategory?.name as string;
-         const typeId = selectedCategory?.id as string;
-         const price = selectedCategory?.price || 0;
-         const lineTotal = price * qty;
-
-    const issueTicket = async (ticketData: any) => {
-       if (currentUser.isTester) {
-          console.log("🧪 TESTER MODE: Mocking ticket issuance", ticketData);
-          return {
-             id: `mock-${crypto.randomUUID()}`,
-             sequence_number: 9999,
-             isMock: true
-          };
-       }
-
-       const { data, error } = await supabase
-          .from("tickets")
-          .insert(ticketData)
-          .select("id, sequence_number")
-          .single();
-
-       if (error) throw error;
-       return { ...data, isMock: false };
-    };
-
-    const updateWhatsAppStatus = async (ticketId: string, status: string, errorMsg?: string | null, isMock?: boolean) => {
-       if (isMock) {
-          console.log(`🧪 TESTER MODE: Mocking WhatsApp status update for ${ticketId} -> ${status}`, errorMsg);
-          return;
-       }
-
-       await supabase.from("tickets").update({
-          whatsapp_status: status,
-          whatsapp_error: errorMsg || null,
-          last_whatsapp_at: status === 'sent' ? new Date().toISOString() : undefined
-       }).eq('id', ticketId);
-    };
-
-    const handleCheckout = async (e: React.FormEvent) => {
+   const handleCheckout = async (e: React.FormEvent) => {
        e.preventDefault();
 
        const isPhoneValid = hasIndianNationalDigits(formData.phone);
