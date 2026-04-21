@@ -57,7 +57,7 @@ export default function SellTicketsPage() {
    const [showErrors, setShowErrors] = useState(false);
    const [saleReceipt, setSaleReceipt] = useState<SaleReceipt | null>(null);
    const [organisers, setOrganisers] = useState<{ id: string; name: string }[]>([]);
-   const [currentUser, setCurrentUser] = useState({ name: '', role: '' });
+   const [currentUser, setCurrentUser] = useState({ name: '', role: '', isTester: false });
    const [appOrigin, setAppOrigin] = useState("");
    const [sellMode, setSellMode] = useState<'individual' | 'mass'>('individual');
    const [massFile, setMassFile] = useState<File | null>(null);
@@ -81,14 +81,29 @@ export default function SellTicketsPage() {
    useEffect(() => {
       const savedName = localStorage.getItem('rhapsody_user') || 'User';
       const savedRole = localStorage.getItem('rhapsody_role') || 'organiser';
-      setCurrentUser({ name: savedName, role: savedRole });
 
       if (savedRole !== 'admin') {
          setFormData(prev => ({ ...prev, poc: savedName }));
       }
 
-      supabase.from('profiles').select('*').then(({ data }) => {
-         if (data) setOrganisers(data.filter(p => Array.isArray(p.roles) ? p.roles.includes('organiser') : p.role === 'organiser'));
+      // Fetch full profile to check for tester role accurately
+      supabase.from('profiles').select('*').then(({ data: profiles }) => {
+         if (profiles) {
+            setOrganisers(profiles.filter(p => Array.isArray(p.roles) ? p.roles.includes('organiser') : p.role === 'organiser'));
+            
+            // Update current user with real role data
+            const myProfile = profiles.find(p => p.name === savedName);
+             if (myProfile) {
+                const roles = Array.isArray(myProfile.roles) ? myProfile.roles : [myProfile.role];
+                setCurrentUser({
+                   name: savedName,
+                   role: savedRole,
+                   isTester: roles.includes('tester')
+                });
+             } else {
+                setCurrentUser({ name: savedName, role: savedRole, isTester: false });
+             }
+         }
       });
    }, []);
 
@@ -124,41 +139,102 @@ export default function SellTicketsPage() {
          const price = selectedCategory?.price || 0;
          const lineTotal = price * qty;
 
-         const { data: row, error } = await supabase
-            .from("tickets")
-            .insert({
-               type: typeId,
-               price: price,
-               quantity: qty,
-               status: "booked",
-               purchaser_name: formData.name,
-               purchaser_phone: purchaserPhone,
-               sold_by: formData.poc,
-               funds_destination: formData.fundsDestination,
-               bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
-               whatsapp_opt_in: formData.whatsappOptIn,
-            })
-            .select("id, sequence_number")
-            .single();
+    const issueTicket = async (ticketData: any) => {
+       if (currentUser.isTester) {
+          console.log("🧪 TESTER MODE: Mocking ticket issuance", ticketData);
+          return {
+             id: `mock-${crypto.randomUUID()}`,
+             sequence_number: 9999,
+             isMock: true
+          };
+       }
 
-         if (error) throw error;
-         if (!row?.id) throw new Error("No ticket id returned");
+       const { data, error } = await supabase
+          .from("tickets")
+          .insert(ticketData)
+          .select("id, sequence_number")
+          .single();
+
+       if (error) throw error;
+       return { ...data, isMock: false };
+    };
+
+    const updateWhatsAppStatus = async (ticketId: string, status: string, errorMsg?: string | null, isMock?: boolean) => {
+       if (isMock) {
+          console.log(`🧪 TESTER MODE: Mocking WhatsApp status update for ${ticketId} -> ${status}`, errorMsg);
+          return;
+       }
+
+       await supabase.from("tickets").update({
+          whatsapp_status: status,
+          whatsapp_error: errorMsg || null,
+          last_whatsapp_at: status === 'sent' ? new Date().toISOString() : undefined
+       }).eq('id', ticketId);
+    };
+
+    const handleCheckout = async (e: React.FormEvent) => {
+       e.preventDefault();
+
+       const isPhoneValid = hasIndianNationalDigits(formData.phone);
+       const isNameValid = !!formData.name.trim();
+       const isPocValid = !!formData.poc;
+       const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
+
+       if (!isPhoneValid || !isNameValid || !isPocValid || !isTxnValid) {
+          setShowErrors(true);
+          return;
+       }
+
+       setIsSubmitting(true);
+       setShowErrors(false);
+       setSaleReceipt(null);
+
+       try {
+          let purchaserPhone: string;
+          try {
+             purchaserPhone = toIndianE164(formData.phone);
+          } catch {
+             alert("Enter a valid phone number.");
+             setIsSubmitting(false);
+             return;
+          }
+          const qty = formData.qty;
+          const passLabel = selectedCategory?.name as string;
+          const typeId = selectedCategory?.id as string;
+          const price = selectedCategory?.price || 0;
+          const lineTotal = price * qty;
+
+          const ticketPayload = {
+             type: typeId,
+             price: price,
+             quantity: qty,
+             status: "booked",
+             purchaser_name: formData.name,
+             purchaser_phone: purchaserPhone,
+             sold_by: formData.poc,
+             funds_destination: formData.fundsDestination,
+             bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
+             whatsapp_opt_in: formData.whatsappOptIn,
+          };
+
+          const row = await issueTicket(ticketPayload);
+          const { id: ticketId, sequence_number, isMock } = row;
 
          const qrPayload = buildTicketQrPayload({
-            ticketId: row.id,
+            ticketId,
             quantity: qty,
             typeId,
          });
 
          const receipt = {
-            ticketId: row.id,
+            ticketId,
             passLabel,
             quantity: qty,
             totalInr: lineTotal,
             qrPayload,
             purchaserName: formData.name.trim(),
             purchaserPhoneE164: purchaserPhone,
-            sequence_number: row.sequence_number,
+            sequence_number,
          };
 
          setSaleReceipt(receipt);
@@ -166,13 +242,13 @@ export default function SellTicketsPage() {
          // Automated WhatsApp background trigger
          if (formData.whatsappOptIn) {
             try {
-               const ticketUrl = `${window.location.origin}/ticket/${row.id}`;
+               const ticketUrl = `${window.location.origin}/ticket/${ticketId}`;
                const msg = buildTicketWhatsAppMessage({
                   purchaserName: formData.name.trim(),
                   passLabel,
                   quantity: qty,
                   totalInr: lineTotal,
-                  ref: shortTicketRef(row.id, row.sequence_number),
+                  ref: shortTicketRef(ticketId, sequence_number),
                   ticketPageUrl: ticketUrl,
                });
                const templateData = buildTicketTemplateData({
@@ -180,8 +256,8 @@ export default function SellTicketsPage() {
                   passLabel,
                   quantity: qty,
                   totalInr: lineTotal,
-                  ref: shortTicketRef(row.id, row.sequence_number),
-                  ticketId: row.id,
+                  ref: shortTicketRef(ticketId, sequence_number),
+                  ticketId: ticketId,
                });
                void fetch('/api/send-ticket', {
                   method: 'POST',
@@ -192,10 +268,7 @@ export default function SellTicketsPage() {
                   .then(async data => {
                      if (!data.success) {
                         console.error("WhatsApp Error:", data.error);
-                        await supabase.from("tickets").update({
-                           whatsapp_status: 'failed',
-                           whatsapp_error: data.error
-                        }).eq('id', row.id);
+                        await updateWhatsAppStatus(ticketId, 'failed', data.error, isMock);
                         const isSandboxError = data.code === 131030;
                         const alertMsg = isSandboxError
                            ? `WhatsApp Sandbox Error: ${data.error}`
@@ -203,21 +276,14 @@ export default function SellTicketsPage() {
                         alert(alertMsg);
                      } else {
                         console.log("WhatsApp sent!", data.message_id);
-                        await supabase.from("tickets").update({
-                           whatsapp_status: 'sent',
-                           whatsapp_error: null,
-                           last_whatsapp_at: new Date().toISOString()
-                        }).eq('id', row.id);
+                        await updateWhatsAppStatus(ticketId, 'sent', null, isMock);
                      }
                   })
             } catch (waErr) {
                console.error("WA Prep Fail:", waErr);
             }
          } else {
-            await supabase.from("tickets").update({
-               whatsapp_status: 'not_sent',
-               whatsapp_error: 'Opt-out selected'
-            }).eq('id', row.id);
+            await updateWhatsAppStatus(ticketId, 'not_sent', 'Opt-out selected', isMock);
          }
 
          setFormData({ name: "", phone: "", email: "", poc: formData.poc, qty: 1, fundsDestination: "organizer", txnId: "", whatsappOptIn: true });
@@ -344,7 +410,7 @@ export default function SellTicketsPage() {
                continue;
             }
 
-            const { data: massRow, error } = await supabase.from("tickets").insert({
+            const ticketPayload = {
                type: person.type,
                price: person.price,
                quantity: person.qty,
@@ -355,20 +421,22 @@ export default function SellTicketsPage() {
                funds_destination: formData.fundsDestination,
                bank_txn_id: formData.fundsDestination === 'trust' ? formData.txnId : null,
                whatsapp_opt_in: formData.whatsappOptIn,
-            }).select("id, sequence_number").single();
+            };
 
-            if (error) throw error;
+            const massRowResult = await issueTicket(ticketPayload);
+            const { id: ticketId, sequence_number, isMock } = massRowResult;
+            const massRow = { id: ticketId, sequence_number }; // For backward compatibility in logs
 
             // Trigger WhatsApp for mass issuance
             if (formData.whatsappOptIn) {
                try {
-                  const ticketUrl = `${window.location.origin}/ticket/${massRow?.id}`;
+                  const ticketUrl = `${window.location.origin}/ticket/${ticketId}`;
                   const message = buildTicketWhatsAppMessage({
                      purchaserName: person.name,
                      passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
                      quantity: person.qty,
                      totalInr: person.price * person.qty,
-                     ref: shortTicketRef(massRow?.id || "", massRow?.sequence_number),
+                     ref: shortTicketRef(ticketId, sequence_number),
                      ticketPageUrl: ticketUrl
                   });
                   const templateData = buildTicketTemplateData({
@@ -376,8 +444,8 @@ export default function SellTicketsPage() {
                      passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
                      quantity: person.qty,
                      totalInr: person.price * person.qty,
-                     ref: shortTicketRef(massRow?.id || "", massRow?.sequence_number),
-                     ticketId: massRow?.id || "",
+                     ref: shortTicketRef(ticketId, sequence_number),
+                     ticketId: ticketId,
                   });
                   void fetch('/api/send-ticket', {
                      method: 'POST',
@@ -389,17 +457,10 @@ export default function SellTicketsPage() {
                         if (!d.success) {
                            const isSandboxError = d.code === 131030;
                            console.error(isSandboxError ? "WhatsApp Sandbox Error:" : "Mass WhatsApp Fail:", d.error);
-                           await supabase.from("tickets").update({
-                              whatsapp_status: 'failed',
-                              whatsapp_error: d.error
-                           }).eq('id', massRow?.id);
+                           await updateWhatsAppStatus(ticketId, 'failed', d.error, isMock);
                         } else {
                            console.log("Mass WhatsApp Sent:", d.message_id);
-                           await supabase.from("tickets").update({
-                              whatsapp_status: 'sent',
-                              whatsapp_error: null,
-                              last_whatsapp_at: new Date().toISOString()
-                           }).eq('id', massRow?.id);
+                           await updateWhatsAppStatus(ticketId, 'sent', null, isMock);
                         }
                      })
                      .catch(e => console.error("WhatsApp Mass Network Fail:", e));
@@ -407,10 +468,7 @@ export default function SellTicketsPage() {
                   console.error("WA Mass Prep Fail:", waErr);
                }
             } else {
-               await supabase.from("tickets").update({
-                  whatsapp_status: 'not_sent',
-                  whatsapp_error: 'Opt-out selected'
-               }).eq('id', massRow?.id);
+               await updateWhatsAppStatus(ticketId, 'not_sent', 'Opt-out selected', isMock);
             }
 
             setMassStatus(prev => prev ? { ...prev, sent: prev.sent + 1 } : null);
