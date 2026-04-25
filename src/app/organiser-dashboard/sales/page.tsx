@@ -45,6 +45,15 @@ interface OrgGoalData {
   total: { sold: number; target: number };
 }
 
+interface LeaderboardData {
+  name: string;
+  platinum: number;
+  donor: number;
+  student: number;
+  total: number;
+  revenue: number;
+}
+
 /** One display name per seller (lower-case key → canonical string from DB). */
 function buildSellerOptions(
   tickets: { sold_by?: string | null }[],
@@ -320,7 +329,6 @@ function SalesReportContent() {
 
       const organisers = (profiles || []).filter(p => {
         if (Array.isArray(p.roles)) return p.roles.includes('organiser');
-        if (p.role) return p.role === 'organiser';
         return false;
       });
 
@@ -343,14 +351,14 @@ function SalesReportContent() {
         return;
       }
 
-      const leaderboard = rpcData.leaderboard || [];
-      const leaderMap = new Map(leaderboard.map((l: any) => [String(l.name || "").toLowerCase(), l]));
+      const leaderboard = (rpcData.leaderboard || []) as LeaderboardData[];
+      const leaderMap = new Map(leaderboard.map((l) => [String(l.name || "").toLowerCase(), l]));
 
       // 3. Merge data
       const goals: OrgGoalData[] = organisers.map(org => {
         const targets = resolvePassTargets(org.pass_targets);
         const orgNameLower = (org.name || "").toLowerCase();
-        const actual = leaderMap.get(orgNameLower) || { platinum: 0, donor: 0, student: 0, total: 0 };
+        const actual = leaderMap.get(orgNameLower) || { platinum: 0, donor: 0, student: 0, total: 0, name: org.name, revenue: 0 };
         
         return {
           name: org.name,
