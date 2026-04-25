@@ -7,6 +7,7 @@ import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 import { shortTicketRef } from "@/utils/ticket-qr";
 import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl, buildTicketTemplateData } from "@/utils/whatsapp-ticket";
+import { resolvePassTargets } from "@/utils/pass-targets";
 
 interface Ticket {
   id: string;
@@ -34,6 +35,14 @@ interface TotalMetrics {
   trustRevenue: number;
   organizerRevenue: number;
   bookedTickets: number;
+}
+
+interface OrgGoalData {
+  name: string;
+  platinum: { sold: number; target: number };
+  donor: { sold: number; target: number };
+  student: { sold: number; target: number };
+  total: { sold: number; target: number };
 }
 
 /** One display name per seller (lower-case key → canonical string from DB). */
@@ -93,6 +102,11 @@ function SalesReportContent() {
   const [bulkResendProgress, setBulkResendProgress] = useState(0);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [tempPhone, setTempPhone] = useState("");
+
+  // Org Goal State
+  const [activeTab, setActiveTab] = useState<'Transactions' | 'Org Targets'>('Transactions');
+  const [orgGoalData, setOrgGoalData] = useState<OrgGoalData[]>([]);
+  const [loadingGoals, setLoadingGoals] = useState(false);
 
   useEffect(() => {
     setAppOrigin(typeof window !== "undefined" ? window.location.origin : "");
@@ -289,6 +303,86 @@ function SalesReportContent() {
       setIsFetchingMore(false);
     }
   }, [PAGE_SIZE, pocFilter, searchQuery, ticketTypeFilter, fundsFilter, waFilter, dateFilter, sellerOptions.length]);
+
+  const fetchOrgGoals = useCallback(async () => {
+    try {
+      setLoadingGoals(true);
+      
+      // 1. Fetch all organiser profiles
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('*');
+      
+      if (pError) {
+        console.error("Profiles fetch error:", pError);
+        throw new Error(`Profiles fetch failed: ${pError.message}`);
+      }
+
+      const organisers = (profiles || []).filter(p => {
+        if (Array.isArray(p.roles)) return p.roles.includes('organiser');
+        if (p.role) return p.role === 'organiser';
+        return false;
+      });
+
+      // 2. Fetch sales summary via RPC
+      const { data: rpcData, error: rError } = await supabase.rpc('get_admin_dashboard_data', {
+        p_date_filter: 'All Time',
+        p_type_filter: 'All Types',
+        p_org_filter: 'All Organisers',
+        p_funds_filter: 'All Destinations'
+      });
+
+      if (rError) {
+        console.error("RPC fetch error:", rError);
+        throw new Error(`RPC fetch failed: ${rError.message || JSON.stringify(rError)}`);
+      }
+
+      if (!rpcData) {
+        console.warn("RPC returned no data");
+        setOrgGoalData([]);
+        return;
+      }
+
+      const leaderboard = rpcData.leaderboard || [];
+      const leaderMap = new Map(leaderboard.map((l: any) => [String(l.name || "").toLowerCase(), l]));
+
+      // 3. Merge data
+      const goals: OrgGoalData[] = organisers.map(org => {
+        const targets = resolvePassTargets(org.pass_targets);
+        const orgNameLower = (org.name || "").toLowerCase();
+        const actual = leaderMap.get(orgNameLower) || { platinum: 0, donor: 0, student: 0, total: 0 };
+        
+        return {
+          name: org.name,
+          platinum: { sold: actual.platinum || 0, target: targets['Platinum Pass'] || 0 },
+          donor: { sold: actual.donor || 0, target: targets['Donor Pass'] || 0 },
+          student: { sold: actual.student || 0, target: targets['Student Pass'] || 0 },
+          total: { 
+            sold: (actual.platinum || 0) + (actual.donor || 0) + (actual.student || 0), 
+            target: (targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) 
+          }
+        };
+      });
+
+      // Sort by total sold descending
+      goals.sort((a, b) => b.total.sold - a.total.sold);
+      setOrgGoalData(goals);
+
+    } catch (err: any) {
+      console.error("Detailed Error in fetchOrgGoals:", err);
+      if (err instanceof Error) {
+        console.error("Error Message:", err.message);
+      }
+    } finally {
+      setLoadingGoals(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'Org Targets' && userRole === 'admin') {
+      fetchOrgGoals();
+    }
+  }, [activeTab, userRole, fetchOrgGoals]);
 
   useEffect(() => {
     fetchSales(true);
@@ -587,6 +681,53 @@ function SalesReportContent() {
     document.body.removeChild(link);
   };
 
+  const handleExportOrgGoals = () => {
+    if (orgGoalData.length === 0) return;
+
+    const headers = [
+      "Organizer Name",
+      "Platinum Target",
+      "Platinum Actual",
+      "Donor Target",
+      "Donor Actual",
+      "Student Target",
+      "Student Actual",
+      "Total Target",
+      "Total Actual",
+      "Goal Achievement %"
+    ];
+
+    const rows = orgGoalData.map(g => {
+      const achievement = g.total.target > 0 ? ((g.total.sold / g.total.target) * 100).toFixed(1) : "0.0";
+      return [
+        g.name,
+        g.platinum.target,
+        g.platinum.sold,
+        g.donor.target,
+        g.donor.sold,
+        g.student.target,
+        g.student.sold,
+        g.total.target,
+        g.total.sold,
+        `${achievement}%`
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `org_goals_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto pb-8 sm:pb-12 animate-in fade-in duration-500 space-y-4 sm:space-y-5">
 
@@ -600,13 +741,34 @@ function SalesReportContent() {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             type="button"
-            onClick={handleExport}
+            onClick={activeTab === 'Transactions' ? handleExport : handleExportOrgGoals}
             className="inline-flex items-center justify-center min-h-[44px] bg-[#10b981] hover:bg-[#059669] text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-green-500/20 active:scale-[0.98] text-sm"
           >
             <Download className="w-4 h-4 mr-2 shrink-0" /> Export CSV
           </button>
         </div>
       </div>
+
+      {/* Tabs */}
+      {userRole === 'admin' && (
+        <div className="flex gap-2 p-1 bg-gray-100/50 dark:bg-violet-950/20 rounded-xl w-fit border border-gray-100 dark:border-violet-500/10">
+          <button
+            onClick={() => setActiveTab('Transactions')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'Transactions' ? 'bg-white dark:bg-violet-800 text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-violet-400'}`}
+          >
+            Transactions
+          </button>
+          <button
+            onClick={() => setActiveTab('Org Targets')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'Org Targets' ? 'bg-white dark:bg-violet-800 text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-violet-400'}`}
+          >
+            Org Targets
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'Transactions' ? (
+        <>
 
       {/* Filters & Search Section */}
       <div className="bg-white/95 dark:bg-violet-950/20 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-violet-500/20 shadow-xl shadow-purple-500/5 md:sticky md:top-16 md:z-30 transition-all duration-300">
@@ -1209,7 +1371,102 @@ function SalesReportContent() {
           </div>
         </div>
       )}
+    </>
+  ) : (
+    /* Org Targets View */
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 bg-white/50 dark:bg-violet-900/10 flex justify-between items-center">
+          <h2 className="text-sm sm:text-lg font-bold text-gray-900 dark:text-violet-100">Organizer Goal Performance</h2>
+          <button 
+            onClick={fetchOrgGoals}
+            disabled={loadingGoals}
+            className="p-2 text-gray-400 hover:text-primary transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingGoals ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-100 dark:border-violet-500/10">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organizer</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total Sold</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Achievement</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-violet-500/5">
+              {loadingGoals ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-20 text-center">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+                    <p className="text-sm font-bold text-gray-500 dark:text-violet-400">Calculating performance metrics...</p>
+                  </td>
+                </tr>
+              ) : orgGoalData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No organizer data found.</td>
+                </tr>
+              ) : (
+                orgGoalData.map(org => {
+                  const achievement = org.total.target > 0 ? (org.total.sold / org.total.target) * 100 : 0;
+                  return (
+                    <tr key={org.name} className="hover:bg-gray-50/50 dark:hover:bg-violet-950/20 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.platinum.sold}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">Target: {org.platinum.target}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.donor.sold}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">Target: {org.donor.target}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.student.sold}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">Target: {org.student.target}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-sm font-black text-primary">{org.total.sold}</span>
+                          <span className="text-[10px] text-gray-400 font-bold">of {org.total.target}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-24 h-1.5 bg-gray-100 dark:bg-violet-900/40 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full transition-all duration-1000 ${achievement >= 100 ? 'bg-emerald-500' : 'bg-primary'}`}
+                              style={{ width: `${Math.min(100, achievement)}%` }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-bold ${achievement >= 100 ? 'text-emerald-500' : 'text-gray-500'}`}>
+                            {achievement.toFixed(1)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
+  )}
+</div>
   );
 }
 
