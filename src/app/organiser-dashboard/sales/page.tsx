@@ -516,6 +516,7 @@ function SalesReportContent() {
           await supabase.from("tickets").update({
             whatsapp_status: 'sent',
             whatsapp_error: null,
+            wa_message_id: data.message_id || undefined,
             last_whatsapp_at: new Date().toISOString()
           }).eq('id', t.id);
 
@@ -581,7 +582,9 @@ function SalesReportContent() {
 
         await supabase.from("tickets").update({
           whatsapp_status: data.success ? 'sent' : 'failed',
-          whatsapp_error: data.success ? null : data.error
+          whatsapp_error: data.success ? null : data.error,
+          wa_message_id: data.success ? (data.message_id || undefined) : undefined,
+          last_whatsapp_at: data.success ? new Date().toISOString() : undefined
         }).eq('id', t.id);
       } catch (e) {
         console.error("Bulk Send Fail for " + t.id, e);
@@ -995,7 +998,10 @@ function SalesReportContent() {
                               Qty {ticketQuantity(t)}
                             </span>
                             <span className="font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-1.5 py-0.5 rounded uppercase">{t.type}</span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${t.whatsapp_status === 'sent' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              t.whatsapp_status === 'read' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                              t.whatsapp_status === 'delivered' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                              t.whatsapp_status === 'sent' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                               t.whatsapp_status === 'failed' ? 'bg-red-100 text-red-700 border-red-200' :
                                 'bg-gray-100 text-gray-400 border-gray-200 text-[9px]'
                               }`}>
@@ -1110,7 +1116,10 @@ function SalesReportContent() {
                           </td>
                           <td className="px-6 py-4 text-center">
                             <div className="flex flex-col items-center gap-0.5">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${t.whatsapp_status === 'sent' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                t.whatsapp_status === 'read' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                t.whatsapp_status === 'delivered' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                t.whatsapp_status === 'sent' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 t.whatsapp_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
                                   'bg-gray-50 text-gray-400 border-gray-200'
                                 }`}>

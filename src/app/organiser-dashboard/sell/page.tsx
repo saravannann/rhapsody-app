@@ -127,15 +127,16 @@ export default function SellTicketsPage() {
       return { ...data, isMock: false };
    };
 
-   const updateWhatsAppStatus = async (ticketId: string, status: string, errorMsg?: string | null, isMock?: boolean) => {
+   const updateWhatsAppStatus = async (ticketId: string, status: string, errorMsg?: string | null, isMock?: boolean, messageId?: string | null) => {
       if (isMock) {
-         console.log(`🧪 TESTER MODE: Mocking WhatsApp status update for ${ticketId} -> ${status}`, errorMsg);
+         console.log(`🧪 TESTER MODE: Mocking WhatsApp status update for ${ticketId} -> ${status}`, errorMsg, messageId);
          return;
       }
 
       await supabase.from("tickets").update({
          whatsapp_status: status,
          whatsapp_error: errorMsg || null,
+         wa_message_id: messageId || undefined,
          last_whatsapp_at: status === 'sent' ? new Date().toISOString() : undefined
       }).eq('id', ticketId);
    };
@@ -244,7 +245,7 @@ export default function SellTicketsPage() {
                         alert(alertMsg);
                      } else {
                         console.log("WhatsApp sent!", data.message_id);
-                        await updateWhatsAppStatus(ticketId, 'sent', null, isMock);
+                        await updateWhatsAppStatus(ticketId, 'sent', null, isMock, data.message_id);
                      }
                   })
             } catch (waErr) {
@@ -428,7 +429,7 @@ export default function SellTicketsPage() {
                            await updateWhatsAppStatus(ticketId, 'failed', d.error, isMock);
                         } else {
                            console.log("Mass WhatsApp Sent:", d.message_id);
-                           await updateWhatsAppStatus(ticketId, 'sent', null, isMock);
+                           await updateWhatsAppStatus(ticketId, 'sent', null, isMock, d.message_id);
                         }
                      })
                      .catch(e => console.error("WhatsApp Mass Network Fail:", e));
