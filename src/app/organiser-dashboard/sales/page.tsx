@@ -984,7 +984,11 @@ function SalesReportContent() {
                           <div className="flex justify-between items-start gap-2 mb-1">
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{t.purchaser_name || "Unknown"}</p>
-                              <p className="text-[11px] text-gray-500 dark:text-violet-300/70 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-[11px] text-gray-500 dark:text-violet-300/70 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
+                                <span className="text-[10px] text-gray-400 dark:text-violet-400/60">•</span>
+                                <p className="text-[10px] text-gray-500 dark:text-violet-300/70">Sold by <span className="font-bold text-primary/80">{t.sold_by || "Unknown"}</span></p>
+                              </div>
                             </div>
                             <span className="text-sm font-bold text-gray-900 dark:text-violet-100 shrink-0 tabular-nums">
                               ₹{new Intl.NumberFormat("en-IN").format(ticketLineTotal(t))}
@@ -1040,6 +1044,7 @@ function SalesReportContent() {
                     </th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Order ID</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Purchaser</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Sold By</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Ticket Type</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Qty</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Amount</th>
@@ -1052,7 +1057,7 @@ function SalesReportContent() {
                 <tbody className="divide-y divide-gray-50">
                   {tickets.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-6 py-12 text-center">
+                      <td colSpan={11} className="px-6 py-12 text-center">
                         <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                         <h3 className="text-base font-bold text-gray-900 dark:text-violet-100">No transactions found</h3>
                         <p className="text-sm text-gray-500 dark:text-violet-300/70 mt-1">Adjust your filters to see more results.</p>
@@ -1085,6 +1090,9 @@ function SalesReportContent() {
                           <td className="px-6 py-4">
                             <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{t.purchaser_name || "Unknown"}</div>
                             <div className="text-[11px] font-medium text-gray-500 dark:text-violet-300/70">{t.purchaser_phone || "No phone linked"}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-bold text-primary/80 truncate max-w-[120px]">{t.sold_by || "Unknown"}</div>
                           </td>
                           <td className="px-6 py-4">
                             <span className="text-xs font-bold text-gray-600 dark:text-violet-300/85 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-tighter">{t.type}</span>
