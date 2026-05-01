@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, CheckCircle2, Filter } from "lucide-react";
+import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, CheckCircle2, Filter, Trophy, Medal, Award } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
@@ -489,7 +489,30 @@ export default function DashboardPage() {
                         <li key={org.name} className="rounded-xl border border-gray-100 dark:border-violet-500/15 bg-gray-50/50 dark:bg-violet-950/25 p-3">
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className={`inline-flex items-center justify-center min-w-[2rem] h-6 ${rBadge} text-white text-[10px] font-bold rounded-full`}>{rLabel}</span>
+                              {idx === 0 ? (
+                                <div className="relative group">
+                                  <div className="absolute -inset-2 bg-yellow-400/50 rounded-full blur-lg animate-pulse-soft"></div>
+                                  <span className="relative flex items-center justify-center w-10 h-10 bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600 text-white rounded-full shadow-[0_0_20px_rgba(250,204,21,0.7)] border-2 border-white metal-shine text-lg">
+                                    🏆
+                                  </span>
+                                </div>
+                              ) : idx === 1 ? (
+                                <div className="relative">
+                                  <div className="absolute -inset-1.5 bg-slate-300/30 rounded-full blur-md"></div>
+                                  <span className="relative flex items-center justify-center w-9 h-9 bg-gradient-to-br from-gray-100 via-gray-300 to-gray-500 text-white rounded-full shadow-[0_0_15px_rgba(148,163,184,0.6)] border-2 border-white/80 metal-shine text-lg">
+                                    🥈
+                                  </span>
+                                </div>
+                              ) : idx === 2 ? (
+                                <div className="relative">
+                                  <div className="absolute -inset-1.5 bg-orange-400/30 rounded-full blur-md"></div>
+                                  <span className="relative flex items-center justify-center w-9 h-9 bg-gradient-to-br from-orange-300 via-orange-500 to-orange-700 text-white rounded-full shadow-[0_0_15px_rgba(194,120,57,0.6)] border-2 border-white/80 metal-shine text-lg">
+                                    🥉
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className={`inline-flex items-center justify-center min-w-[2rem] h-6 ${rBadge} text-white text-[10px] font-bold rounded-full`}>{rLabel}</span>
+                              )}
                               <span className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{org.name}</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
@@ -543,7 +566,32 @@ export default function DashboardPage() {
                           return (
                             <tr key={org.name} className="border-b border-gray-50 hover:bg-gray-50/50 dark:hover:bg-violet-950/35 transition-colors">
                               <td className="py-5 px-2 text-center">
-                                <span className={`inline-flex items-center justify-center w-8 h-5 ${rBadge} text-white text-[10px] font-bold rounded-full shadow-sm`}>{rLabel}</span>
+                                <div className="flex justify-center">
+                                  {idx === 0 ? (
+                                    <div className="relative group">
+                                      <div className="absolute -inset-4 bg-yellow-400/40 rounded-full blur-2xl animate-pulse-soft group-hover:bg-yellow-400/60 transition-all"></div>
+                                      <span className="relative flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600 rounded-full shadow-[0_10px_30px_rgba(250,204,21,0.8)] border-2 border-white transform group-hover:scale-125 transition-all cursor-help metal-shine text-2xl" title="Champion - Gold Trophy">
+                                        🏆
+                                      </span>
+                                    </div>
+                                  ) : idx === 1 ? (
+                                    <div className="relative group">
+                                      <div className="absolute -inset-2 bg-slate-300/30 rounded-full blur-xl group-hover:bg-slate-300/50 transition-all"></div>
+                                      <span className="relative flex items-center justify-center w-10 h-10 bg-gradient-to-br from-gray-100 via-gray-300 to-gray-500 rounded-full shadow-[0_8px_25px_rgba(148,163,184,0.7)] border-2 border-white/80 transform hover:scale-115 transition-all cursor-help metal-shine text-xl" title="Runner Up - Silver Medal">
+                                        🥈
+                                      </span>
+                                    </div>
+                                  ) : idx === 2 ? (
+                                    <div className="relative group">
+                                      <div className="absolute -inset-2 bg-orange-400/30 rounded-full blur-xl group-hover:bg-orange-400/50 transition-all"></div>
+                                      <span className="relative flex items-center justify-center w-10 h-10 bg-gradient-to-br from-orange-300 via-orange-500 to-orange-700 rounded-full shadow-[0_8px_25px_rgba(194,120,57,0.7)] border-2 border-white/80 transform hover:scale-115 transition-all cursor-help metal-shine text-xl" title="Elite Tier - Bronze Award">
+                                        🥉
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className={`inline-flex items-center justify-center w-8 h-5 ${rBadge} text-white text-[10px] font-bold rounded-full shadow-sm`}>{rLabel}</span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-5 px-2 text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</td>
                               <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.platinum}</td>

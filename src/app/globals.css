@@ -134,8 +134,13 @@ html.dark input:-webkit-autofill:active {
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .animate-shimmer {
@@ -152,6 +157,62 @@ html.dark input:-webkit-autofill:active {
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.05), transparent);
   animation: shimmer 2s infinite;
+}
+
+@keyframes shine-sweep {
+  0% { transform: translateX(-200%) skewX(-30deg); }
+  20%, 100% { transform: translateX(200%) skewX(-30deg); }
+}
+
+.metal-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.metal-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  animation: shine-sweep 4s infinite;
+}
+
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-200%) skewX(-30deg);
+  }
+
+  20%,
+  100% {
+    transform: translateX(200%) skewX(-30deg);
+  }
+}
+
+.metal-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.metal-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right,
+      transparent,
+      rgba(255, 255, 255, 0.6),
+      transparent);
+  animation: shine-sweep 4s infinite;
 }
 
 /* HTML5 QR Scanner UI Overrides */
@@ -207,6 +268,7 @@ html.dark input:-webkit-autofill:active {
   height: 100% !important;
 }
 
-[id^="fd-qr-"] img[alt="Info icon"], [id^="fd-qr-"] img[alt="Camera menu icon"] {
+[id^="fd-qr-"] img[alt="Info icon"],
+[id^="fd-qr-"] img[alt="Camera menu icon"] {
   display: none !important;
 }
