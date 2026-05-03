@@ -139,7 +139,9 @@ export default function PublicTicketPage() {
                <div className="w-full flex flex-col items-center space-y-1.5 text-[16px] font-medium text-gray-800">
                   <p>Ticket Type : <span className="font-bold">{passLabel.replace(' Pass', '')}</span></p>
                   <p>Booking ID : <span className="font-bold">{ref.toUpperCase()}</span></p>
-                  <p>Total Cost : <span className="font-bold">{lineTotal === 0 ? 'Free' : `Rs.${lineTotal}`}</span></p>
+                  {lineTotal > 0 && (
+                     <p>Total Cost : <span className="font-bold">{`Rs.${lineTotal}`}</span></p>
+                  )}
                </div>
              </div>
           ) : (

@@ -628,7 +628,9 @@ export default function SellTicketsPage() {
                                  <div className="w-full flex flex-col items-center space-y-1 text-[14px] font-medium text-gray-800">
                                     <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
                                     <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number).toUpperCase()}</span></p>
-                                    <p>Total Cost : <span className="font-bold">{saleReceipt.totalInr === 0 ? 'Free' : `Rs.${saleReceipt.totalInr}`}</span></p>
+                                    {saleReceipt.totalInr > 0 && (
+                                       <p>Total Cost : <span className="font-bold">{`Rs.${saleReceipt.totalInr}`}</span></p>
+                                    )}
                                  </div>
                               </div>
                            ) : (
