@@ -271,11 +271,12 @@ export default function SellTicketsPage() {
    };
 
    const downloadMassTemplate = () => {
-          ["Purchaser Name", "Phone Number", "Quantity", "Category"],
-          ["John Doe", "9876543210", 30, "Platinum"],
-          ["Jane Smith", "9123456789", 5, "Student"],
-          ["Alice Brown", "9988776655", 2, "VIP"]
-       ];
+      const templateData = [
+         ["Purchaser Name", "Phone Number", "Quantity", "Category"],
+         ["John Doe", "9876543210", 30, "Platinum"],
+         ["Jane Smith", "9123456789", 5, "Student"],
+         ["Alice Brown", "9988776655", 2, "VIP"]
+      ];
 
       const ws = XLSX.utils.aoa_to_sheet(templateData);
 
