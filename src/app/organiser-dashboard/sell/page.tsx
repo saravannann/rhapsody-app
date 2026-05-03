@@ -541,7 +541,7 @@ export default function SellTicketsPage() {
 
                         <h3 className="text-xs sm:text-base font-bold text-gray-900 mb-0.5 sm:mb-1 leading-tight line-clamp-2">{cat.name}</h3>
                         <div className="flex items-baseline gap-1 flex-wrap">
-                           <span className="text-lg sm:text-xl font-bold text-gray-900">{cat.price === 0 ? 'Free' : `₹${cat.price}`}</span>
+                           <span className="text-lg sm:text-xl font-bold text-gray-900">{cat.price === 0 ? 'Complimentary' : `₹${cat.price}`}</span>
                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">/ pass</span>
                         </div>
                      </div>
