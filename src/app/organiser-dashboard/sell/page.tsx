@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import QRCode from "react-qr-code";
-import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon } from "lucide-react";
+import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon, Award } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
@@ -37,7 +37,7 @@ const CATEGORIES: Category[] = [
    { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
    { id: 'Donor', name: 'Donor Pass', price: 1000, icon: Gift, color: 'text-primary', bg: 'bg-purple-50', border: 'border-purple-200', btn: 'bg-primary hover:bg-purple-700' },
    { id: 'Student', name: 'Student Pass', price: 200, icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' },
-   { id: 'VIP', name: 'VIP Pass', price: 0, icon: Star, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' },
+   { id: 'VIP', name: 'VIP Pass', price: 0, icon: Award, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' },
 ];
 
 export default function SellTicketsPage() {
@@ -83,6 +83,10 @@ export default function SellTicketsPage() {
       const savedName = localStorage.getItem('rhapsody_user') || 'User';
       const savedRole = localStorage.getItem('rhapsody_role') || 'organiser';
 
+      if (savedRole === 'admin') {
+         setCurrentUser(prev => ({ ...prev, name: savedName, role: 'admin' }));
+      }
+
       if (savedRole !== 'admin') {
          setFormData(prev => ({ ...prev, poc: savedName }));
       }
@@ -93,17 +97,29 @@ export default function SellTicketsPage() {
             setOrganisers(profiles.filter(p => Array.isArray(p.roles) ? p.roles.includes('organiser') : p.role === 'organiser'));
             
             // Update current user with real role data
-            const myProfile = profiles.find(p => p.name === savedName);
-             if (myProfile) {
-                const roles = Array.isArray(myProfile.roles) ? myProfile.roles : [myProfile.role];
-                setCurrentUser({
-                   name: savedName,
-                   role: myProfile.role || savedRole,
-                   isTester: roles.includes('tester')
-                });
-             } else {
-                setCurrentUser({ name: savedName, role: savedRole, isTester: false });
-             }
+            const myProfile = profiles.find(p => 
+               p.name?.trim().toLowerCase() === savedName.trim().toLowerCase() ||
+               p.email?.trim().toLowerCase() === savedName.trim().toLowerCase()
+            );
+            
+            if (myProfile) {
+               const roles = Array.isArray(myProfile.roles) ? myProfile.roles : [myProfile.role];
+               const isAdmin = roles.some((r: any) => String(r).toLowerCase() === 'admin');
+               const finalRole = isAdmin ? 'admin' : (myProfile.role || savedRole);
+               
+               setCurrentUser({
+                  name: myProfile.name || savedName,
+                  role: finalRole,
+                  isTester: roles.includes('tester')
+               });
+
+               // Sync localStorage if it's different
+               if (isAdmin && savedRole !== 'admin') {
+                  localStorage.setItem('rhapsody_role', 'admin');
+               }
+            } else {
+               setCurrentUser({ name: savedName, role: savedRole, isTester: false });
+            }
          }
       });
    }, []);
@@ -114,6 +130,7 @@ export default function SellTicketsPage() {
          return {
             id: `mock-${crypto.randomUUID()}`,
             sequence_number: 9999,
+            vip_sequence_number: 9999,
             isMock: true
          };
       }

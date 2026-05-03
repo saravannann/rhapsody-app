@@ -19,6 +19,7 @@ interface TicketData {
   purchaser_phone: string | null;
   created_at: string;
   sequence_number?: number | null;
+  vip_sequence_number?: number | null;
 }
 
 const TYPE_LABELS: Record<string, string> = {

@@ -23,10 +23,13 @@ export function buildTicketTemplateData(params: {
 }) {
   const name = params.purchaserName.trim() || "Guest";
   const isDonor = params.passLabel.toLowerCase().includes("donor");
+  const isVip = params.passLabel.toLowerCase().includes("vip");
   
   const templateName = isDonor 
     ? (process.env.NEXT_PUBLIC_WHATSAPP_DONOR_TEMPLATE || "donor_ticket_v2")
-    : (process.env.NEXT_PUBLIC_WHATSAPP_REGULAR_TEMPLATE || "regular_ticket_v2");
+    : isVip
+      ? (process.env.NEXT_PUBLIC_WHATSAPP_VIP_TEMPLATE || "vip_invitation_v1")
+      : (process.env.NEXT_PUBLIC_WHATSAPP_REGULAR_TEMPLATE || "regular_ticket_v2");
 
   const parameters: { type: string; text: string }[] = [
     { type: "text", text: name },
@@ -36,7 +39,7 @@ export function buildTicketTemplateData(params: {
     { type: "text", text: params.totalInr.toLocaleString("en-IN") }
   ];
 
-  if (!isDonor) {
+  if (!isDonor && !isVip) {
     parameters.push({ type: "text", text: params.ticketId });
   }
 
