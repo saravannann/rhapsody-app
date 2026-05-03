@@ -167,7 +167,7 @@ function SalesReportContent() {
       console.log(`[SalesFetch] Initial: ${isInitial}, TargetPage: ${targetPage}, Range: ${start}-${end}`);
 
       // Base query with exact count
-      let query = supabase.from('tickets').select('*, sequence_number', { count: 'exact' });
+      let query = supabase.from('tickets').select('*, sequence_number, vip_sequence_number', { count: 'exact' });
 
       // Metrics query (for totals across all pages)
       let mQuery = supabase.from('tickets').select('type, funds_destination, status, price, quantity');
@@ -194,12 +194,12 @@ function SalesReportContent() {
             const seq = parseInt(formattedMatch[1]);
             const base = formattedMatch[2];
             if (base) {
-              orConditions += `,sequence_number.eq.${seq},id_text.ilike.${base}%`;
+              orConditions += `,sequence_number.eq.${seq},vip_sequence_number.eq.${seq},id_text.ilike.${base}%`;
             } else {
-              orConditions += `,sequence_number.eq.${seq}`;
+              orConditions += `,sequence_number.eq.${seq},vip_sequence_number.eq.${seq}`;
             }
           } else if (sequenceMatch) {
-            orConditions += `,sequence_number.eq.${parseInt(searchQuery)}`;
+            orConditions += `,sequence_number.eq.${parseInt(searchQuery)},vip_sequence_number.eq.${parseInt(searchQuery)}`;
           } else if (shortIdMatch || searchQuery.length > 20) {
             orConditions += `,id_text.ilike.${searchQuery}%`;
           }
@@ -993,7 +993,7 @@ function SalesReportContent() {
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-gray-900 dark:text-violet-100 truncate">{t.purchaser_name || "Unknown"}</p>
                               <div className="flex items-center gap-2">
-                                <p className="text-[11px] text-gray-500 dark:text-violet-300/70 font-mono">#{String(t.id).split('-')[0].toUpperCase()}</p>
+                                <p className="text-[11px] text-gray-500 dark:text-violet-300/70 font-mono">#{shortTicketRef(t.id, t.type === 'VIP' ? t.vip_sequence_number : t.sequence_number)}</p>
                                 <span className="text-[10px] text-gray-400 dark:text-violet-400/60">•</span>
                                 <p className="text-[10px] text-gray-500 dark:text-violet-300/70">Sold by <span className="font-bold text-primary/80">{t.sold_by || "Unknown"}</span></p>
                               </div>
@@ -1093,7 +1093,7 @@ function SalesReportContent() {
                             </button>
                           </td>
                           <td className="px-6 py-4 text-nowrap">
-                            <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{shortTicketRef(t.id, t.sequence_number)}</span>
+                            <span className="text-xs font-bold text-gray-400 dark:text-violet-400/60 font-mono">#{shortTicketRef(t.id, t.type === 'VIP' ? t.vip_sequence_number : t.sequence_number)}</span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{t.purchaser_name || "Unknown"}</div>

@@ -48,7 +48,7 @@ export default function PublicTicketPage() {
       try {
         const { data, error: qErr } = await supabase
           .from("tickets")
-          .select("*, sequence_number")
+          .select("*, sequence_number, vip_sequence_number")
           .eq("id", id)
           .maybeSingle();
 
@@ -98,7 +98,7 @@ export default function PublicTicketPage() {
     quantity: qty,
     typeId,
   });
-  const ref = shortTicketRef(row.id, row.sequence_number);
+  const ref = shortTicketRef(row.id, typeId === 'VIP' ? row.vip_sequence_number : row.sequence_number);
   const lineTotal = ticketLineTotal(row);
 
   return (

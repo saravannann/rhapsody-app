@@ -98,7 +98,7 @@ export default function SellTicketsPage() {
                 const roles = Array.isArray(myProfile.roles) ? myProfile.roles : [myProfile.role];
                 setCurrentUser({
                    name: savedName,
-                   role: savedRole,
+                   role: myProfile.role || savedRole,
                    isTester: roles.includes('tester')
                 });
              } else {
@@ -121,7 +121,7 @@ export default function SellTicketsPage() {
       const { data, error } = await supabase
          .from("tickets")
          .insert(ticketData)
-         .select("id, sequence_number")
+         .select("id, sequence_number, vip_sequence_number")
          .single();
 
       if (error) throw error;
@@ -203,7 +203,7 @@ export default function SellTicketsPage() {
             qrPayload,
             purchaserName: formData.name.trim(),
             purchaserPhoneE164: purchaserPhone,
-            sequence_number,
+            sequence_number: typeId === 'VIP' ? row.vip_sequence_number : row.sequence_number,
          };
 
          setSaleReceipt(receipt);
@@ -217,7 +217,7 @@ export default function SellTicketsPage() {
                   passLabel,
                   quantity: qty,
                   totalInr: lineTotal,
-                  ref: shortTicketRef(ticketId, sequence_number),
+                  ref: shortTicketRef(ticketId, typeId === 'VIP' ? row.vip_sequence_number : row.sequence_number),
                   ticketPageUrl: ticketUrl,
                });
                const templateData = buildTicketTemplateData({
@@ -225,7 +225,7 @@ export default function SellTicketsPage() {
                   passLabel,
                   quantity: qty,
                   totalInr: lineTotal,
-                  ref: shortTicketRef(ticketId, sequence_number),
+                  ref: shortTicketRef(ticketId, typeId === 'VIP' ? row.vip_sequence_number : row.sequence_number),
                   ticketId: ticketId,
                });
                void fetch('/api/send-ticket', {
@@ -318,7 +318,7 @@ export default function SellTicketsPage() {
                c.name.toLowerCase().replace(' pass', '') === catName.toLowerCase()
             );
 
-             if (category?.id === 'VIP' && currentUser.role !== 'admin') {
+             if (category?.id === 'VIP' && currentUser.role?.toLowerCase() !== 'admin') {
                 return {
                    name: String(row[0]).trim(),
                    phone: String(row[1]).trim(),
@@ -421,7 +421,7 @@ export default function SellTicketsPage() {
                      passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
                      quantity: person.qty,
                      totalInr: person.price * person.qty,
-                     ref: shortTicketRef(ticketId, sequence_number),
+                     ref: shortTicketRef(ticketId, person.type === 'VIP' ? massRowResult.vip_sequence_number : massRowResult.sequence_number),
                      ticketPageUrl: ticketUrl
                   });
                   const templateData = buildTicketTemplateData({
@@ -429,7 +429,7 @@ export default function SellTicketsPage() {
                      passLabel: CATEGORIES.find(c => c.id === person.type)?.name || person.type,
                      quantity: person.qty,
                      totalInr: person.price * person.qty,
-                     ref: shortTicketRef(ticketId, sequence_number),
+                     ref: shortTicketRef(ticketId, person.type === 'VIP' ? massRowResult.vip_sequence_number : massRowResult.sequence_number),
                      ticketId: ticketId,
                   });
                   void fetch('/api/send-ticket', {
@@ -511,7 +511,7 @@ export default function SellTicketsPage() {
 
                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                   {CATEGORIES
-                     .filter(cat => cat.id !== 'VIP' || currentUser.role === 'admin')
+                     .filter(cat => cat.id !== 'VIP' || currentUser.role?.toLowerCase() === 'admin')
                      .map(cat => (
                      <div key={cat.id} onClick={() => setSelectedCategory(cat)} className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-[0.99]`}>
                         <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>

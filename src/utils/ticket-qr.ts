@@ -13,16 +13,18 @@ export function buildTicketQrPayload(params: {
 
 /**
  * Formats the ticket ID into a human-friendly Booking ID.
- * Format: R-SSSS-BBBBBBBB
+ * Format: R-VVVV-BBBBBBBB
  * R = Constant
- * SSSS = Running sequence (padded to 4 digits)
+ * VVVV = Use Seperate Running sequence for VIP ticket (padded to 4 digits)
  * BBBBBBBB = First 8 chars of UUID
  */
-export function shortTicketRef(ticketId: string, sequence?: number | string | null): string {
+export function shortTicketRef(ticketId: string, sequence?: number | string | null, type?: string): string {
   const base = String(ticketId).replace(/-/g, "").slice(0, 8).toUpperCase();
+  
   if (sequence === undefined || sequence === null) {
     return `R-XXXX-${base}`;
   }
+  
   const s = String(sequence).padStart(4, "0");
   return `R-${s}-${base}`;
 }

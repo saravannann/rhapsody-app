@@ -295,7 +295,7 @@ export default function FrontdeskCheckInPage() {
       
       const { data: fresh } = await supabase
         .from("tickets")
-        .select("*, checked_in_count")
+        .select("*, checked_in_count, sequence_number, vip_sequence_number")
         .eq("id", row.id as string)
         .single();
 
@@ -339,7 +339,7 @@ export default function FrontdeskCheckInPage() {
     setLookup({ kind: "loading" });
     const { data: row, error } = await supabase
       .from("tickets")
-      .select("*, checked_in_count, sequence_number")
+      .select("*, checked_in_count, sequence_number, vip_sequence_number")
       .eq("id", ticketId)
       .maybeSingle();
 
@@ -400,7 +400,7 @@ export default function FrontdeskCheckInPage() {
       const sequenceMatch = qText.match(/^\d{1,4}$/);
       const isUuidPrefix = /^[0-9a-fA-F-]{4,36}$/.test(qText);
 
-      let query = supabase.from('tickets').select('*, sequence_number');
+      let query = supabase.from('tickets').select('*, sequence_number, vip_sequence_number');
       let orConditions = `purchaser_name.ilike.${s},purchaser_phone.ilike.${s}`;
 
       if (formattedMatch) {
@@ -597,7 +597,7 @@ export default function FrontdeskCheckInPage() {
                                              <p className="text-3xl font-black">{ticketQuantity(result.ticket)}</p>
                                           </div>
                                        </div>
-                                       <div className="py-4 border-y border-gray-100 flex items-center justify-between"><div><span className="text-[10px] font-bold text-gray-400 uppercase">Current Admission</span><p className="text-lg font-bold">{result.ticket.checked_in_count || 0} / {ticketQuantity(result.ticket)} Admitted</p></div><p className="font-mono text-xs text-gray-400 uppercase tracking-widest">#{shortTicketRef(result.ticket.id, result.ticket.sequence_number).toUpperCase()}</p></div>
+                                       <div className="py-4 border-y border-gray-100 flex items-center justify-between"><div><span className="text-[10px] font-bold text-gray-400 uppercase">Current Admission</span><p className="text-lg font-bold">{result.ticket.checked_in_count || 0} / {ticketQuantity(result.ticket)} Admitted</p></div><p className="font-mono text-xs text-gray-400 uppercase tracking-widest">#{shortTicketRef(result.ticket.id, result.ticket.type === 'VIP' ? result.ticket.vip_sequence_number : result.ticket.sequence_number).toUpperCase()}</p></div>
                                        
                                        {auditLog.length > 0 && (
                                           <div className="bg-gray-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-2"><div className="flex items-center gap-2 mb-2"><Clock className="w-3.5 h-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-widest">Previous Entries</span></div>{auditLog.slice(0, 3).map((log) => (<div key={log.id} className="flex items-center justify-between text-[11px]"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="font-bold">{log.count} Band{log.count > 1 ? 's' : ''} • {log.checked_in_name || "Self"}</span></div><span>{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>))}</div>
