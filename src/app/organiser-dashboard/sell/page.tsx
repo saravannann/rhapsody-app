@@ -37,7 +37,7 @@ const CATEGORIES: Category[] = [
    { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
    { id: 'Donor', name: 'Donor Pass', price: 1000, icon: Gift, color: 'text-primary', bg: 'bg-purple-50', border: 'border-purple-200', btn: 'bg-primary hover:bg-purple-700' },
    { id: 'Student', name: 'Student Pass', price: 200, icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' },
-   { id: 'VIP', name: 'VIP Pass', price: 2500, icon: Star, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' },
+   { id: 'VIP', name: 'VIP Pass', price: 0, icon: Star, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' },
 ];
 
 export default function SellTicketsPage() {
@@ -281,7 +281,7 @@ export default function SellTicketsPage() {
       const ws = XLSX.utils.aoa_to_sheet(templateData);
 
       // Add a simple instruction note in cell E1
-      ws['E1'] = { t: 's', v: 'IMPORTANT: Category must be exactly "Platinum", "Donor", "Student" or "VIP".' };
+      ws['E1'] = { t: 's', v: 'IMPORTANT: Category must be exactly "Platinum", "Donor", "Student" or "VIP". VIP is cost-free.' };
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Mass_Issuance_Template");
@@ -507,7 +507,7 @@ export default function SellTicketsPage() {
 
                         <h3 className="text-xs sm:text-base font-bold text-gray-900 mb-0.5 sm:mb-1 leading-tight line-clamp-2">{cat.name}</h3>
                         <div className="flex items-baseline gap-1 flex-wrap">
-                           <span className="text-lg sm:text-xl font-bold text-gray-900">₹{cat.price}</span>
+                           <span className="text-lg sm:text-xl font-bold text-gray-900">{cat.price === 0 ? 'Free' : `₹${cat.price}`}</span>
                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">/ pass</span>
                         </div>
                      </div>
@@ -594,7 +594,7 @@ export default function SellTicketsPage() {
                                  <div className="w-full flex flex-col items-center space-y-1 text-[14px] font-medium text-gray-800">
                                     <p>Ticket Type : <span className="font-bold">{saleReceipt.passLabel.replace(' Pass', '')}</span></p>
                                     <p>Booking ID : <span className="font-bold">{shortTicketRef(saleReceipt.ticketId, saleReceipt.sequence_number).toUpperCase()}</span></p>
-                                    <p>Total Cost : <span className="font-bold">Rs.{saleReceipt.totalInr}</span></p>
+                                    <p>Total Cost : <span className="font-bold">{saleReceipt.totalInr === 0 ? 'Free' : `Rs.${saleReceipt.totalInr}`}</span></p>
                                  </div>
                               </div>
                            ) : (
