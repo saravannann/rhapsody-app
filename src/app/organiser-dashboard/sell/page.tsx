@@ -164,7 +164,7 @@ export default function SellTicketsPage() {
        const isPhoneValid = hasIndianNationalDigits(formData.phone);
        const isNameValid = !!formData.name.trim();
        const isPocValid = !!formData.poc;
-       const isTxnValid = formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
+       const isTxnValid = (selectedCategory?.price === 0) || formData.fundsDestination !== 'trust' || !!formData.txnId.trim();
 
        if (!isPhoneValid || !isNameValid || !isPocValid || !isTxnValid) {
           setShowErrors(true);

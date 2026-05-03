@@ -60,10 +60,10 @@ export function buildTicketWhatsAppMessage(params: {
   const name = params.purchaserName.trim() || "Guest";
   const total = params.totalInr.toLocaleString("en-IN");
 
+  const isVip = params.passLabel.toLowerCase().includes("vip");
   const isPlatinumOrStudent =
     params.passLabel.toLowerCase().includes("platinum") ||
-    params.passLabel.toLowerCase().includes("student") ||
-    params.passLabel.toLowerCase().includes("vip");
+    params.passLabel.toLowerCase().includes("student");
 
   const isDonor = params.passLabel.toLowerCase().includes("donor");
 
@@ -89,6 +89,34 @@ export function buildTicketWhatsAppMessage(params: {
       `With Gratitude,`,
       `Team Rhapsody`,
       `Thenmozhi Memorial Trust`
+    ].join("\n");
+  }
+
+  if (isVip) {
+    return [
+      `Dear ${name},`,
+      "",
+      `✨ It is our distinct honor to invite you to Rhapsody.`,
+      "",
+      `We would be delighted to have your presence with us for this special evening. Your support and association mean a great deal to the Thenmozhi Memorial Trust.`,
+      "",
+      `🎟️ 🎫 Pass Details`,
+      `${params.passLabel} × ${params.quantity}`,
+      `Ref: ${params.ref.toUpperCase()}`,
+      "",
+      `📍 Event Details`,
+      `Date: May 9th, 2026`,
+      `Time: 4:30 PM Onwards`,
+      `Venue: Sir Mutha Venkata Subba Rao Concert Hall, Chennai`,
+      "",
+      `🎟️ Your Digital Entry Pass`,
+      `${params.ticketPageUrl}`,
+      "",
+      `Kindly present your QR code at the entrance for a seamless check-in experience. We look forward to welcoming you for an evening of elegance, music, and meaningful moments.`,
+      "",
+      `With Warm Regards,`,
+      `Team Rhapsody`,
+      `(Thenmozhi Memorial Trust)`
     ].join("\n");
   }
 
