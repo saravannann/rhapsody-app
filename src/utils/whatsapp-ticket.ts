@@ -36,7 +36,7 @@ export function buildTicketTemplateData(params: {
     { type: "text", text: params.passLabel },
     { type: "text", text: params.quantity.toString() },
     { type: "text", text: params.ref.toUpperCase() },
-    { type: "text", text: params.totalInr.toLocaleString("en-IN") }
+    { type: "text", text: isVip ? `https://rhapsody-alpha.vercel.app/ticket/${params.ticketId}` : params.totalInr.toLocaleString("en-IN") }
   ];
 
   if (!isDonor && !isVip) {
