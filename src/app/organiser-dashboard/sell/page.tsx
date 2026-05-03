@@ -318,6 +318,17 @@ export default function SellTicketsPage() {
                c.name.toLowerCase().replace(' pass', '') === catName.toLowerCase()
             );
 
+             if (category?.id === 'VIP' && currentUser.role !== 'admin') {
+                return {
+                   name: String(row[0]).trim(),
+                   phone: String(row[1]).trim(),
+                   qty: 0,
+                   type: 'RESTRICTED',
+                   price: 0,
+                   originalCat: catName
+                };
+             }
+
             if (!category && catName) {
                // If category is provided but invalid, we'll flag it for skip
                return {
@@ -369,6 +380,10 @@ export default function SellTicketsPage() {
          if (person.type === 'INVALID') {
             const originalCat = (person as { originalCat?: string }).originalCat || "Unknown";
             setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: Invalid category ("${originalCat}")`] } : null);
+            continue;
+         }
+         if (person.type === 'RESTRICTED') {
+            setMassStatus(prev => prev ? { ...prev, errors: [...prev.errors, `${person.name}: VIP access restricted`] } : null);
             continue;
          }
          try {
@@ -495,7 +510,9 @@ export default function SellTicketsPage() {
                </div>
 
                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {CATEGORIES.map(cat => (
+                  {CATEGORIES
+                     .filter(cat => cat.id !== 'VIP' || currentUser.role === 'admin')
+                     .map(cat => (
                      <div key={cat.id} onClick={() => setSelectedCategory(cat)} className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-[0.99]`}>
                         <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                            <cat.icon className="w-16 h-16" />
