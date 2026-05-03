@@ -42,6 +42,7 @@ interface OrgGoalData {
   platinum: { sold: number; target: number };
   donor: { sold: number; target: number };
   student: { sold: number; target: number };
+  vip: { sold: number; target: number };
   total: { sold: number; target: number };
 }
 
@@ -50,6 +51,7 @@ interface LeaderboardData {
   platinum: number;
   donor: number;
   student: number;
+  vip: number;
   total: number;
   revenue: number;
 }
@@ -358,16 +360,17 @@ function SalesReportContent() {
       const goals: OrgGoalData[] = organisers.map(org => {
         const targets = resolvePassTargets(org.pass_targets);
         const orgNameLower = (org.name || "").toLowerCase();
-        const actual = leaderMap.get(orgNameLower) || { platinum: 0, donor: 0, student: 0, total: 0, name: org.name, revenue: 0 };
+        const actual = leaderMap.get(orgNameLower) || { platinum: 0, donor: 0, student: 0, vip: 0, total: 0, name: org.name, revenue: 0 };
         
         return {
           name: org.name,
           platinum: { sold: actual.platinum || 0, target: targets['Platinum Pass'] || 0 },
           donor: { sold: actual.donor || 0, target: targets['Donor Pass'] || 0 },
           student: { sold: actual.student || 0, target: targets['Student Pass'] || 0 },
+          vip: { sold: actual.vip || 0, target: targets['VIP Pass'] || 0 },
           total: { 
-            sold: (actual.platinum || 0) + (actual.donor || 0) + (actual.student || 0), 
-            target: (targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) 
+            sold: (actual.platinum || 0) + (actual.donor || 0) + (actual.student || 0) + (actual.vip || 0), 
+            target: (targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) + (targets['VIP Pass'] || 0)
           }
         };
       });
@@ -700,6 +703,8 @@ function SalesReportContent() {
       "Donor Actual",
       "Student Target",
       "Student Actual",
+      "VIP Target",
+      "VIP Actual",
       "Total Target",
       "Total Actual",
       "Goal Achievement %"
@@ -715,6 +720,8 @@ function SalesReportContent() {
         g.donor.sold,
         g.student.target,
         g.student.sold,
+        g.vip.target,
+        g.vip.sold,
         g.total.target,
         g.total.sold,
         `${achievement}%`
@@ -835,6 +842,7 @@ function SalesReportContent() {
                 <option>Platinum</option>
                 <option>Donor</option>
                 <option>Student</option>
+                <option>VIP</option>
               </select>
               <ChevronDown className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>

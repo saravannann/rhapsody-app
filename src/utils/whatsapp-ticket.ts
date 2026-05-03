@@ -59,7 +59,8 @@ export function buildTicketWhatsAppMessage(params: {
 
   const isPlatinumOrStudent =
     params.passLabel.toLowerCase().includes("platinum") ||
-    params.passLabel.toLowerCase().includes("student");
+    params.passLabel.toLowerCase().includes("student") ||
+    params.passLabel.toLowerCase().includes("vip");
 
   const isDonor = params.passLabel.toLowerCase().includes("donor");
 

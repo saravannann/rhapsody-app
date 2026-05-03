@@ -37,6 +37,7 @@ const CATEGORIES: Category[] = [
    { id: 'Platinum', name: 'Platinum Pass', price: 500, icon: Star, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700' },
    { id: 'Donor', name: 'Donor Pass', price: 1000, icon: Gift, color: 'text-primary', bg: 'bg-purple-50', border: 'border-purple-200', btn: 'bg-primary hover:bg-purple-700' },
    { id: 'Student', name: 'Student Pass', price: 200, icon: Ticket, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' },
+   { id: 'VIP', name: 'VIP Pass', price: 2500, icon: Star, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' },
 ];
 
 export default function SellTicketsPage() {
@@ -270,16 +271,16 @@ export default function SellTicketsPage() {
    };
 
    const downloadMassTemplate = () => {
-      const templateData = [
-         ["Purchaser Name", "Phone Number", "Quantity", "Category"],
-         ["John Doe", "9876543210", 30, "Platinum"],
-         ["Jane Smith", "9123456789", 5, "Student"]
-      ];
+          ["Purchaser Name", "Phone Number", "Quantity", "Category"],
+          ["John Doe", "9876543210", 30, "Platinum"],
+          ["Jane Smith", "9123456789", 5, "Student"],
+          ["Alice Brown", "9988776655", 2, "VIP"]
+       ];
 
       const ws = XLSX.utils.aoa_to_sheet(templateData);
 
       // Add a simple instruction note in cell E1
-      ws['E1'] = { t: 's', v: 'IMPORTANT: Category must be exactly "Platinum", "Donor", or "Student".' };
+      ws['E1'] = { t: 's', v: 'IMPORTANT: Category must be exactly "Platinum", "Donor", "Student" or "VIP".' };
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Mass_Issuance_Template");
@@ -706,7 +707,7 @@ export default function SellTicketsPage() {
                                                       {showErrors && !massFile ? 'Excel Required' : 'Tap to upload .xlsx / .xls'}
                                                    </p>
                                                 )}
-                                                <p className="text-[9px] text-gray-400 mt-1 uppercase">Col 1: Name, Col 2: Phone, Col 3: Qty, Col 4: Category (Platinum, Donor, Student)</p>
+                                                <p className="text-[9px] text-gray-400 mt-1 uppercase">Col 1: Name, Col 2: Phone, Col 3: Qty, Col 4: Category (Platinum, Donor, Student, VIP)</p>
                                              </div>
                                              <input type="file" className="hidden" accept=".xlsx,.xls" onChange={handleMassUpload} />
                                           </label>

@@ -19,6 +19,7 @@ export default function OrganiserDashboard() {
     { name: "Platinum Pass", sold: 0, target: 50 },
     { name: "Donor Pass", sold: 0, target: 15 },
     { name: "Student Pass", sold: 0, target: 40 },
+    { name: "VIP Pass", sold: 0, target: 10 },
   ]);
 
   useEffect(() => {

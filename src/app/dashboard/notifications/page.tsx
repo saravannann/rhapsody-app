@@ -264,7 +264,7 @@ export default function NotificationsPage() {
 
                 {newBroadcast.targetType === 'buyers' && (
                   <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-2">
-                    {['Platinum Pass', 'Donor Pass', 'Student Pass'].map(cat => (
+                    {['Platinum Pass', 'Donor Pass', 'Student Pass', 'VIP Pass'].map(cat => (
                       <button
                         key={cat}
                         onClick={() => {

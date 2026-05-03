@@ -58,8 +58,8 @@ describe('pass-targets utils', () => {
 
   describe('totalPassTarget', () => {
     it('should return the sum of all resolved targets', () => {
-      const saved = { "Platinum Pass": 10, "Donor Pass": 10, "Student Pass": 10 };
-      expect(totalPassTarget(saved)).toBe(30);
+      const saved = { "Platinum Pass": 10, "Donor Pass": 10, "Student Pass": 10, "VIP Pass": 10 };
+      expect(totalPassTarget(saved)).toBe(40);
     });
   });
 

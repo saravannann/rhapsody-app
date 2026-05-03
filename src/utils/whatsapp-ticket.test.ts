@@ -42,6 +42,16 @@ describe('whatsapp-ticket utils', () => {
       expect(msg).toContain('Sir Mutha Venkata Subba Rao');
     });
 
+    it('should generate the correct message for VIP Pass', () => {
+      const msg = buildTicketWhatsAppMessage({
+        ...baseParams,
+        passLabel: 'VIP Pass'
+      });
+      expect(msg).toContain('Dear Jane Doe');
+      expect(msg).toContain('VIP Pass × 2');
+      expect(msg).toContain('Sir Mutha Venkata Subba Rao');
+    });
+
     it('should generate a special message for Donor Pass', () => {
       const msg = buildTicketWhatsAppMessage({
         ...baseParams,

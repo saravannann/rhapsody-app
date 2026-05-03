@@ -27,6 +27,7 @@ interface OrganiserListItem {
   platinum: number;
   donor: number;
   student: number;
+  vip: number;
   total: number;
   revenue: number;
 }
@@ -114,6 +115,7 @@ export default function DashboardPage() {
         let targetPlatinum = 0;
         let targetDonor = 0;
         let targetStudent = 0;
+        let targetVip = 0;
 
         const organisersToCount = filterOrganiser === 'All Organisers'
           ? allOrganisers
@@ -124,9 +126,10 @@ export default function DashboardPage() {
           targetPlatinum += targets['Platinum Pass'] || 0;
           targetDonor += targets['Donor Pass'] || 0;
           targetStudent += targets['Student Pass'] || 0;
+          targetVip += targets['VIP Pass'] || 0;
         });
 
-        const totalTargetCount = targetPlatinum + targetDonor + targetStudent;
+        const totalTargetCount = targetPlatinum + targetDonor + targetStudent + targetVip;
         const wa = rpcData.whatsapp || { sent: 0, failed: 0, not_sent: 0 };
         setMetrics({
           totalRevenue: m.total_revenue || 0,
@@ -144,15 +147,18 @@ export default function DashboardPage() {
         const platinumSold = types.find((t: any) => t.name.includes('Platinum'))?.sold || 0;
         const donorSold = types.find((t: any) => t.name.includes('Donor'))?.sold || 0;
         const studentSold = types.find((t: any) => t.name.includes('Student'))?.sold || 0;
+        const vipSold = types.find((t: any) => t.name.includes('VIP'))?.sold || 0;
 
         const platinumRev = types.find((t: any) => t.name.includes('Platinum'))?.revenue || 0;
         const donorRev = types.find((t: any) => t.name.includes('Donor'))?.revenue || 0;
         const studentRev = types.find((t: any) => t.name.includes('Student'))?.revenue || 0;
+        const vipRev = types.find((t: any) => t.name.includes('VIP'))?.revenue || 0;
 
         setChartData([
           { name: 'Platinum Pass', Sold: platinumSold, Target: targetPlatinum, Revenue: platinumRev },
           { name: 'Donor Pass', Sold: donorSold, Target: targetDonor, Revenue: donorRev },
           { name: 'Student Pass', Sold: studentSold, Target: targetStudent, Revenue: studentRev },
+          { name: 'VIP Pass', Sold: vipSold, Target: targetVip, Revenue: vipRev },
         ]);
 
         setStatusData([
@@ -261,6 +267,7 @@ export default function DashboardPage() {
                     <option value="Platinum">Platinum Pass</option>
                     <option value="Donor">Donor Pass</option>
                     <option value="Student">Student Pass</option>
+                    <option value="VIP">VIP Pass</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-primary absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -536,6 +543,10 @@ export default function DashboardPage() {
                               <span className="font-medium text-gray-500 dark:text-violet-400/80">Student</span>
                               <span className="font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.student}</span>
                             </div>
+                            <div className="flex flex-col items-center justify-center rounded-lg bg-white/70 px-1 py-1.5 dark:bg-violet-950/35">
+                              <span className="font-medium text-gray-500 dark:text-violet-400/80">VIP</span>
+                              <span className="font-bold tabular-nums text-gray-900 dark:text-violet-100">{org.vip}</span>
+                            </div>
                           </div>
                         </li>
                       );
@@ -553,6 +564,7 @@ export default function DashboardPage() {
                         <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
                         <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
                         <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
+                        <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">VIP</th>
                         <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total</th>
                         <th className="py-4 px-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Amount (₹)</th>
                       </tr>
@@ -599,6 +611,7 @@ export default function DashboardPage() {
                               <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.platinum}</td>
                               <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.donor}</td>
                               <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.student}</td>
+                              <td className="py-5 px-4 text-sm font-semibold text-gray-500 dark:text-violet-300/70 text-center">{org.vip}</td>
                               <td className="py-5 px-4 text-center">
                                 <span className={`inline-block text-xs font-bold px-3 py-1 rounded-md border ${leaderboardSort === 'count' ? 'bg-primary/5 text-primary border-primary/20' : 'bg-gray-50 dark:bg-violet-950/25 text-gray-500 dark:text-violet-400/70 border-gray-100 dark:border-violet-500/15'}`}>
                                   {org.total}

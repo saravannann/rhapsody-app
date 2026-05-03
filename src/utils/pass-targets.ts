@@ -5,12 +5,14 @@ export const PASS_TARGET_DEFAULTS: Record<string, number> = {
   "Platinum Pass": 50,
   "Donor Pass": 15,
   "Student Pass": 40,
+  "VIP Pass": 10,
 };
 
 const PASS_COLORS: Record<string, string> = {
   "Platinum Pass": "bg-[#ec4899]",
   "Donor Pass": "bg-[#3b82f6]",
   "Student Pass": "bg-[#f59e0b]",
+  "VIP Pass": "bg-[#8b5cf6]",
 };
 
 /** Maps DB `tickets.type` values to pass target row keys. */
@@ -18,6 +20,7 @@ export const TICKET_TYPE_TO_PASS_NAME: Record<string, keyof typeof PASS_TARGET_D
   Platinum: "Platinum Pass",
   Donor: "Donor Pass",
   Student: "Student Pass",
+  VIP: "VIP Pass",
 };
 
 export type PassTargetRow = {
@@ -61,6 +64,7 @@ export function soldCountsFromTickets(
     "Platinum Pass": 0,
     "Donor Pass": 0,
     "Student Pass": 0,
+    "VIP Pass": 0,
   };
   for (const t of tickets) {
     const raw = t.type;

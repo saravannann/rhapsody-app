@@ -25,6 +25,7 @@ const TYPE_LABELS: Record<string, string> = {
   Platinum: "Platinum Pass",
   Donor: "Donor Pass",
   Student: "Student Pass",
+  VIP: "VIP Pass",
 };
 
 export default function PublicTicketPage() {
