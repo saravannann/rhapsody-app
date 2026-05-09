@@ -268,6 +268,13 @@ export default function FrontdeskCheckInPage() {
     if (existingCount >= qty) return;
     if (countToAdmit <= 0) return;
 
+    // [SAFETY GUARD] Prevent over-admission (e.g. 6 / 4)
+    if (existingCount + countToAdmit > qty) {
+      notifyError();
+      alert(`Cannot admit ${countToAdmit} more. Only ${qty - existingCount} remaining.`);
+      return;
+    }
+
     setCheckingIn(true);
     try {
       const newCount = existingCount + countToAdmit;
