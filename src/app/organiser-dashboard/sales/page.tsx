@@ -719,15 +719,15 @@ function SalesReportContent() {
     const headers = [
       "Organizer Name",
       "Platinum Target",
-      "Platinum Actual",
+      "Platinum Actual (Sold)",
       "Donor Target",
-      "Donor Actual",
+      "Donor Actual (Sold)",
       "Student Target",
-      "Student Actual",
+      "Student Actual (Sold)",
       "VIP Target",
-      "VIP Actual",
+      "VIP Actual (Sold)",
       "Total Target",
-      "Total Actual",
+      "Total Actual (Sold)",
       "Goal Achievement %"
     ];
 
@@ -757,7 +757,58 @@ function SalesReportContent() {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `org_goals_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `sales_performance_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportAttendance = () => {
+    if (orgGoalData.length === 0) return;
+
+    const headers = [
+      "Organizer Name",
+      "Platinum Sold",
+      "Platinum Admitted",
+      "Donor Sold",
+      "Donor Admitted",
+      "Student Sold",
+      "Student Admitted",
+      "VIP Sold",
+      "VIP Admitted",
+      "Total Sold",
+      "Total Admitted",
+      "Attendance %"
+    ];
+
+    const rows = orgGoalData.map(g => {
+      const attendance = g.total.sold > 0 ? ((g.total.checked / g.total.sold) * 100).toFixed(1) : "0.0";
+      return [
+        g.name,
+        g.platinum.sold,
+        g.platinum.checked,
+        g.donor.sold,
+        g.donor.checked,
+        g.student.sold,
+        g.student.checked,
+        g.vip.sold,
+        g.vip.checked,
+        g.total.sold,
+        g.total.checked,
+        `${attendance}%`
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `attendance_report_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -777,7 +828,13 @@ function SalesReportContent() {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             type="button"
-            onClick={activeTab === 'Transactions' ? handleExport : handleExportOrgGoals}
+            onClick={
+              activeTab === 'Transactions' 
+                ? handleExport 
+                : activeTab === 'Org Targets' 
+                ? handleExportOrgGoals 
+                : handleExportAttendance
+            }
             className="inline-flex items-center justify-center min-h-[44px] bg-[#10b981] hover:bg-[#059669] text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-green-500/20 active:scale-[0.98] text-sm"
           >
             <Download className="w-4 h-4 mr-2 shrink-0" /> Export {activeTab === 'Transactions' ? 'CSV' : activeTab === 'Org Targets' ? 'Goals' : 'Attendance'}
