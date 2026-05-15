@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { THEME_INLINE_SCRIPT } from "@/lib/theme-inline-script";
 import { ThemeProvider } from "@/components/theme-provider";
+import { EventProvider } from "@/context/EventContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,7 +28,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} min-h-screen flex flex-col antialiased`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <EventProvider>
+            {children}
+          </EventProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

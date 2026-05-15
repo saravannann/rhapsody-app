@@ -4,6 +4,8 @@ import React, { useEffect, useState, useMemo, useRef, useCallback, Suspense } fr
 import { useSearchParams } from "next/navigation";
 import { Download, Search, Loader2, FileSpreadsheet, Filter, ChevronDown, MessageCircle, CheckSquare, Square, Check, CheckCircle, RefreshCw, Calendar, Ticket, CreditCard, MessageSquare, User } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { useEvents } from "@/context/EventContext";
+import { YearSelector } from "@/components/YearSelector";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 import { shortTicketRef } from "@/utils/ticket-qr";
 import { buildTicketWhatsAppMessage, buildWhatsAppSendUrl, buildTicketTemplateData } from "@/utils/whatsapp-ticket";
@@ -86,6 +88,7 @@ function buildSellerOptions(
 }
 
 function SalesReportContent() {
+  const { selectedEventId } = useEvents();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -182,6 +185,9 @@ function SalesReportContent() {
 
       const applyFilters = <T,>(q: T): T => {
         let res = q as any;
+        if (selectedEventId) {
+          res = res.eq('event_id', selectedEventId);
+        }
         if (savedRole === 'organiser' && savedName) {
           res = res.ilike('sold_by', savedName);
         } else if (pocFilter !== 'All Organisers') {
@@ -319,45 +325,43 @@ function SalesReportContent() {
       console.error("Sales Fetch Error:", errMsg);
       setFetchError(errMsg);
     } finally {
-      setLoading(false);
       setIsFetchingMore(false);
+      setLoading(false);
     }
-  }, [PAGE_SIZE, pocFilter, searchQuery, ticketTypeFilter, fundsFilter, waFilter, dateFilter, sellerOptions.length]);
+  }, [selectedEventId, pocFilter, searchQuery, ticketTypeFilter, fundsFilter, waFilter, dateFilter, PAGE_SIZE, sellerOptions.length]);
 
   const fetchOrgGoals = useCallback(async () => {
     try {
       setLoadingGoals(true);
-      
-      // 1. Fetch all organiser profiles
-      const { data: profiles, error: pError } = await supabase
-        .from('profiles')
-        .select('*');
-      
-      if (pError) {
-        console.error("Profiles fetch error:", pError);
-        throw new Error(`Profiles fetch failed: ${pError.message}`);
-      }
+      // 1. Fetch organisers and their event-specific targets
+      const [profilesRes, targetsRes] = await Promise.all([
+        supabase.from('profiles').select('id, name, roles, pass_targets'),
+        selectedEventId 
+          ? supabase.from('event_targets').select('profile_id, targets').eq('event_id', selectedEventId)
+          : Promise.resolve({ data: [] as any[], error: null })
+      ]);
 
-      const organisers = (profiles || []).filter(p => {
+      if (profilesRes.error) throw profilesRes.error;
+
+      const profiles = profilesRes.data || [];
+      const eventTargetsMap = new Map((targetsRes.data || []).map(t => [t.profile_id, t.targets]));
+
+      const organisers = profiles.filter(p => {
         if (Array.isArray(p.roles)) return p.roles.includes('organiser');
         return false;
       });
 
-      // 2. Fetch sales summary via RPC
+      // 2. Fetch sales summary via RPC with event filter
       const { data: rpcData, error: rError } = await supabase.rpc('get_admin_dashboard_data', {
         p_date_filter: 'All Time',
         p_type_filter: 'All Types',
         p_org_filter: 'All Organisers',
-        p_funds_filter: 'All Destinations'
+        p_funds_filter: 'All Destinations',
+        p_event_id: selectedEventId
       });
 
-      if (rError) {
-        console.error("RPC fetch error:", rError);
-        throw new Error(`RPC fetch failed: ${rError.message || JSON.stringify(rError)}`);
-      }
-
+      if (rError) throw rError;
       if (!rpcData) {
-        console.warn("RPC returned no data");
         setOrgGoalData([]);
         return;
       }
@@ -367,7 +371,8 @@ function SalesReportContent() {
 
       // 3. Merge data
       const goals: OrgGoalData[] = organisers.map(org => {
-        const targets = resolvePassTargets(org.pass_targets);
+        const specificTargets = eventTargetsMap.get(org.id) || org.pass_targets;
+        const targets = resolvePassTargets(specificTargets);
         const orgNameLower = (org.name || "").toLowerCase();
         const actual = leaderMap.get(orgNameLower) || { 
           platinum: 0, platinum_checked: 0,
@@ -404,7 +409,7 @@ function SalesReportContent() {
     } finally {
       setLoadingGoals(false);
     }
-  }, []);
+  }, [selectedEventId]);
 
   useEffect(() => {
     if ((activeTab === 'Org Targets' || activeTab === 'Check-in Report') && userRole === 'admin') {
@@ -821,7 +826,10 @@ function SalesReportContent() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-violet-100 leading-tight">Sales Report</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-violet-100 leading-tight">Sales Report</h1>
+            <YearSelector />
+          </div>
           <p className="text-gray-500 dark:text-violet-300/70 mt-0.5 text-xs sm:text-sm font-medium">Search, filter, export</p>
         </div>
 

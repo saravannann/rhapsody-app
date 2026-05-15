@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import QRCode from "react-qr-code";
-import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon, Award } from "lucide-react";
+import { ArrowLeft, User, Phone, Users, Ticket, CheckCircle2, Loader2, Star, Gift, IndianRupee, UploadCloud, ChevronRight, Minus, Plus, MessageCircle, Link2, LucideIcon, Award, Calendar } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { useEvents } from "@/context/EventContext";
+import { YearSelector } from "@/components/YearSelector";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
 import { buildTicketQrPayload, shortTicketRef } from "@/utils/ticket-qr";
@@ -41,6 +43,7 @@ const CATEGORIES: Category[] = [
 ];
 
 export default function SellTicketsPage() {
+   const { selectedEventId, selectedEvent } = useEvents();
    const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
    const [formData, setFormData] = useState({
@@ -64,6 +67,7 @@ export default function SellTicketsPage() {
    const [massFile, setMassFile] = useState<File | null>(null);
    const [massData, setMassData] = useState<{ name: string, phone: string, qty: number, type: string, price: number }[]>([]);
    const [massStatus, setMassStatus] = useState<{ total: number, sent: number, totalQty: number, errors: string[] } | null>(null);
+   const isArchived = selectedEvent?.status === 'archived';
 
    const massSplit = useMemo(() => {
       const split: Record<string, number> = {};
@@ -160,6 +164,10 @@ export default function SellTicketsPage() {
 
    const handleCheckout = async (e: React.FormEvent) => {
        e.preventDefault();
+       if (isArchived) {
+          alert("Cannot issue tickets for archived events.");
+          return;
+       }
 
        const isPhoneValid = hasIndianNationalDigits(formData.phone);
        const isNameValid = !!formData.name.trim();
@@ -192,6 +200,7 @@ export default function SellTicketsPage() {
 
           const ticketPayload = {
              type: typeId,
+             event_id: selectedEventId,
              price: price,
              quantity: qty,
              status: "booked",
@@ -376,6 +385,10 @@ export default function SellTicketsPage() {
 
    const handleMassIssuance = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (isArchived) {
+         alert("Cannot issue tickets for archived events.");
+         return;
+      }
 
       const isFileValid = massData.length > 0;
       const isPocValid = !!formData.poc;
@@ -414,6 +427,7 @@ export default function SellTicketsPage() {
 
             const ticketPayload = {
                type: person.type,
+               event_id: selectedEventId,
                price: person.price,
                quantity: person.qty,
                status: "booked",
@@ -522,15 +536,28 @@ export default function SellTicketsPage() {
 
          {!selectedCategory ? (
             <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-               <div className="mb-4 sm:mb-6">
+               <div className="mb-4 sm:mb-6 flex items-center gap-3">
                   <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Quick Sell</h1>
+                  <YearSelector />
                </div>
 
-               <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+               {isArchived && (
+                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-700 animate-in fade-in slide-in-from-top-2">
+                     <div className="p-2 bg-amber-100 rounded-lg">
+                        <Calendar className="w-5 h-5" />
+                     </div>
+                     <div>
+                        <p className="text-sm font-bold">Event Archived</p>
+                        <p className="text-xs">Ticket issuance is disabled for archived events. Switch to an active event to sell tickets.</p>
+                     </div>
+                  </div>
+               )}
+
+               <div className={`grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 ${isArchived ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}>
                   {CATEGORIES
                      .filter(cat => cat.id !== 'VIP' || currentUser.role?.toLowerCase() === 'admin')
                      .map(cat => (
-                     <div key={cat.id} onClick={() => setSelectedCategory(cat)} className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-[0.99]`}>
+                     <div key={cat.id} onClick={() => !isArchived && setSelectedCategory(cat)} className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-[0.99]`}>
                         <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                            <cat.icon className="w-16 h-16" />
                         </div>
@@ -555,7 +582,7 @@ export default function SellTicketsPage() {
                      setSelectedCategory({ id: 'Mass', name: 'General Issuance', price: 0, icon: UploadCloud, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', btn: 'bg-violet-600 hover:bg-violet-700' });
                      setSellMode('mass');
                   }}
-                  className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white overflow-hidden relative group cursor-pointer hover:shadow-2xl transition-all"
+                  className={`bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white overflow-hidden relative group ${isArchived ? 'opacity-50 grayscale pointer-events-none' : 'cursor-pointer hover:shadow-2xl'} transition-all`}
                >
                   <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-10 group-hover:rotate-12 transition-transform pointer-events-none">
                      <UploadCloud className="w-24 h-24 sm:w-40 sm:h-40" />

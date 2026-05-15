@@ -7,6 +7,8 @@ import { ChevronDown, IndianRupee, Ticket, Users, Clock, TrendingUp, Loader2, Ch
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { supabase } from "@/utils/supabase";
+import { useEvents } from "@/context/EventContext";
+import { YearSelector } from "@/components/YearSelector";
 import { ticketLineTotal, ticketQuantity } from "@/utils/ticket-counts";
 import { resolvePassTargets } from "@/utils/pass-targets";
 
@@ -35,6 +37,7 @@ interface OrganiserListItem {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { selectedEventId } = useEvents();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Sales Overview');
   const [metrics, setMetrics] = useState({
@@ -99,18 +102,27 @@ export default function DashboardPage() {
     async function refreshData() {
       try {
         setLoading(true);
-        const { data: rpcData, error } = await supabase.rpc('get_admin_dashboard_data', {
-          p_date_filter: filterDate,
-          p_type_filter: filterType,
-          p_org_filter: filterOrganiser,
-          p_funds_filter: filterFunds
-        });
+        // 1. Fetch metrics, leaderboard, and event-specific targets
+        const [rpcRes, targetsRes] = await Promise.all([
+          supabase.rpc('get_admin_dashboard_data', {
+            p_date_filter: filterDate,
+            p_type_filter: filterType,
+            p_org_filter: filterOrganiser,
+            p_funds_filter: filterFunds,
+            p_event_id: selectedEventId
+          }),
+          selectedEventId 
+            ? supabase.from('event_targets').select('profile_id, targets').eq('event_id', selectedEventId)
+            : Promise.resolve({ data: [] as any[], error: null })
+        ]);
 
-        if (error) throw error;
+        if (rpcRes.error) throw rpcRes.error;
 
+        const rpcData = rpcRes.data;
         const m = rpcData.metrics;
         const leader = rpcData.leaderboard || [];
         const types = rpcData.chart_data || [];
+        const eventTargetsMap = new Map((targetsRes.data || []).map(t => [t.profile_id, t.targets]));
 
         // Calculate Targets (Still client-side from profiles)
         let targetPlatinum = 0;
@@ -123,7 +135,8 @@ export default function DashboardPage() {
           : allOrganisers.filter(o => o.name === filterOrganiser);
 
         organisersToCount.forEach(org => {
-          const targets = resolvePassTargets(org.pass_targets);
+          const specificTargets = eventTargetsMap.get(org.id) || org.pass_targets;
+          const targets = resolvePassTargets(specificTargets);
           targetPlatinum += targets['Platinum Pass'] || 0;
           targetDonor += targets['Donor Pass'] || 0;
           targetStudent += targets['Student Pass'] || 0;
@@ -191,7 +204,7 @@ export default function DashboardPage() {
     if (allOrganisers.length > 0) {
       refreshData();
     }
-  }, [allOrganisers, filterDate, filterType, filterOrganiser, filterFunds, leaderboardSort]);
+  }, [selectedEventId, allOrganisers, filterDate, filterType, filterOrganiser, filterFunds, leaderboardSort]);
 
   const checkInRate = metrics.scannableTickets > 0 ? ((metrics.checkedIn / metrics.scannableTickets) * 100).toFixed(1) : "0.0";
   const formattedRevenue = new Intl.NumberFormat('en-IN').format(metrics.totalRevenue);
@@ -202,13 +215,15 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-4 gap-y-2 min-w-0">
-          <div>
+          <div className="flex items-center gap-3">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary leading-tight">Dashboard</h1>
+            <YearSelector />
           </div>
 
           {/* Dynamic Countdown Inline */}
           {(() => {
-            const eventDate = new Date('2026-05-09T16:30:00');
+            const { selectedEvent } = useEvents();
+            const eventDate = new Date(selectedEvent?.date || '2026-11-20');
             const diffTime = eventDate.getTime() - new Date().getTime();
             const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             return (
@@ -218,7 +233,7 @@ export default function DashboardPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
                 </span>
                 <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-violet-100 tabular-nums">
-                  {days > 0 ? days : 0} <span className="text-secondary uppercase tracking-wide ml-0.5 text-[10px] sm:text-xs">Days to go · Rhapsody</span>
+                  {days > 0 ? days : 0} <span className="text-secondary uppercase tracking-wide ml-0.5 text-[10px] sm:text-xs">Days to go · {selectedEvent?.name || 'Rhapsody'}</span>
                 </div>
               </div>
             );

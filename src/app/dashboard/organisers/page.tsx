@@ -19,6 +19,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { useEvents } from "@/context/EventContext";
+import { YearSelector } from "@/components/YearSelector";
 import { IndianMobileInput } from "@/components/indian-mobile-input";
 import { CenteredModal } from "@/components/centered-modal";
 import { hasIndianNationalDigits, toIndianE164 } from "@/utils/phone";
@@ -219,6 +221,7 @@ function OverallProgressFooter({
 }
 
 export default function OrganisersPage() {
+  const { selectedEventId } = useEvents();
   const pathname = usePathname();
   const router = useRouter();
   const [view, setView] = useState<'list' | 'add'>('list');
@@ -247,17 +250,20 @@ export default function OrganisersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (view === "list") void loadUsers();
-  }, [view, pathname]);
+    if (view === "list" && selectedEventId) void loadUsers();
+  }, [view, pathname, selectedEventId]);
 
   async function loadUsers() {
     setLoading(true);
     setLoadError(null);
     try {
       // Use select("*") so missing optional columns (e.g. pass_targets before migration) never break the query.
-      const [profilesRes, ticketsRes] = await Promise.all([
+      const [profilesRes, ticketsRes, targetsRes] = await Promise.all([
         supabase.from("profiles").select("*"),
-        supabase.from("tickets").select("sold_by, quantity, type, status"),
+        supabase.from("tickets").select("sold_by, quantity, type, status").eq("event_id", selectedEventId),
+        selectedEventId 
+          ? supabase.from("event_targets").select("*").eq("event_id", selectedEventId)
+          : Promise.resolve({ data: [], error: null })
       ]);
 
       if (profilesRes.error) {
@@ -275,6 +281,8 @@ export default function OrganisersPage() {
 
       const profiles = profilesRes.data || [];
       const tickets = ticketsRes.data || [];
+      const eventTargets = targetsRes.data || [];
+      const targetsMap = new Map(eventTargets.map(t => [t.profile_id, t.targets]));
 
       const rows = profiles.map((org) => {
         const displayName = String(org.name ?? "").trim();
@@ -283,6 +291,7 @@ export default function OrganisersPage() {
           (t) => t.sold_by?.trim().toLowerCase() === orgNameLower
         );
         const soldByName = soldCountsFromTickets(orgTickets);
+        const specificTargets = targetsMap.get(org.id) || org.pass_targets;
 
         return {
           id: org.id,
@@ -292,8 +301,8 @@ export default function OrganisersPage() {
           status: "active",
           lastLogin: "Just now",
           totalSales: orgTickets.reduce((sum, t) => t.status === 'cancelled' ? sum : sum + ticketQuantity(t), 0),
-          pass_targets: org.pass_targets,
-          targets: buildTargetRowsFromProfile(org.pass_targets, soldByName),
+          pass_targets: specificTargets,
+          targets: buildTargetRowsFromProfile(specificTargets, soldByName),
         };
       });
 
@@ -492,32 +501,24 @@ export default function OrganisersPage() {
     }
     setSavingTargets(true);
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ pass_targets })
-        .eq("id", editingOrg.id)
-        .select("id, pass_targets")
-        .maybeSingle();
+      const { error } = await supabase
+        .from("event_targets")
+        .upsert({ 
+          event_id: selectedEventId, 
+          profile_id: editingOrg.id, 
+          targets: pass_targets 
+        }, { onConflict: 'event_id,profile_id' });
 
       if (error) {
         console.error(error);
-        alert(
-          "Could not save targets. Run the SQL migration `supabase/migrations/add_pass_targets_to_profiles.sql` in Supabase, then try again."
-        );
-        return;
-      }
-      if (!data) {
-        alert(
-          "No profile row was updated. Your session may not match this organiser, or the id is invalid."
-        );
+        alert("Could not save targets for this event. Ensure event_targets table exists.");
         return;
       }
 
-      const mergedPassTargets = data.pass_targets ?? pass_targets;
       setUsers((prev) =>
         prev.map((o) =>
           o.id === editingOrg.id
-            ? { ...editingOrg, pass_targets: mergedPassTargets }
+            ? { ...editingOrg, pass_targets: pass_targets }
             : o
         )
       );
@@ -658,8 +659,9 @@ export default function OrganisersPage() {
                 <ArrowLeft className="mr-1 h-4 w-4 shrink-0" /> Back to Directory
              </button>
           ) : null}
-          <h1 className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-xl font-bold leading-tight text-transparent sm:text-2xl md:text-3xl">
+          <h1 className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-xl font-bold leading-tight text-transparent sm:text-2xl md:text-3xl flex items-center gap-3">
              User Management
+             <YearSelector />
           </h1>
           {view === 'add' ? (
              <p className="mt-0.5 text-xs font-medium leading-snug text-gray-500 dark:text-violet-400/60 sm:mt-1 sm:text-sm">

@@ -25,6 +25,8 @@ import {
   ChevronRight
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import { useEvents } from "@/context/EventContext";
+import { YearSelector } from "@/components/YearSelector";
 import {
   parseTicketQrPayload,
   shortTicketRef,
@@ -81,6 +83,7 @@ type LookupState =
     };
 
 export default function FrontdeskCheckInPage() {
+  const { selectedEventId } = useEvents();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanContainerId = `fd-qr-${useId().replace(/:/g, "")}`;
   const [scannerActive, setScannerActive] = useState(true);
@@ -159,10 +162,12 @@ export default function FrontdeskCheckInPage() {
   });
 
   const fetchMetrics = useCallback(async () => {
+    if (!selectedEventId) return;
     try {
       const { data: tickets, error } = await supabase
         .from("tickets")
-        .select("status, type, quantity, created_at, checked_in_count");
+        .select("status, type, quantity, created_at, checked_in_count")
+        .eq("event_id", selectedEventId);
       
       if (error) {
         console.error("Supabase error fetching tickets:", error);
@@ -210,7 +215,8 @@ export default function FrontdeskCheckInPage() {
 
       const { data: recent, error: logErr } = await supabase
         .from("ticket_checkins")
-        .select("*, tickets(id, purchaser_name, type, sequence_number)")
+        .select("*, tickets!inner(id, purchaser_name, type, sequence_number, event_id)")
+        .eq("tickets.event_id", selectedEventId)
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -238,15 +244,17 @@ export default function FrontdeskCheckInPage() {
     } catch (error) {
        console.error("System error fetching check-in metrics:", error);
     }
-  }, []);
+  }, [selectedEventId]);
 
   useEffect(() => {
-    fetchMetrics();
+    if (selectedEventId) {
+      fetchMetrics();
+    }
     const sub = supabase.channel('tickets-checkin').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, () => {
        fetchMetrics();
     }).subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, [fetchMetrics]);
+  }, [selectedEventId, fetchMetrics]);
 
   const fetchAuditLog = useCallback(async (ticketId: string) => {
     try {
@@ -368,6 +376,11 @@ export default function FrontdeskCheckInPage() {
       return;
     }
 
+    if (row.event_id && selectedEventId && row.event_id !== selectedEventId) {
+      setLookup({ kind: "error", message: "Ticket is for another event/year." });
+      return;
+    }
+
     const qty = ticketQuantity(row);
     const checkedIn = row.checked_in_count || 0;
 
@@ -436,7 +449,11 @@ export default function FrontdeskCheckInPage() {
          orConditions += `,id_text.ilike.%${qText}%`;
       }
 
-      const { data, error } = await query.or(orConditions).order('created_at', { ascending: false }).limit(20);
+      const { data, error } = await query
+        .or(orConditions)
+        .eq('event_id', selectedEventId)
+        .order('created_at', { ascending: false })
+        .limit(20);
       if (error) throw error;
       setResearchResults(data || []);
     } catch (err) {
@@ -521,10 +538,11 @@ export default function FrontdeskCheckInPage() {
                <QrCode className="w-8 h-8 text-primary" />
             </div>
             <div>
-               <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-violet-100 flex items-center gap-2 uppercase tracking-tight italic">
-                  <span className="bg-primary px-3 py-1 rounded-sm text-white text-xl non-italic">Rhapsody</span>
-                  Front Desk
-               </h1>
+                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-violet-100 flex items-center gap-2 uppercase tracking-tight italic">
+                   <span className="bg-primary px-3 py-1 rounded-sm text-white text-xl non-italic">Rhapsody</span>
+                   Front Desk
+                   <YearSelector />
+                </h1>
                <p className="text-gray-500 dark:text-violet-300 font-medium mt-1">
                   {activeTab === 'scanner' ? 'Scan QR codes to validate' : 'Research ticket history'}
                </p>
@@ -552,9 +570,9 @@ export default function FrontdeskCheckInPage() {
                   </div>
                </div>
                <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
-                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-2 sm:mb-4">Check-in Rate</span>
-                  <div className="text-2xl sm:text-4xl font-bold text-secondary tabular-nums">{checkInRate}%</div>
-               </div>
+                   <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-2 sm:mb-4">Check-in Rate</span>
+                   <div className="text-2xl sm:text-4xl font-bold text-secondary tabular-nums">{checkInRate}%</div>
+                </div>
                <div className="bg-white dark:bg-violet-950/40 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm">
                   <span className="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-violet-400/60 uppercase block mb-1 sm:mb-4">This Hour</span>
                   <div className="text-2xl sm:text-4xl font-bold text-primary tabular-nums">{metrics.thisHour}</div>
