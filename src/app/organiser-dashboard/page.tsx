@@ -52,6 +52,7 @@ export default function OrganiserDashboard() {
         let trustRevenue = 0;
         let organizerRevenue = 0;
         t.forEach((ticket) => {
+          if (ticket.status === 'cancelled') return;
           const lineTot = ticketLineTotal(ticket);
           personalRev += lineTot;
           if (ticket.funds_destination === 'trust') {
@@ -77,7 +78,7 @@ export default function OrganiserDashboard() {
             }))
         );
 
-        const passesSold = t.reduce((sum, x) => sum + ticketQuantity(x), 0);
+        const passesSold = t.reduce((sum, x) => x.status === 'cancelled' ? sum : sum + ticketQuantity(x), 0);
         setOverall((prev) => ({
           ...prev,
           sold: passesSold,

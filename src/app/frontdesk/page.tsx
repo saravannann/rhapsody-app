@@ -94,6 +94,12 @@ export default function FrontdeskCheckInPage() {
   const [activeTab, setActiveTab] = useState<'scanner' | 'research'>('scanner');
   const [torchOn, setTorchOn] = useState(false);
   const [feedbackEnabled, setFeedbackEnabled] = useState(false);
+  const [staffName, setStaffName] = useState("");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("rhapsody_user") || "";
+    setStaffName(saved);
+  }, []);
 
   // Research State
   const [researchQuery, setResearchQuery] = useState("");
@@ -282,7 +288,12 @@ export default function FrontdeskCheckInPage() {
 
       const { error: updateError } = await supabase
         .from("tickets")
-        .update({ checked_in_count: newCount, status: finalStatus })
+        .update({ 
+          checked_in_count: newCount, 
+          status: finalStatus,
+          checked_in_by: staffName || "Front Desk",
+          last_checked_in_at: new Date().toISOString()
+        })
         .eq("id", row.id as string);
 
       if (updateError) throw updateError;
@@ -292,7 +303,8 @@ export default function FrontdeskCheckInPage() {
         .insert({
           ticket_id: row.id,
           count: countToAdmit,
-          checked_in_name: attendeeName || (newCount === qty ? row.purchaser_name : "Partial Group")
+          checked_in_name: attendeeName || (newCount === qty ? row.purchaser_name : "Partial Group"),
+          staff_name: staffName || "Front Desk"
         });
 
       if (logError) console.error("Log error:", logError);

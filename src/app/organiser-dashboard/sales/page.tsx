@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Download, Search, Loader2, FileSpreadsheet, Filter, ChevronDown, MessageCircle, CheckSquare, Square, Check, RefreshCw, Calendar, Ticket, CreditCard, MessageSquare, User } from "lucide-react";
+import { Download, Search, Loader2, FileSpreadsheet, Filter, ChevronDown, MessageCircle, CheckSquare, Square, Check, CheckCircle, RefreshCw, Calendar, Ticket, CreditCard, MessageSquare, User } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { ticketLineTotal, ticketQuantity, ticketUnitPrice } from "@/utils/ticket-counts";
 import { shortTicketRef } from "@/utils/ticket-qr";
@@ -27,6 +27,8 @@ interface Ticket {
   sequence_number: number | null;
   vip_sequence_number: number | null;
   checked_in_count?: number;
+  checked_in_by?: string | null;
+  last_checked_in_at?: string | null;
 }
 
 interface TotalMetrics {
@@ -40,20 +42,25 @@ interface TotalMetrics {
 
 interface OrgGoalData {
   name: string;
-  platinum: { sold: number; target: number };
-  donor: { sold: number; target: number };
-  student: { sold: number; target: number };
-  vip: { sold: number; target: number };
-  total: { sold: number; target: number };
+  platinum: { sold: number; target: number; checked: number };
+  donor: { sold: number; target: number; checked: number };
+  student: { sold: number; target: number; checked: number };
+  vip: { sold: number; target: number; checked: number };
+  total: { sold: number; target: number; checked: number };
 }
 
 interface LeaderboardData {
   name: string;
   platinum: number;
+  platinum_checked: number;
   donor: number;
+  donor_checked: number;
   student: number;
+  student_checked: number;
   vip: number;
+  vip_checked: number;
   total: number;
+  total_checked: number;
   revenue: number;
 }
 
@@ -116,7 +123,7 @@ function SalesReportContent() {
   const [tempPhone, setTempPhone] = useState("");
 
   // Org Goal State
-  const [activeTab, setActiveTab] = useState<'Transactions' | 'Org Targets'>('Transactions');
+  const [activeTab, setActiveTab] = useState<'Transactions' | 'Org Targets' | 'Check-in Report'>('Transactions');
   const [orgGoalData, setOrgGoalData] = useState<OrgGoalData[]>([]);
   const [loadingGoals, setLoadingGoals] = useState(false);
 
@@ -288,6 +295,7 @@ function SalesReportContent() {
       if (isInitial && mData) {
         let rev = 0, tRev = 0, oRev = 0, bPasses = 0, totalPasses = 0;
         mData.forEach(t => {
+          if (t.status === 'cancelled') return;
           const q = ticketQuantity(t);
           const line = ticketLineTotal(t);
           rev += line;
@@ -361,17 +369,25 @@ function SalesReportContent() {
       const goals: OrgGoalData[] = organisers.map(org => {
         const targets = resolvePassTargets(org.pass_targets);
         const orgNameLower = (org.name || "").toLowerCase();
-        const actual = leaderMap.get(orgNameLower) || { platinum: 0, donor: 0, student: 0, vip: 0, total: 0, name: org.name, revenue: 0 };
+        const actual = leaderMap.get(orgNameLower) || { 
+          platinum: 0, platinum_checked: 0,
+          donor: 0, donor_checked: 0,
+          student: 0, student_checked: 0,
+          vip: 0, vip_checked: 0,
+          total: 0, total_checked: 0,
+          name: org.name, revenue: 0 
+        };
         
         return {
           name: org.name,
-          platinum: { sold: actual.platinum || 0, target: targets['Platinum Pass'] || 0 },
-          donor: { sold: actual.donor || 0, target: targets['Donor Pass'] || 0 },
-          student: { sold: actual.student || 0, target: targets['Student Pass'] || 0 },
-          vip: { sold: actual.vip || 0, target: targets['VIP Pass'] || 0 },
+          platinum: { sold: actual.platinum || 0, target: targets['Platinum Pass'] || 0, checked: actual.platinum_checked || 0 },
+          donor: { sold: actual.donor || 0, target: targets['Donor Pass'] || 0, checked: actual.donor_checked || 0 },
+          student: { sold: actual.student || 0, target: targets['Student Pass'] || 0, checked: actual.student_checked || 0 },
+          vip: { sold: actual.vip || 0, target: targets['VIP Pass'] || 0, checked: actual.vip_checked || 0 },
           total: { 
-            sold: (actual.platinum || 0) + (actual.donor || 0) + (actual.student || 0) + (actual.vip || 0), 
-            target: (targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) + (targets['VIP Pass'] || 0)
+            sold: actual.total || 0, 
+            target: (targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) + (targets['VIP Pass'] || 0),
+            checked: actual.total_checked || 0
           }
         };
       });
@@ -391,7 +407,7 @@ function SalesReportContent() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'Org Targets' && userRole === 'admin') {
+    if ((activeTab === 'Org Targets' || activeTab === 'Check-in Report') && userRole === 'admin') {
       fetchOrgGoals();
     }
   }, [activeTab, userRole, fetchOrgGoals]);
@@ -659,6 +675,8 @@ function SalesReportContent() {
       "Bank Txn ID",
       "Sold By",
       "Date",
+      "Checked In By",
+      "Admission Time",
     ];
     const rows = filteredTickets.map((t) => [
       shortTicketRef(t.id, t.sequence_number),
@@ -674,6 +692,8 @@ function SalesReportContent() {
       t.bank_txn_id || "N/A",
       t.sold_by || "N/A",
       new Date(t.created_at).toLocaleString('en-IN', { hour12: true }),
+      t.checked_in_by || "N/A",
+      t.last_checked_in_at ? new Date(t.last_checked_in_at).toLocaleString('en-IN', { hour12: true }) : "N/A",
     ]);
 
     // Sort by Order ID (first column) ascending
@@ -760,14 +780,14 @@ function SalesReportContent() {
             onClick={activeTab === 'Transactions' ? handleExport : handleExportOrgGoals}
             className="inline-flex items-center justify-center min-h-[44px] bg-[#10b981] hover:bg-[#059669] text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-green-500/20 active:scale-[0.98] text-sm"
           >
-            <Download className="w-4 h-4 mr-2 shrink-0" /> Export CSV
+            <Download className="w-4 h-4 mr-2 shrink-0" /> Export {activeTab === 'Transactions' ? 'CSV' : activeTab === 'Org Targets' ? 'Goals' : 'Attendance'}
           </button>
         </div>
       </div>
 
       {/* Tabs */}
       {userRole === 'admin' && (
-        <div className="flex gap-2 p-1 bg-gray-100/50 dark:bg-violet-950/20 rounded-xl w-fit border border-gray-100 dark:border-violet-500/10">
+        <div className="flex flex-wrap gap-2 p-1 bg-gray-100/50 dark:bg-violet-950/20 rounded-xl w-fit border border-gray-100 dark:border-violet-500/10">
           <button
             onClick={() => setActiveTab('Transactions')}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'Transactions' ? 'bg-white dark:bg-violet-800 text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-violet-400'}`}
@@ -780,11 +800,18 @@ function SalesReportContent() {
           >
             Org Targets
           </button>
+          <button
+            onClick={() => setActiveTab('Check-in Report')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'Check-in Report' ? 'bg-white dark:bg-violet-800 text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-violet-400'}`}
+          >
+            Check-in Report
+          </button>
         </div>
       )}
 
       {activeTab === 'Transactions' ? (
         <>
+          {/* Transactions View (Existing Content) */}
 
       {/* Filters & Search Section */}
       <div className="bg-white/95 dark:bg-violet-950/20 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-violet-500/20 shadow-xl shadow-purple-500/5 md:sticky md:top-16 md:z-30 transition-all duration-300">
@@ -998,6 +1025,20 @@ function SalesReportContent() {
                                 <span className="text-[10px] text-gray-400 dark:text-violet-400/60">•</span>
                                 <p className="text-[10px] text-gray-500 dark:text-violet-300/70">Sold by <span className="font-bold text-primary/80">{t.sold_by || "Unknown"}</span></p>
                               </div>
+                              {t.checked_in_by && (
+                                <div className="mt-1 space-y-0.5">
+                                  <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                                    <CheckCircle className="w-2.5 h-2.5" /> Admitted by {t.checked_in_by}
+                                  </p>
+                                  {t.last_checked_in_at && (
+                                    <p className="text-[9px] text-emerald-500 font-medium ml-3.5">
+                                      {new Date(t.last_checked_in_at).toLocaleString('en-IN', { 
+                                        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true 
+                                      })}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <span className="text-sm font-bold text-gray-900 dark:text-violet-100 shrink-0 tabular-nums">
                               ₹{new Intl.NumberFormat("en-IN").format(ticketLineTotal(t))}
@@ -1060,7 +1101,9 @@ function SalesReportContent() {
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Paid To</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Txn ID</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">WA Status</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Date</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Purchase Date</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Admitted By</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Admission Time</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -1143,6 +1186,23 @@ function SalesReportContent() {
                           <td className="px-6 py-4 text-right">
                             <div className="text-sm font-bold text-gray-700 dark:text-violet-300">{formattedDate}</div>
                             <div className="text-[11px] text-gray-400 dark:text-violet-400/60 font-medium">{formattedTime}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{t.checked_in_by || "—"}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {t.last_checked_in_at ? (
+                              <>
+                                <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  {new Date(t.last_checked_in_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                                </div>
+                                <div className="text-[10px] text-emerald-500/80 font-medium tabular-nums">
+                                  {new Date(t.last_checked_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-[11px] text-gray-300 dark:text-violet-500/30">—</span>
+                            )}
                           </td>
                         </tr>
                       )
@@ -1395,103 +1455,196 @@ function SalesReportContent() {
             </div>
           </div>
         </div>
-      )}
-    </>
-  ) : (
-    /* Org Targets View */
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 bg-white/50 dark:bg-violet-900/10 flex justify-between items-center">
-          <h2 className="text-sm sm:text-lg font-bold text-gray-900 dark:text-violet-100">Organizer Goal Performance</h2>
-          <button 
-            onClick={fetchOrgGoals}
-            disabled={loadingGoals}
-            className="p-2 text-gray-400 hover:text-primary transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingGoals ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        )}
+      </>
+    ) : activeTab === 'Org Targets' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 bg-white/50 dark:bg-violet-900/10 flex justify-between items-center">
+              <h2 className="text-sm sm:text-lg font-bold text-gray-900 dark:text-violet-100">Organizer Goal Performance</h2>
+              <button 
+                onClick={fetchOrgGoals}
+                disabled={loadingGoals}
+                className="p-2 text-gray-400 hover:text-primary transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingGoals ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 border-b border-gray-100 dark:border-violet-500/10">
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organizer</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total Sold</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Achievement</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-violet-500/5">
-              {loadingGoals ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
-                    <p className="text-sm font-bold text-gray-500 dark:text-violet-400">Calculating performance metrics...</p>
-                  </td>
-                </tr>
-              ) : orgGoalData.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No organizer data found.</td>
-                </tr>
-              ) : (
-                orgGoalData.map(org => {
-                  const achievement = org.total.target > 0 ? (org.total.sold / org.total.target) * 100 : 0;
-                  return (
-                    <tr key={org.name} className="hover:bg-gray-50/50 dark:hover:bg-violet-950/20 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.platinum.sold}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">Target: {org.platinum.target}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.donor.sold}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">Target: {org.donor.target}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.student.sold}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">Target: {org.student.target}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm font-black text-primary">{org.total.sold}</span>
-                          <span className="text-[10px] text-gray-400 font-bold">of {org.total.target}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-24 h-1.5 bg-gray-100 dark:bg-violet-900/40 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all duration-1000 ${achievement >= 100 ? 'bg-emerald-500' : 'bg-primary'}`}
-                              style={{ width: `${Math.min(100, achievement)}%` }}
-                            />
-                          </div>
-                          <span className={`text-[10px] font-bold ${achievement >= 100 ? 'text-emerald-500' : 'text-gray-500'}`}>
-                            {achievement.toFixed(1)}%
-                          </span>
-                        </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 border-b border-gray-100 dark:border-violet-500/10">
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organizer</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Total Sold</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Achievement</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-violet-500/5">
+                  {loadingGoals ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-20 text-center">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+                        <p className="text-sm font-bold text-gray-500 dark:text-violet-400">Calculating performance metrics...</p>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ) : orgGoalData.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No organizer data found.</td>
+                    </tr>
+                  ) : (
+                    orgGoalData.map(org => {
+                      const achievement = org.total.target > 0 ? (org.total.sold / org.total.target) * 100 : 0;
+                      return (
+                        <tr key={org.name} className="hover:bg-gray-50/50 dark:hover:bg-violet-950/20 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.platinum.sold}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">Target: {org.platinum.target}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.donor.sold}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">Target: {org.donor.target}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-bold text-gray-900 dark:text-violet-100">{org.student.sold}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">Target: {org.student.target}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-black text-primary">{org.total.sold}</span>
+                              <span className="text-[10px] text-gray-400 font-bold">of {org.total.target}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="w-24 h-1.5 bg-gray-100 dark:bg-violet-900/40 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all duration-1000 ${achievement >= 100 ? 'bg-emerald-500' : 'bg-primary'}`}
+                                  style={{ width: `${Math.min(100, achievement)}%` }}
+                                />
+                              </div>
+                              <span className={`text-[10px] font-bold ${achievement >= 100 ? 'text-emerald-500' : 'text-gray-500'}`}>
+                                {achievement.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Check-in Report View */
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl sm:rounded-2xl border border-gray-100 dark:border-violet-500/15 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 bg-white/50 dark:bg-violet-900/10 flex justify-between items-center">
+              <h2 className="text-sm sm:text-lg font-bold text-gray-900 dark:text-violet-100">Check-in Performance (Sold vs Admitted)</h2>
+              <button 
+                onClick={fetchOrgGoals}
+                disabled={loadingGoals}
+                className="p-2 text-gray-400 hover:text-primary transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingGoals ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 border-b border-gray-100 dark:border-violet-500/10">
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest">Organizer</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Platinum</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Donor</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Student</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">VIP</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Overall Attendance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-violet-500/5">
+                  {loadingGoals ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-20 text-center">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+                        <p className="text-sm font-bold text-gray-500 dark:text-violet-400">Loading attendance data...</p>
+                      </td>
+                    </tr>
+                  ) : orgGoalData.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No attendance data found.</td>
+                    </tr>
+                  ) : (
+                    orgGoalData.map(org => {
+                      const attendance = org.total.sold > 0 ? (org.total.checked / org.total.sold) * 100 : 0;
+                      return (
+                        <tr key={org.name} className="hover:bg-gray-50/50 dark:hover:bg-violet-950/20 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-bold text-gray-800 dark:text-violet-200">{org.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <CategoryAttendanceCell sold={org.platinum.sold} checked={org.platinum.checked} />
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <CategoryAttendanceCell sold={org.donor.sold} checked={org.donor.checked} />
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <CategoryAttendanceCell sold={org.student.sold} checked={org.student.checked} />
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <CategoryAttendanceCell sold={org.vip.sold} checked={org.vip.checked} />
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="text-sm font-black text-primary">{org.total.checked} / {org.total.sold}</div>
+                              <div className="w-24 h-1.5 bg-gray-100 dark:bg-violet-900/40 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all duration-1000 ${attendance >= 90 ? 'bg-emerald-500' : 'bg-primary'}`}
+                                  style={{ width: `${Math.min(100, attendance)}%` }}
+                                />
+                              </div>
+                              <span className={`text-[10px] font-bold ${attendance >= 90 ? 'text-emerald-500' : 'text-gray-500'}`}>
+                                {attendance.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )}
-</div>
+  );
+}
+
+function CategoryAttendanceCell({ sold, checked }: { sold: number, checked: number }) {
+  const perc = sold > 0 ? Math.floor((checked / sold) * 100) : 0;
+  return (
+    <div className="flex flex-col items-center">
+      <span className={`text-sm font-bold ${perc >= 90 ? 'text-emerald-600' : 'text-gray-900 dark:text-violet-100'}`}>
+        {checked} / {sold}
+      </span>
+      <span className="text-[10px] text-gray-400 font-medium">{perc}% admitted</span>
+    </div>
   );
 }
 

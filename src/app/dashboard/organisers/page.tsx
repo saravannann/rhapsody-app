@@ -291,7 +291,7 @@ export default function OrganisersPage() {
           roles: normalizeProfileRoles(org),
           status: "active",
           lastLogin: "Just now",
-          totalSales: orgTickets.reduce((sum, t) => sum + ticketQuantity(t), 0),
+          totalSales: orgTickets.reduce((sum, t) => t.status === 'cancelled' ? sum : sum + ticketQuantity(t), 0),
           pass_targets: org.pass_targets,
           targets: buildTargetRowsFromProfile(org.pass_targets, soldByName),
         };

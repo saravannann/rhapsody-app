@@ -67,6 +67,7 @@ export function soldCountsFromTickets(
     "VIP Pass": 0,
   };
   for (const t of tickets) {
+    if (t.status === 'cancelled') continue;
     const raw = t.type;
     if (!raw) continue;
     const name = TICKET_TYPE_TO_PASS_NAME[raw];
