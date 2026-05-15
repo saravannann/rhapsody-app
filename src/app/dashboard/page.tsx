@@ -15,6 +15,7 @@ interface DashboardChartData {
   Sold: number;
   Target: number;
   Revenue: number;
+  CheckedIn: number;
 }
 
 interface StatusData {
@@ -149,16 +150,21 @@ export default function DashboardPage() {
         const studentSold = types.find((t: any) => t.name.includes('Student'))?.sold || 0;
         const vipSold = types.find((t: any) => t.name.includes('VIP'))?.sold || 0;
 
+        const platinumChecked = types.find((t: any) => t.name.includes('Platinum'))?.checked_in || 0;
+        const donorChecked = types.find((t: any) => t.name.includes('Donor'))?.checked_in || 0;
+        const studentChecked = types.find((t: any) => t.name.includes('Student'))?.checked_in || 0;
+        const vipChecked = types.find((t: any) => t.name.includes('VIP'))?.checked_in || 0;
+
         const platinumRev = types.find((t: any) => t.name.includes('Platinum'))?.revenue || 0;
         const donorRev = types.find((t: any) => t.name.includes('Donor'))?.revenue || 0;
         const studentRev = types.find((t: any) => t.name.includes('Student'))?.revenue || 0;
         const vipRev = types.find((t: any) => t.name.includes('VIP'))?.revenue || 0;
 
         setChartData([
-          { name: 'Platinum Pass', Sold: platinumSold, Target: targetPlatinum, Revenue: platinumRev },
-          { name: 'Donor Pass', Sold: donorSold, Target: targetDonor, Revenue: donorRev },
-          { name: 'Student Pass', Sold: studentSold, Target: targetStudent, Revenue: studentRev },
-          { name: 'VIP Pass', Sold: vipSold, Target: targetVip, Revenue: vipRev },
+          { name: 'Platinum Pass', Sold: platinumSold, Target: targetPlatinum, Revenue: platinumRev, CheckedIn: platinumChecked },
+          { name: 'Donor Pass', Sold: donorSold, Target: targetDonor, Revenue: donorRev, CheckedIn: donorChecked },
+          { name: 'Student Pass', Sold: studentSold, Target: targetStudent, Revenue: studentRev, CheckedIn: studentChecked },
+          { name: 'VIP Pass', Sold: vipSold, Target: targetVip, Revenue: vipRev, CheckedIn: vipChecked },
         ]);
 
         setStatusData([
@@ -695,18 +701,29 @@ export default function DashboardPage() {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="space-y-3 sm:space-y-4 w-full">
-                    <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
-                      <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Checked in</span>
-                      <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{metrics.checkedIn}</span>
+                  <div className="space-y-2 sm:space-y-3 w-full">
+                    <div className="flex justify-between items-center border-b-2 border-primary/20 pb-2 mb-2">
+                      <span className="text-primary font-black text-sm uppercase tracking-wider">Overall Attendance</span>
+                      <span className="text-xl font-black text-primary tabular-nums">{metrics.checkedIn} / {metrics.scannableTickets}</span>
                     </div>
-                    <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
-                      <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Awaiting</span>
-                      <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{Math.max(0, metrics.scannableTickets - metrics.checkedIn)}</span>
+                    
+                    <div className="grid grid-cols-1 gap-2">
+                      {chartData.map(category => (
+                        <div key={category.name} className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-violet-500/10">
+                          <div className="flex flex-col">
+                            <span className="text-gray-800 dark:text-violet-200 font-bold text-xs">{category.name}</span>
+                            <span className="text-[10px] text-gray-400">{category.Sold > 0 ? Math.floor((category.CheckedIn / category.Sold) * 100) : 0}% admitted</span>
+                          </div>
+                          <span className="text-sm font-bold text-gray-900 dark:text-violet-100 tabular-nums">
+                            {category.CheckedIn} <span className="text-gray-400 text-[10px] font-medium">/ {category.Sold}</span>
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex justify-between items-center border-b border-gray-100 dark:border-violet-500/15 pb-2 sm:pb-3 gap-2">
-                      <span className="text-gray-600 dark:text-violet-300/85 font-bold text-xs sm:text-sm">Rate</span>
-                      <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-violet-100 tabular-nums">{checkInRate}%</span>
+
+                    <div className="mt-4 pt-3 border-t-2 border-pink-100 dark:border-violet-500/20 flex justify-between items-center">
+                      <span className="text-secondary font-bold text-xs uppercase tracking-widest">Attendance Rate</span>
+                      <span className="text-2xl font-black text-secondary tabular-nums">{checkInRate}%</span>
                     </div>
                   </div>
                 </div>
