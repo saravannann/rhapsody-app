@@ -58,7 +58,7 @@ export function resolvePassTargets(saved: unknown): Record<string, number> {
 
 /** Count tickets per pass name using `tickets.type`. */
 export function soldCountsFromTickets(
-  tickets: { type?: string | null; quantity?: unknown }[]
+  tickets: { type?: string | null; quantity?: unknown; status?: string | null }[]
 ): Record<string, number> {
   const counts: Record<string, number> = {
     "Platinum Pass": 0,
