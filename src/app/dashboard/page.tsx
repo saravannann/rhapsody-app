@@ -145,20 +145,20 @@ export default function DashboardPage() {
         });
 
         // Chart Data
-        const platinumSold = types.find((t: any) => t.name.includes('Platinum'))?.sold || 0;
-        const donorSold = types.find((t: any) => t.name.includes('Donor'))?.sold || 0;
-        const studentSold = types.find((t: any) => t.name.includes('Student'))?.sold || 0;
-        const vipSold = types.find((t: any) => t.name.includes('VIP'))?.sold || 0;
+        const platinumSold = Number(types.find((t: any) => t.name.includes('Platinum'))?.sold || 0);
+        const donorSold = Number(types.find((t: any) => t.name.includes('Donor'))?.sold || 0);
+        const studentSold = Number(types.find((t: any) => t.name.includes('Student'))?.sold || 0);
+        const vipSold = Number(types.find((t: any) => t.name.includes('VIP'))?.sold || 0);
 
-        const platinumChecked = types.find((t: any) => t.name.includes('Platinum'))?.checked_in || 0;
-        const donorChecked = types.find((t: any) => t.name.includes('Donor'))?.checked_in || 0;
-        const studentChecked = types.find((t: any) => t.name.includes('Student'))?.checked_in || 0;
-        const vipChecked = types.find((t: any) => t.name.includes('VIP'))?.checked_in || 0;
+        const platinumChecked = Number(types.find((t: any) => t.name.includes('Platinum'))?.checked_in || 0);
+        const donorChecked = Number(types.find((t: any) => t.name.includes('Donor'))?.checked_in || 0);
+        const studentChecked = Number(types.find((t: any) => t.name.includes('Student'))?.checked_in || 0);
+        const vipChecked = Number(types.find((t: any) => t.name.includes('VIP'))?.checked_in || 0);
 
-        const platinumRev = types.find((t: any) => t.name.includes('Platinum'))?.revenue || 0;
-        const donorRev = types.find((t: any) => t.name.includes('Donor'))?.revenue || 0;
-        const studentRev = types.find((t: any) => t.name.includes('Student'))?.revenue || 0;
-        const vipRev = types.find((t: any) => t.name.includes('VIP'))?.revenue || 0;
+        const platinumRev = Number(types.find((t: any) => t.name.includes('Platinum'))?.revenue || 0);
+        const donorRev = Number(types.find((t: any) => t.name.includes('Donor'))?.revenue || 0);
+        const studentRev = Number(types.find((t: any) => t.name.includes('Student'))?.revenue || 0);
+        const vipRev = Number(types.find((t: any) => t.name.includes('VIP'))?.revenue || 0);
 
         setChartData([
           { name: 'Platinum Pass', Sold: platinumSold, Target: targetPlatinum, Revenue: platinumRev, CheckedIn: platinumChecked },

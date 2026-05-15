@@ -380,14 +380,14 @@ function SalesReportContent() {
         
         return {
           name: org.name,
-          platinum: { sold: actual.platinum || 0, target: targets['Platinum Pass'] || 0, checked: actual.platinum_checked || 0 },
-          donor: { sold: actual.donor || 0, target: targets['Donor Pass'] || 0, checked: actual.donor_checked || 0 },
-          student: { sold: actual.student || 0, target: targets['Student Pass'] || 0, checked: actual.student_checked || 0 },
-          vip: { sold: actual.vip || 0, target: targets['VIP Pass'] || 0, checked: actual.vip_checked || 0 },
+          platinum: { sold: Number(actual.platinum || 0), target: Number(targets['Platinum Pass'] || 0), checked: Number(actual.platinum_checked || 0) },
+          donor: { sold: Number(actual.donor || 0), target: Number(targets['Donor Pass'] || 0), checked: Number(actual.donor_checked || 0) },
+          student: { sold: Number(actual.student || 0), target: Number(targets['Student Pass'] || 0), checked: Number(actual.student_checked || 0) },
+          vip: { sold: Number(actual.vip || 0), target: Number(targets['VIP Pass'] || 0), checked: Number(actual.vip_checked || 0) },
           total: { 
-            sold: actual.total || 0, 
-            target: (targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) + (targets['VIP Pass'] || 0),
-            checked: actual.total_checked || 0
+            sold: Number(actual.total || 0), 
+            target: Number((targets['Platinum Pass'] || 0) + (targets['Donor Pass'] || 0) + (targets['Student Pass'] || 0) + (targets['VIP Pass'] || 0)),
+            checked: Number(actual.total_checked || 0)
           }
         };
       });
