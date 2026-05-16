@@ -318,7 +318,7 @@ export default function FrontdeskCheckInPage() {
         .insert({
           ticket_id: row.id,
           count: countToAdmit,
-          checked_in_name: overrideName || attendeeName || row.purchaser_name,
+          checked_in_name: overrideName !== undefined ? overrideName : (attendeeName || row.purchaser_name || "Guest"),
           staff_name: staffName || "Front Desk"
         });
 
