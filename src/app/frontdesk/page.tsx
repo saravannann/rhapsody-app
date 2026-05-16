@@ -83,7 +83,7 @@ type LookupState =
     };
 
 export default function FrontdeskCheckInPage() {
-  const { selectedEventId } = useEvents();
+  const { events, selectedEventId } = useEvents();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanContainerId = `fd-qr-${useId().replace(/:/g, "")}`;
   const [scannerActive, setScannerActive] = useState(true);
@@ -98,6 +98,7 @@ export default function FrontdeskCheckInPage() {
   const [torchOn, setTorchOn] = useState(false);
   const [feedbackEnabled, setFeedbackEnabled] = useState(false);
   const [staffName, setStaffName] = useState("");
+  const [focusKey, setFocusKey] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem("rhapsody_user") || "";
@@ -404,7 +405,7 @@ export default function FrontdeskCheckInPage() {
     if (qty === 1 && checkedIn === 0 && !mismatch) {
        setTimeout(() => { handleCheckIn(row as TicketMinimal, 1); }, 300);
     }
-  }, [fetchAuditLog, handleCheckIn]);
+  }, [fetchAuditLog, handleCheckIn, selectedEventId]);
 
   // [FIX] Use a ref to prevent scanner restart loops
   const lookupRef = useRef(lookup);
@@ -449,22 +450,61 @@ export default function FrontdeskCheckInPage() {
          orConditions += `,id_text.ilike.%${qText}%`;
       }
 
-      const { data, error } = await query
-        .or(orConditions)
+      if (!selectedEventId) {
+        setLookup({ kind: "error", message: "No event selected." });
+        setResearchLoading(false);
+        return;
+      }
+
+      console.log(`[Research] DB Query - Event: ${selectedEventId}, Conditions: ${orConditions}`);
+
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*, sequence_number, vip_sequence_number')
         .eq('event_id', selectedEventId)
+        .or(orConditions)
         .order('created_at', { ascending: false })
         .limit(20);
-      if (error) throw error;
+
+      if (error) {
+        console.error("[Research] Supabase Query Error:", error);
+        setLookup({ kind: "error", message: `Search failed: ${error.message}` });
+        return;
+      }
+
+      console.log(`[Research] Results found: ${data?.length || 0}`);
       setResearchResults(data || []);
     } catch (err) {
       console.error("Research Error:", err);
     } finally {
       setResearchLoading(false);
     }
-  }, [researchQuery]);
+  }, [researchQuery, selectedEventId]);
+  
+  useEffect(() => {
+    console.log(`[FrontDesk] Reactive Research Check - Tab: ${activeTab}, Event: ${selectedEventId}, Query: ${researchQuery}`);
+    if (activeTab === 'research' && researchQuery.trim() !== '') {
+      handleResearch();
+    }
+  }, [selectedEventId, activeTab, handleResearch, researchQuery]);
 
   useEffect(() => {
-    if (!scannerActive) {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (scannerRef.current?.isScanning) {
+          scannerRef.current.stop().catch(() => {});
+        }
+      } else {
+        setFocusKey(k => k + 1);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (!scannerActive || activeTab !== 'scanner') {
       if (scannerRef.current?.isScanning) {
         scannerRef.current.stop().catch(() => {});
       }
@@ -517,7 +557,7 @@ export default function FrontdeskCheckInPage() {
       }
       scannerRef.current = null;
     };
-  }, [scannerActive, onScanSuccess, scanContainerId]);
+  }, [scannerActive, activeTab, onScanSuccess, scanContainerId, focusKey]);
 
   function minBox() {
     if (typeof window === "undefined") return 200;
@@ -694,7 +734,12 @@ export default function FrontdeskCheckInPage() {
                <div className="mt-8 space-y-4">
                   {researchResults.map(t => (
                     <div key={t.id} onClick={() => { setManualInput(t.id); runLookup(t.id); setActiveTab('scanner'); }} className="p-4 bg-gray-50 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-all">
-                       <div><p className="font-bold">{t.purchaser_name}</p><p className="text-xs text-gray-500">Ref: {shortTicketRef(t.id, t.sequence_number).toUpperCase()}</p></div>
+                                               <div>
+                           <p className="font-bold">{t.purchaser_name}</p>
+                           <p className="text-xs text-gray-500">
+                              Ref: {shortTicketRef(t.id, t.type === 'VIP' ? t.vip_sequence_number : t.sequence_number).toUpperCase()} • {events.find(e => e.id === t.event_id)?.name || `Event: ${t.event_id?.substring(0,8)}...`}
+                           </p>
+                        </div>
                        <ChevronRight className="w-5 h-5 text-gray-400" />
                     </div>
                   ))}
