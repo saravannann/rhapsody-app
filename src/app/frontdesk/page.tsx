@@ -503,59 +503,71 @@ export default function FrontdeskCheckInPage() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
+  const isStopping = useRef(false);
+
   useEffect(() => {
-    if (!scannerActive || activeTab !== 'scanner') {
-      if (scannerRef.current?.isScanning) {
-        scannerRef.current.stop().catch(() => {});
+    let isMounted = true;
+    let scanner: Html5Qrcode | null = null;
+
+    const cleanup = async () => {
+      if (isStopping.current) return;
+      isStopping.current = true;
+      try {
+        if (scanner?.isScanning) {
+          await scanner.stop();
+        }
+      } catch (e) {
+        console.warn("Scanner cleanup error:", e);
+      } finally {
+        scanner = null;
+        scannerRef.current = null;
+        isStopping.current = false;
       }
-      scannerRef.current = null;
+    };
+
+    if (!scannerActive || activeTab !== 'scanner') {
+      cleanup();
       return;
     }
 
-    // [FIX] Delayed initialization to ensure DOM is ready
-    let animationFrameId: number;
+    const init = async () => {
+      // Small delay for DOM
+      await new Promise(r => setTimeout(r, 100));
+      if (!isMounted) return;
 
-    const initScanner = () => {
       const element = document.getElementById(scanContainerId);
-      if (!element) return; 
+      if (!element) return;
 
-      const h = new Html5Qrcode(scanContainerId);
-      scannerRef.current = h;
-      
-      const startCamera = (mode: string) => {
-        return h.start(
-          { facingMode: mode }, 
-          { fps: 15, qrbox: { width: minBox(), height: minBox() }, aspectRatio: 1 }, 
-          (d) => onScanSuccess(d), 
-          () => {}
-        );
-      }
+      try {
+        scanner = new Html5Qrcode(scanContainerId);
+        scannerRef.current = scanner;
 
-      startCamera("environment").catch((err) => {
-        // [FIX] Ignore AbortError and Interruption errors
-        const errMsg = String(err);
-        if (errMsg.includes("AbortError") || errMsg.includes("interrupted")) {
-          return; 
-        }
+        const start = async (mode: string) => {
+          if (!scanner) return;
+          await scanner.start(
+            { facingMode: mode },
+            { fps: 15, qrbox: { width: minBox(), height: minBox() }, aspectRatio: 1 },
+            (d) => onScanSuccess(d),
+            () => {}
+          );
+        };
 
-        // Fallback to user camera
-        startCamera("user").catch(e => {
-           const finalMsg = String(e);
-           if (!finalMsg.includes("AbortError") && !finalMsg.includes("interrupted")) {
-              setCameraError(finalMsg);
-           }
+        await start("environment").catch(async () => {
+           if (!isMounted) return;
+           await start("user").catch(e => {
+             if (isMounted) setCameraError(String(e));
+           });
         });
-      });
+      } catch (err) {
+        console.error("Scanner init error:", err);
+      }
     };
 
-    animationFrameId = requestAnimationFrame(initScanner);
+    init();
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      if (scannerRef.current?.isScanning) {
-        scannerRef.current.stop().catch(() => {});
-      }
-      scannerRef.current = null;
+      isMounted = false;
+      cleanup();
     };
   }, [scannerActive, activeTab, onScanSuccess, scanContainerId, focusKey]);
 
