@@ -22,7 +22,8 @@ import {
   Volume2,
   VolumeX,
   Smartphone,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { useEvents } from "@/context/EventContext";
