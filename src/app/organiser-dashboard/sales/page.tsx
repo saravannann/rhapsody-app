@@ -679,27 +679,35 @@ function SalesReportContent() {
       "Paid To",
       "Bank Txn ID",
       "Sold By",
+      "CheckIn Status",
       "Date",
       "Checked In By",
       "Admission Time",
     ];
-    const rows = filteredTickets.map((t) => [
-      shortTicketRef(t.id, t.sequence_number),
-      t.purchaser_name || "N/A",
-      t.purchaser_phone || "N/A",
-      t.type,
-      ticketQuantity(t),
-      t.checked_in_count || 0,
-      ticketUnitPrice(t),
-      ticketLineTotal(t),
-      t.status,
-      t.funds_destination === 'trust' ? 'Trust' : 'Organizer',
-      t.bank_txn_id || "N/A",
-      t.sold_by || "N/A",
-      new Date(t.created_at).toLocaleString('en-IN', { hour12: true }),
-      t.checked_in_by || "N/A",
-      t.last_checked_in_at ? new Date(t.last_checked_in_at).toLocaleString('en-IN', { hour12: true }) : "N/A",
-    ]);
+    const rows = filteredTickets.map((t) => {
+      const q = ticketQuantity(t);
+      const c = t.checked_in_count || 0;
+      const checkinStatus = c === 0 ? "Pending" : c < q ? `Partial (${c}/${q})` : "Checked In";
+      
+      return [
+        shortTicketRef(t.id, t.sequence_number),
+        t.purchaser_name || "N/A",
+        t.purchaser_phone || "N/A",
+        t.type,
+        q,
+        c,
+        ticketUnitPrice(t),
+        ticketLineTotal(t),
+        t.status,
+        t.funds_destination === 'trust' ? 'Trust' : 'Organizer',
+        t.bank_txn_id || "N/A",
+        t.sold_by || "N/A",
+        checkinStatus,
+        new Date(t.created_at).toLocaleString('en-IN', { hour12: true }),
+        t.checked_in_by || "N/A",
+        t.last_checked_in_at ? new Date(t.last_checked_in_at).toLocaleString('en-IN', { hour12: true }) : "N/A",
+      ];
+    });
 
     // Sort by Order ID (first column) ascending
     rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
@@ -1120,6 +1128,13 @@ function SalesReportContent() {
                               }`}>
                               WA: {t.whatsapp_status?.replace('_', ' ') || 'not sent'}
                             </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              (t.checked_in_count || 0) === 0 ? 'bg-gray-100 text-gray-400 border-gray-200' :
+                              (t.checked_in_count || 0) < ticketQuantity(t) ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              'bg-emerald-100 text-emerald-700 border-emerald-200'
+                            }`}>
+                              {(t.checked_in_count || 0) === 0 ? 'Pending' : (t.checked_in_count || 0) < ticketQuantity(t) ? `Partial (${t.checked_in_count}/${ticketQuantity(t)})` : 'Admitted'}
+                            </span>
                             <span className={`font-bold px-1.5 py-0.5 rounded border ${t.funds_destination === 'trust'
                               ? 'bg-blue-50 text-blue-700 border-blue-100'
                               : 'bg-emerald-50 text-emerald-700 border-emerald-100'
@@ -1166,6 +1181,7 @@ function SalesReportContent() {
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Paid To</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Txn ID</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">WA Status</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">CheckIn Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Purchase Date</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-center">Admitted By</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-violet-400/60 uppercase tracking-widest text-right">Admission Time</th>
@@ -1174,7 +1190,7 @@ function SalesReportContent() {
                 <tbody className="divide-y divide-gray-50">
                   {tickets.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-6 py-12 text-center">
+                      <td colSpan={14} className="px-6 py-12 text-center">
                         <FileSpreadsheet className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                         <h3 className="text-base font-bold text-gray-900 dark:text-violet-100">No transactions found</h3>
                         <p className="text-sm text-gray-500 dark:text-violet-300/70 mt-1">Adjust your filters to see more results.</p>
@@ -1247,6 +1263,15 @@ function SalesReportContent() {
                                 </span>
                               )}
                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {(() => {
+                              const checked = t.checked_in_count || 0;
+                              const total = ticketQuantity(t);
+                              if (checked === 0) return <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 uppercase">Pending</span>;
+                              if (checked < total) return <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 uppercase">Partial ({checked}/{total})</span>;
+                              return <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase flex items-center justify-center gap-1"><Check className="w-2.5 h-2.5" /> Admitted</span>;
+                            })()}
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="text-sm font-bold text-gray-700 dark:text-violet-300">{formattedDate}</div>
