@@ -228,7 +228,7 @@ export default function FrontdeskCheckInPage() {
       const formattedRecent = (recent || []).map(log => ({
         id: log.id,
         ticket_id: log.ticket_id,
-        purchaser_name: log.checked_in_name || log.tickets?.purchaser_name || "Guest",
+        purchaser_name: log.tickets?.purchaser_name || log.checked_in_name || "Guest",
         type: log.tickets?.type || "Unknown",
         quantity: log.count,
         checked_in_count: log.count,
@@ -273,7 +273,7 @@ export default function FrontdeskCheckInPage() {
     }
   }, []);
 
-  const handleCheckIn = useCallback(async (overrideTicket?: TicketMinimal, overrideCount?: number) => {
+  const handleCheckIn = useCallback(async (overrideTicket?: TicketMinimal, overrideCount?: number, overrideName?: string) => {
     if (isArchived) {
        alert("Cannot check in for an archived event.");
        return;
@@ -318,7 +318,7 @@ export default function FrontdeskCheckInPage() {
         .insert({
           ticket_id: row.id,
           count: countToAdmit,
-          checked_in_name: attendeeName || (newCount === qty ? row.purchaser_name : "Partial Group"),
+          checked_in_name: overrideName || attendeeName || row.purchaser_name,
           staff_name: staffName || "Front Desk"
         });
 
@@ -409,7 +409,7 @@ export default function FrontdeskCheckInPage() {
     setLookup(rs);
 
     if (options.autoAdmit && qty === 1 && checkedIn === 0 && !mismatch) {
-       setTimeout(() => { handleCheckIn(row as TicketMinimal, 1); }, 300);
+       setTimeout(() => { handleCheckIn(row as TicketMinimal, 1, row.purchaser_name || ""); }, 300);
     }
   }, [fetchAuditLog, handleCheckIn, selectedEventId]);
 
