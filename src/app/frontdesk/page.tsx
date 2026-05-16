@@ -83,7 +83,8 @@ type LookupState =
     };
 
 export default function FrontdeskCheckInPage() {
-  const { events, selectedEventId } = useEvents();
+  const { events, selectedEventId, selectedEvent } = useEvents();
+  const isArchived = selectedEvent?.status === 'archived';
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanContainerId = `fd-qr-${useId().replace(/:/g, "")}`;
   const [scannerActive, setScannerActive] = useState(true);
@@ -272,6 +273,10 @@ export default function FrontdeskCheckInPage() {
   }, []);
 
   const handleCheckIn = useCallback(async (overrideTicket?: TicketMinimal, overrideCount?: number) => {
+    if (isArchived) {
+       alert("Cannot check in for an archived event.");
+       return;
+    }
     const currentResult = lookup.kind === "result" ? lookup : null;
     const row = overrideTicket || currentResult?.ticket;
     if (!row) return;
@@ -346,7 +351,7 @@ export default function FrontdeskCheckInPage() {
     } finally {
       setCheckingIn(false);
     }
-  }, [lookup, partialCount, attendeeName, fetchMetrics]);
+  }, [isArchived, lookup, partialCount, attendeeName, staffName, fetchMetrics, notifySuccess, notifyError]);
 
   const runLookup = useCallback(async (raw: string) => {
     const trimmed = raw.trim();
@@ -595,6 +600,15 @@ export default function FrontdeskCheckInPage() {
                    Front Desk
                    <YearSelector />
                 </h1>
+                {isArchived && (
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-700 max-w-lg">
+                     <Calendar className="w-5 h-5 text-amber-600" />
+                     <div>
+                        <p className="text-sm font-bold">Event Archived</p>
+                        <p className="text-[10px] opacity-80 uppercase font-bold tracking-wider">Check-in is disabled for historical events</p>
+                     </div>
+                  </div>
+                )}
                <p className="text-gray-500 dark:text-violet-300 font-medium mt-1">
                   {activeTab === 'scanner' ? 'Scan QR codes to validate' : 'Research ticket history'}
                </p>
@@ -659,9 +673,9 @@ export default function FrontdeskCheckInPage() {
                            <button onClick={() => { const next = !torchOn; setTorchOn(next); if (scannerRef.current) (scannerRef.current as any).applyVideoConstraints({ advanced: [{ torch: next }] }).catch(() => {}); }} aria-label="Toggle flashlight" className={`absolute top-0 right-0 z-30 p-4 rounded-full transition-all ${torchOn ? 'bg-amber-400 text-gray-900' : 'bg-gray-900/40 text-white'}`}><Zap className={`w-6 h-6 ${torchOn ? 'fill-current' : ''}`} /></button>
                         )}
                         {scannerActive ? (
-                           <div className="w-full relative"><div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square text-center"><div id={scanContainerId} className="w-full h-full" />{cameraError && <p className="text-white p-4">Camera Error</p>}</div></div>
+                           <div className={`w-full relative ${isArchived ? 'opacity-50 grayscale pointer-events-none' : ''}`}><div className="overflow-hidden rounded-3xl border-4 border-gray-900 bg-gray-950 shadow-2xl relative max-w-[320px] mx-auto aspect-square text-center"><div id={scanContainerId} className="w-full h-full" />{cameraError && <p className="text-white p-4">Camera Error</p>}</div></div>
                         ) : (
-                           <div className="w-full max-w-md space-y-4"><textarea value={manualInput} onChange={(e) => setManualInput(e.target.value)} rows={4} placeholder="Paste ticket code / QR text..." aria-label="Manual ticket input" className="block w-full px-6 py-6 bg-gray-50 dark:bg-violet-950/20 border-2 border-dashed border-gray-200 dark:border-violet-500/20 rounded-3xl text-sm font-bold outline-none" /><button onClick={() => runLookup(manualInput)} className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-widest">Verify Ticket</button></div>
+                           <div className={`w-full max-w-md space-y-4 ${isArchived ? 'opacity-50 grayscale pointer-events-none' : ''}`}><textarea value={manualInput} onChange={(e) => setManualInput(e.target.value)} rows={4} placeholder="Paste ticket code / QR text..." aria-label="Manual ticket input" className="block w-full px-6 py-6 bg-gray-50 dark:bg-violet-950/20 border-2 border-dashed border-gray-200 dark:border-violet-500/20 rounded-3xl text-sm font-bold outline-none" /><button onClick={() => runLookup(manualInput)} className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-widest">Verify Ticket</button></div>
                         )}
 
                         {lookup.kind !== "idle" && lookup.kind !== "loading" && (
