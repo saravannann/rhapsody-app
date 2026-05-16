@@ -531,7 +531,7 @@ export default function FrontdeskCheckInPage() {
       }
     };
 
-    if (!scannerActive || activeTab !== 'scanner') {
+    if (!scannerActive || activeTab !== 'scanner' || isArchived) {
       cleanup();
       return;
     }
@@ -575,7 +575,7 @@ export default function FrontdeskCheckInPage() {
       isMounted = false;
       cleanup();
     };
-  }, [scannerActive, activeTab, onScanSuccess, scanContainerId, focusKey]);
+  }, [scannerActive, activeTab, onScanSuccess, scanContainerId, focusKey, isArchived]);
 
   function minBox() {
     if (typeof window === "undefined") return 200;
