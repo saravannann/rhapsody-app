@@ -354,7 +354,7 @@ export default function FrontdeskCheckInPage() {
     }
   }, [isArchived, lookup, partialCount, attendeeName, staffName, fetchMetrics, notifySuccess, notifyError]);
 
-  const runLookup = useCallback(async (raw: string) => {
+  const runLookup = useCallback(async (raw: string, options: { autoAdmit?: boolean } = { autoAdmit: true }) => {
     const trimmed = raw.trim();
     setJustCheckedIn(false);
     if (!trimmed) {
@@ -408,7 +408,7 @@ export default function FrontdeskCheckInPage() {
     const rs: LookupState = { kind: "result", ticket: row as TicketMinimal, parsed: parsed || null, mismatch };
     setLookup(rs);
 
-    if (qty === 1 && checkedIn === 0 && !mismatch) {
+    if (options.autoAdmit && qty === 1 && checkedIn === 0 && !mismatch) {
        setTimeout(() => { handleCheckIn(row as TicketMinimal, 1); }, 300);
     }
   }, [fetchAuditLog, handleCheckIn, selectedEventId]);
@@ -760,7 +760,7 @@ export default function FrontdeskCheckInPage() {
                </div>
                <div className="mt-8 space-y-4">
                   {researchResults.map(t => (
-                    <div key={t.id} onClick={() => { setManualInput(t.id); runLookup(t.id); setActiveTab('scanner'); }} className="p-4 bg-gray-50 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-all">
+                    <div key={t.id} onClick={() => { setManualInput(t.id); runLookup(t.id, { autoAdmit: false }); setActiveTab('scanner'); }} className="p-4 bg-gray-50 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-all">
                                                <div>
                            <p className="font-bold">{t.purchaser_name}</p>
                            <p className="text-xs text-gray-500">
